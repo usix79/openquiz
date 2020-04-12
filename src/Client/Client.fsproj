@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="index.html" />
+    <None Include="paket.references" />
+    <None Include="style.scss" />
+    <Compile Include="../Shared/Shared.fs" />
+    <Compile Include="Version.fs" />
+    <Compile Include="Common.fs" />
+    <Compile Include="MainTemplates.fs" />
+    <Compile Include="MainProdQuestions.fs" />
+    <Compile Include="MainProdQuizzes.fs" />
+    <Compile Include="MainProd.fs" />
+    <Compile Include="MainPub.fs" />
+    <Compile Include="Main.fs" />
+    <Compile Include="Root.fs" />
+    <Compile Include="App.fs" />
+  </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>

@@ -1,0 +1,13 @@
+group Server
+FSharp.Core
+Giraffe
+Fable.Remoting.Giraffe
+Serilog.Formatting.Compact
+Serilog.Sinks.Console
+Giraffe.SerilogExtensions
+AWS.Logger.SeriLog
+Amazon.Extensions.Configuration.SystemsManager
+System.IdentityModel.Tokens.Jwt
+Json.Net
+AWSSDK.DynamoDBv2
+AWSSDK.S3

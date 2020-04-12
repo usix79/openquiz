@@ -1,0 +1,147 @@
+open System
+open System.IO
+
+open AWS.Logger
+open AWS.Logger.SeriLog
+open Giraffe
+open Giraffe.Core
+open Giraffe.ResponseWriters
+open Giraffe.SerilogExtensions
+open Fable.Remoting.Server
+open Fable.Remoting.Giraffe
+open FSharp.Control.Tasks.ContextInsensitive
+open FSharp.Control.Tasks.V2
+open Microsoft.AspNetCore
+open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.Hosting
+open Microsoft.AspNetCore.Http
+open Microsoft.Extensions.Configuration
+open Microsoft.Extensions.DependencyInjection
+open Serilog
+
+open Shared
+open Common
+open Data
+
+let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
+
+let isProdMode = Directory.Exists "public"
+let publicPath = Directory.GetCurrentDirectory() + "/" + if isProdMode then "public" else "../Client/public"
+
+let port =
+    "SERVER_PORT"
+    |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
+
+let errorHandler (ex: Exception) (routeInfo: RouteInfo<HttpContext>) =
+    let contextLogger = routeInfo.httpContext.Logger()
+    let errorMsgTemplate = "EXCEPTION in {Proc} at {RoutePath}"
+    contextLogger.Error(ex, errorMsgTemplate, routeInfo.methodName, routeInfo.path)
+    Propagate Errors.SessionIsNotActive
+
+let apiHandler api =
+    Remoting.createApi()
+    |> Remoting.withRouteBuilder (Infra.routeBuilder "")
+    |> Remoting.fromContext api
+    |> Remoting.withErrorHandler errorHandler
+    |> Remoting.buildHttpHandler
+
+let loginHandler _next (ctx: HttpContext)  =
+    task {
+        let cfg = ctx.GetService<IConfiguration>()
+        let clientId = Config.getCognitoClientId cfg
+        let clientName = Config.getCognitoClientName cfg
+        let redirectUrl = Config.getRedirectUrl cfg
+
+        let url = sprintf "%s/login?client_id=%s&response_type=code&redirect_uri=%s" (Aws.getCognitoUri clientName) clientId redirectUrl
+        return! redirectTo false url _next ctx
+    }
+
+let imgHandler (dir,key) : HttpHandler =
+    fun (next : HttpFunc) (ctx : HttpContext)  ->
+        task {
+            let cfg = ctx.GetService<IConfiguration>()
+            let buketName = Config.getFilesAccessPoint cfg
+
+            let! data = Bucket.downloadFile buketName (sprintf "%s/%s" dir key)
+            ctx.SetContentType data.ContentType
+            return! ctx.WriteStreamAsync true data.Body None None
+        }
+
+let indexHandler =
+    warbler (fun _ ->
+        Quizzes.getDescriptors()
+        |> List.filter Domain.Quizzes.isPubQuiz
+        |> Index.layout
+        |> htmlView
+    )
+
+
+let appRouter =
+    choose [
+        route "/" >=> indexHandler
+        route "/index.html" >=> redirectTo false "/"
+        route "/default.html" >=> redirectTo false "/"
+        route "/login" >=> loginHandler
+        routef "/img/%s/%s" imgHandler
+        apiHandler Security.securityApi
+        apiHandler Service.Main.api
+    ]
+
+let serilogConfig = {
+    SerilogConfig.defaults with
+        IgnoredRequestFields =
+            Ignore.fromRequest
+            |> Field.host
+            |> Field.queryString
+            |> Field.fullPath
+            |> Field.userAgent
+            |> Field.contentType
+            |> Field.requestHeaders
+        IgnoredResponseFields =
+            Ignore.fromResponse
+            |> Field.responseContentType
+}
+let appRouterWithLogging = SerilogAdapter.Enable(appRouter, serilogConfig)
+
+let awsLogConfig = AWSLoggerConfig("openquiz")
+
+Log.Logger <-
+  LoggerConfiguration()
+    .Destructure.FSharpTypes()
+    .WriteTo.Console()
+    .WriteTo.AWSSeriLog(awsLogConfig, textFormatter=Formatting.Compact.RenderedCompactJsonFormatter())
+    .CreateLogger()
+
+let configureApp (app : IApplicationBuilder) =
+
+#if !DEBUG
+    let app = app.UseRewriter Microsoft.AspNetCore.Rewrite.RewriteOptions().AddRedirectToHttps()
+#endif
+
+    app.UseResponseCompression()
+       .UseDefaultFiles()
+       .UseStaticFiles()
+       .UseGiraffe appRouterWithLogging
+
+let configureServices (services : IServiceCollection) =
+    services.AddResponseCompression() |> ignore
+    services.AddGiraffe() |> ignore
+
+//let realPublicPath = System.IO.Path.Combine(Environment.CurrentDirectory, publicPath)
+
+[<EntryPoint>]
+let main _ =
+    printfn "Working directory - %s" (Directory.GetCurrentDirectory())
+
+    WebHost
+        .CreateDefaultBuilder()
+        .UseWebRoot(publicPath)
+        .UseContentRoot(publicPath)
+        .ConfigureAppConfiguration(fun builder -> builder.AddSystemsManager("/openquiz") |> ignore)
+        .Configure(Action<IApplicationBuilder> configureApp)
+        .ConfigureServices(configureServices)
+        .UseUrls("http://0.0.0.0:" + port.ToString() + "/")
+        .Build()
+        .Run()
+
+    0 // return an integer exit code

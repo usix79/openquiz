@@ -1,0 +1,333 @@
+module rec MainProdQuizzes
+
+open Elmish
+open Fable.React
+open Fable.React.Props
+open Elmish.React
+open Fable.Core.JsInterop
+
+open Shared
+open Common
+open SharedModels
+open MainModels
+
+importAll "flatpickr/dist/themes/light.css"
+
+type Msg =
+    | CreateQuiz
+    | CreateQuizResp of RESP<{|Record : QuizProdRecord; Card:QuizProdCard|}>
+    | GetQuizzesResp of RESP<QuizProdRecord list>
+    | Exn of exn
+    | DeleteError of string
+    | ToggleCard of int // quizId
+    | GetCardResp of RESP<QuizProdCard>
+    | UpdateBrand of string
+    | UpdateStartTime of System.DateTime
+    | UpdateName of string
+    | UpdateStatus of string
+    | UpdateWelcomeTxt of string
+    | UpdateFarewellTxt of string
+    | UpdateIsPrivat of bool
+    | UpdateIsPremoderated of bool
+    | CancelCard
+    | SubmitCard
+    | SubmitCardResp of RESP<{|Record : QuizProdRecord; Card:QuizProdCard|}>
+    | QuizImgChanged of {|Type:string; Body:byte[]; Tag:int|}
+    | QuizImgClear of unit
+    | UploadQuizImgResp of TRESP<int, {|BucketKey:string|}>
+
+type Model = {
+    Quizzes : QuizProdRecord list
+    Card : QuizProdCard option
+    Errors : Map<string, string>
+    CardIsLoading : int option // quizId
+}
+
+let loading quizId model =
+    {model with CardIsLoading = Some quizId}
+
+let editing model =
+    {model with CardIsLoading = None}
+
+let addError txt model =
+    {model with Errors = model.Errors.Add(System.Guid.NewGuid().ToString(),txt)}
+
+let delError id model =
+    {model with Errors = model.Errors.Remove id}
+
+let toggleCard api quizId model =
+    match model.CardIsLoading with
+    | Some _ -> model |> noCmd
+    | None ->
+        match model.Card with
+        | Some card when card.QuizId = quizId -> {model with Card = None} |> noCmd
+        | _ -> {model with Card = None} |> loading quizId |> apiCmd api.getProdQuizCard {|QuizId = quizId|} GetCardResp Exn
+
+let updateCard f model =
+    match model.Card with
+    | Some card -> {model with Card = Some <| f card}
+    | _ -> model
+
+let validateBrand txt =
+    if System.String.IsNullOrWhiteSpace(txt) then "Brand is required" else ""
+
+let validateName txt =
+    if System.String.IsNullOrWhiteSpace(txt) then "Name is required" else ""
+
+let validateStartTime dt =
+    match dt with
+    | Some _ -> ""
+    | None -> "Start Time is required"
+
+let validate card =
+    [validateBrand card.Brand; validateName card.Name; validateStartTime card.StartTime]
+    |> List.filter (fun s -> s <> "")
+
+let submitCard api model =
+    match model.Card with
+    | Some card ->
+        model |> loading card.QuizId |> apiCmd api.updateProdQuizCard card SubmitCardResp Exn
+    | None -> model |> noCmd
+
+let replaceRecord record model =
+    {model with Quizzes = record :: (model.Quizzes |> List.filter (fun q -> q.QuizId <> record.QuizId))}
+
+let uploadFile quizId api respMsg fileType body model =
+    if Array.length body > (1024*128) then
+        model |> addError "max image size is 128K" |> noCmd
+    else
+        model |> loading quizId |> apiCmd api.uploadFile {|Cat = Quiz; FileType=fileType; FileBody=body|} respMsg Exn
+
+
+let init (api:IMainApi) user : Model*Cmd<Msg> =
+    {Quizzes = []; Card = None; CardIsLoading = None; Errors = Map.empty} |> apiCmd api.getProdQuizzes () GetQuizzesResp Exn
+
+let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
+    match msg with
+    | CreateQuiz -> cm |> apiCmd api.createQuiz () CreateQuizResp Exn
+    | CreateQuizResp {Value = Ok res} -> {cm with Quizzes = res.Record :: cm.Quizzes; Card = Some res.Card} |> noCmd
+    | CreateQuizResp {Value = Error txt} -> cm |> addError txt |> noCmd
+    | Exn ex -> cm |> addError ex.Message |> noCmd
+    | DeleteError id -> cm |> delError id |> noCmd
+    | GetQuizzesResp {Value = Ok res } -> {cm with Quizzes = res} |> noCmd
+    | GetQuizzesResp {Value = Error txt} -> cm |> addError txt |> noCmd
+    | ToggleCard quizId -> cm |> toggleCard api quizId
+    | GetCardResp {Value = Ok res } -> {cm with Card = Some res} |> editing |> noCmd
+    | GetCardResp {Value = Error txt} -> cm |> editing |> addError txt |> noCmd
+    | UpdateBrand txt -> cm |> updateCard (fun c -> {c with Brand = txt.ToUpper()}) |> noCmd
+    | UpdateStartTime dt -> cm |> updateCard (fun c -> {c with StartTime = Some dt}) |> noCmd
+    | UpdateName txt -> cm |> updateCard (fun c -> {c with Name = txt}) |> noCmd
+    | UpdateStatus txt -> cm |> updateCard (fun c -> {c with Status = defaultArg (fromString txt) Draft}) |> noCmd
+    | UpdateWelcomeTxt txt -> cm |> updateCard (fun c -> {c with WelcomeText = txt}) |> noCmd
+    | UpdateFarewellTxt txt -> cm |> updateCard (fun c -> {c with FarewellText = txt}) |> noCmd
+    | UpdateIsPrivat b -> cm |> updateCard (fun c -> {c with IsPrivate = b}) |> noCmd
+    | UpdateIsPremoderated b -> cm |> updateCard (fun c -> {c with WithPremoderation = b}) |> noCmd
+    | CancelCard -> {cm with Card = None} |> noCmd
+    | SubmitCard -> cm |> submitCard api
+    | SubmitCardResp {Value = Ok res } -> {cm with Card = Some res.Card} |> editing |> replaceRecord res.Record |> noCmd
+    | SubmitCardResp {Value = Error txt} -> cm |> editing |> addError txt |> noCmd
+    | QuizImgClear _ ->  cm |> updateCard (fun c -> {c with ImgKey = ""}) |> noCmd
+    | QuizImgChanged res -> cm |> uploadFile res.Tag api (taggedMsg UploadQuizImgResp res.Tag) res.Type res.Body
+    | UploadQuizImgResp {Tag = _; Rsp = {Value = Ok res}} -> cm |> editing |> updateCard (fun c -> {c with ImgKey = res.BucketKey}) |> noCmd
+    | UploadQuizImgResp {Rsp = {Value = Error txt}} -> cm |> editing |> addError txt |> noCmd
+
+let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
+    div[][
+        nav [Class "level"][
+            div [Class "level-left"][
+
+            ]
+            div [Class "level-right"][
+                p [Class "level-item"][
+                    a [Class "button is-dark"; OnClick (fun _ -> dispatch CreateQuiz)][str "Create New Quiz"]
+                ]
+            ]
+        ]
+
+        for error in model.Errors do
+            div [Class "notification is-danger is-light"][
+                button [Class "delete"; OnClick (fun _ -> dispatch (DeleteError error.Key))][]
+                str error.Value
+            ]
+
+        table [Class "table is-fullwidth is-hoverable"][
+            thead[][
+                tr[][
+                    th [Style[Width "30px"]][str ""]
+                    th [Style[Width "120px"]][str "Brand"]
+                    th [Style[Width "120px"]][str "Start Time"]
+                    th [][str "Name"]
+                    th [Style[Width "60px"]][str "Status"]
+                ]
+            ]
+            tbody [][
+                for quiz in model.Quizzes |> List.sortBy (fun q -> q.QuizId) |> List.rev do
+                    let hasCard = match model.Card with Some card when card.QuizId = quiz.QuizId -> true | _ -> false
+                    let isLoading = match model.CardIsLoading with Some id when id = quiz.QuizId -> true | _ -> false
+
+                    tr[][
+                        th [] [
+                            button [classList ["button", true; "is-small", true; "is-loading", isLoading]; OnClick (fun _ -> dispatch <| ToggleCard quiz.QuizId)][
+                                str <| if hasCard then "-" else "+"
+                            ]
+                        ]
+                        th [] [str quiz.Brand]
+                        th [] [str <| match quiz.StartTime with Some st -> st.ToString("dd/MM HH:mm") | None -> "???"]
+                        td [] [str quiz.Name]
+                        td [] [str <| quiz.Status.ToString()]
+                    ]
+                    if hasCard then
+                        tr [][
+                            th [][]
+                            td [ColSpan 4] [ card dispatch model.Card.Value isLoading]
+                        ]
+            ]
+        ]
+    ]
+
+let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
+    div[][
+        div [Class "columns"][
+            div [Class "column"][
+                div [Class "field"][
+                    label [Class "label"][str "Brand"; span [Class "has-text-danger"][str "*"]]
+                    let error = validateBrand card.Brand
+                    div [Class "control"][
+                        input [classList ["input", true; "is-danger", error <> ""]; Type "text"; Placeholder "Your brand"; MaxLength 12.0;
+                            valueOrDefault card.Brand;
+                            OnChange (fun ev -> dispatch <| UpdateBrand ev.Value)]
+                    ]
+                    p [Class "help is-danger"][str error]
+                ]
+                div [Class "field"][
+                    label [Class "label"][str "Quiz Name"; span [Class "has-text-danger"][str "*"]]
+                    let error = validateName card.Name
+                    div [Class "control"][
+                        input [classList ["input", true; "is-danger", error <> ""]; Type "text"; Placeholder "BIZZ QUIZZ #3"; MaxLength 128.0;
+                            valueOrDefault card.Name;
+                            OnChange (fun ev -> dispatch <| UpdateName ev.Value)]
+
+                    ]
+                    p [Class "help is-danger"][str error]
+                ]
+                div [Class "field is-grouped"][
+                    div [Class "control"][
+                        label [Class "label"][str "Start Time"; span [Class "has-text-danger"][str "*"]]
+                        let error = validateStartTime card.StartTime
+                        let className = "input" + if error <> "" then " is-danger" else ""
+                        let opts =  [ Flatpickr.ClassName className; Flatpickr.EnableTimePicker true; Flatpickr.TimeTwentyFour true;
+                            Flatpickr.OnChange (UpdateStartTime >> dispatch)]
+                        let opts =  match card.StartTime with Some dt -> (Flatpickr.Value dt) :: opts | _ -> opts
+                        Flatpickr.flatpickr opts
+
+                        p [Class "help is-danger"][str error]
+                    ]
+
+                    div [Class "control"][
+                        label [Class "label"][str "Status"]
+                        div [Class "select"][
+                            select[valueOrDefault card.Status; OnChange (fun ev -> dispatch <| UpdateStatus ev.Value )][
+                                for case in Reflection.FSharpType.GetUnionCases typeof<SharedModels.QuizStatus> do
+                                    option [][str case.Name]
+                            ]
+                        ]
+                    ]
+                ]
+                div [Class "field"][
+                    label [Class "label"][str "Welcome Message"]
+                    div [Class "control"][
+                        textarea [Class "textarea"; Placeholder "Describe your quiz"; MaxLength 512.0;
+                            valueOrDefault card.WelcomeText;
+                            OnChange (fun ev -> dispatch <| UpdateWelcomeTxt ev.Value )][]
+                    ]
+                ]
+                div [Class "field"][
+                    label [Class "label"][str "Farewell Message"]
+                    div [Class "control"][
+                        textarea [Class "textarea"; Placeholder "Say goodbye to your audience"; MaxLength 512.0;
+                            valueOrDefault card.FarewellText;
+                            OnChange (fun ev -> dispatch <| UpdateFarewellTxt ev.Value )][]
+                    ]
+                ]
+            ]
+            div [Class "column"][
+                div [Class "field"][
+                    label [Class "label"][str "Questions Package"]
+                    div [Class "dropdown"][
+                        div [Class "dropdown-trigger"][
+                            button [Class "button"; AriaHasPopup true; AriaControls "dropdown-menu"][
+                                span[][str "Package is not selected" ]
+                                span [Class "icon is-small"][
+                                    i [Class "fas fa-angle-down"; AriaHidden true][]
+                                ]
+                            ]
+                        ]
+                        div [Class "dropdown-menu"; Id "dropdown-menu"; Role "menu"][
+                            div [Class "dropdown-content"][
+                                a [Href "#"; Class "dropdown-item"][str "Dropdown item"]
+                                a [Class "dropdown-item"][str "Other dropdown item"]
+                                a [Class "dropdown-item"][str "Other dropdown item"]
+                                a [Class "dropdown-item"][str "Other dropdownOther dropdownOther dropdownOther dropdownOther dropdownOther dropdown item"]
+                                a [Class "dropdown-item"][str "Other dropdown item"]
+                                a [Class "dropdown-item"][str "Other dropdown item"]
+                            ]
+                        ]
+                    ]
+                ]
+
+                div [Class "field"][
+                    label [Class "label"][str "Application links"]
+                    div [Class "content"][
+                        ul[][
+                            li[][
+                                str "Admin "
+                                a [urlForAdmin card.QuizId card.AdminToken |> Href][str "link"]
+                                str " (not implemented)"
+                            ]
+                            li[][
+                                str "Private registration "
+                                a [urlForReg card.QuizId card.RegToken |> Href][str "link"]
+                                str " (not implemented)"
+                            ]
+                            li[][
+                                str "Public read-only "
+                                a [urlForPub card.QuizId card.ListenToken |> Href][str "link"]
+                                str " (not implemented)"
+                            ]
+                        ]
+                    ]
+                ]
+                div [Class "field" ] [
+                    div [Class "control"][
+                        label [Class "checkbox"][
+                            input [Type "checkbox"; Checked card.IsPrivate; OnChange (fun ev -> dispatch <| UpdateIsPrivat ev.Checked)]
+                            str " the quiz is private (will not displayed on the main page)"
+                        ]
+                    ]
+                ]
+                div [Class "field"][
+                    div [Class "control"][
+                        label [Class "checkbox"][
+                            input [Type "checkbox"; Checked card.WithPremoderation; OnChange (fun ev -> dispatch <| UpdateIsPremoderated ev.Checked)]
+                            str " registration is premoderated"
+                        ]
+                    ]
+                ]
+                div [Class "field"][
+                    label [Class "label"][str "Quiz picture (128x128)"]
+
+                    yield! MainTemplates.imgArea card.QuizId isLoading (QuizImgChanged>>dispatch) (QuizImgClear>>dispatch) card.ImgKey "/logo256.png" "Reset to default"
+                ]
+
+            ]
+        ]
+        div [Class "field is-grouped"][
+            div [Class "control"][
+                let hasErrors = not (validate card |> List.isEmpty)
+                button [Class "button is-dark "; Disabled hasErrors; OnClick (fun _ -> dispatch SubmitCard)] [ str "Submit"]
+            ]
+            div [Class "control"][
+                button [Class "button"; OnClick (fun _ -> dispatch CancelCard)] [ str "Cancel"]
+            ]
+        ]
+    ]
