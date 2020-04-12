@@ -11,13 +11,16 @@ open System
 open Fake.Core
 open Fake.DotNet
 open Fake.IO
+open System.IO.Compression;
 
 Target.initEnvironment ()
 
 let serverPath = Path.getFullName "./src/Server"
 let clientPath = Path.getFullName "./src/Client"
 let clientDeployPath = Path.combine clientPath "deploy"
+let clientPublicPath = Path.combine clientPath "public"
 let deployDir = Path.getFullName "./deploy"
+let bundleDir = Path.getFullName "./bundle"
 
 let release = ReleaseNotes.load "RELEASE_NOTES.md"
 
@@ -60,7 +63,8 @@ let openBrowser url =
 
 Target.create "Clean" (fun _ ->
     [ deployDir
-      clientDeployPath ]
+      clientDeployPath
+      bundleDir ]
     |> Shell.cleanDirs
 )
 
@@ -108,12 +112,32 @@ Target.create "Run" (fun _ ->
     |> ignore
 )
 
+Target.create "Bundle" (fun _ ->
+    let publicDir = Path.combine deployDir "public"
+    let publishArgs = sprintf "publish -c Release -o \"%s\"" deployDir
+    runDotNet publishArgs serverPath
+
+    Shell.copyDir publicDir clientPublicPath FileFilter.allFiles
+    Shell.copyDir publicDir clientDeployPath FileFilter.allFiles
+
+    let bundleInputDir = Path.combine bundleDir "input"
+    let bundleFile = Path.combine bundleDir "openquiz-bundle.zip"
+    Shell.mkdir bundleDir
+    Shell.mkdir bundleInputDir
+    ZipFile.CreateFromDirectory (deployDir, (Path.combine bundleInputDir "openquiz.zip"))
+    Shell.copyFile bundleInputDir "aws-windows-deployment-manifest.json"
+    Shell.copyDir (Path.combine bundleInputDir ".ebextensions") ".ebextensions" FileFilter.allFiles
+
+    Shell.rm bundleFile
+    ZipFile.CreateFromDirectory (bundleInputDir, bundleFile)
+)
 
 open Fake.Core.TargetOperators
 
 "Clean"
     ==> "InstallClient"
     ==> "Build"
+    ==> "Bundle"
 
 
 "Clean"

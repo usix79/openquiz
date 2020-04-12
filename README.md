@@ -1,1 +1,1 @@
-# Open Scout Platform
+# Open Quiz Platform

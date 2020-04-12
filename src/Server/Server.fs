@@ -15,6 +15,7 @@ open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.Rewrite
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Serilog
@@ -114,8 +115,9 @@ Log.Logger <-
 
 let configureApp (app : IApplicationBuilder) =
 
+
 #if !DEBUG
-    let app = app.UseRewriter Microsoft.AspNetCore.Rewrite.RewriteOptions().AddRedirectToHttps()
+    let app = app.UseRewriter (RewriteOptions().AddRedirectToHttps())
 #endif
 
     app.UseResponseCompression()
