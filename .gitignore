@@ -13,4 +13,5 @@ release.sh
 *.orig
 *.DotSettings.user
 deploy
+bundle
 .ionide/
