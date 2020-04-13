@@ -39,6 +39,7 @@ type Msg =
     | CommentImgClear of QwKey
     | UploadCommentImgResponse of TRESP<QwKey, {|BucketKey:string|}>
 
+
 type Model = {
     Packages : PackageProdRecord list
     Errors : Map<string, string>
@@ -105,23 +106,20 @@ let uploadFile packageId api respMsg fileType body model =
 let init api user : Model*Cmd<Msg> =
     {Errors = Map.empty; Packages = []; CardIsLoading = None; Card = None} |> apiCmd api.getProdPackages () GetPackagesResp Exn
 
+
 let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
+
     match msg with
-    | Exn ex -> cm |> addError ex.Message |> noCmd
     | DeleteError id -> cm |> delError id |> noCmd
     | GetPackagesResp {Value = Ok res } -> {cm with Packages = res} |> noCmd
-    | GetPackagesResp {Value = Error txt} -> cm |> addError txt |> noCmd
     | ToggleCard quizId -> cm |> toggleCard api quizId
     | GetPackageResp {Value = Ok res } -> {cm with Card = Some res} |> editing |> noCmd
-    | GetPackageResp {Value = Error txt} -> cm |> editing |> addError txt |> noCmd
     | CreatePackage -> cm |> apiCmd api.createPackage () CreatePackageResp Exn
     | CreatePackageResp {Value = Ok res} -> {cm with Packages = res.Record :: cm.Packages; Card = Some res.Card} |> noCmd
-    | CreatePackageResp {Value = Error txt} -> cm |> addError txt |> noCmd
     | UpdateName txt -> cm |> updateCard (fun c -> {c with Name = txt}) |> noCmd
     | CancelCard -> {cm with Card = None} |> noCmd
     | SubmitCard -> cm |> submitCard api
     | SubmitCardResp {Value = Ok res } -> {cm with Card = Some res.Card} |> editing |> replaceRecord res.Record |> noCmd
-    | SubmitCardResp {Value = Error txt} -> cm |> editing |> addError txt |> noCmd
     | AppendQuiestion -> cm |> updateCard (fun c -> c.AddQuestion()) |> noCmd
     | DelQuestion idx -> cm |> updateCard (fun c -> c.DelQuestion idx) |> noCmd
     | QwTextChanged (idx,txt) -> cm |> updateQw idx (fun qw -> {qw with Text = txt}) |> noCmd
@@ -130,12 +128,12 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | QwImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadQwImgResponse res.Tag) res.Type res.Body
     | QwImgClear qwKey -> cm |> updateQw qwKey.Idx (fun qw -> {qw with ImgKey = ""}) |> noCmd
     | UploadQwImgResponse {Tag = qwKey; Rsp = {Value = Ok res}} -> cm |> editing |> updateQw qwKey.Idx (fun qw -> {qw with ImgKey = res.BucketKey}) |> noCmd
-    | UploadQwImgResponse {Rsp = {Value = Error txt}} -> cm |> editing |> addError txt |> noCmd
     | CommentImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadCommentImgResponse res.Tag) res.Type res.Body
     | CommentImgClear qwKey -> cm |> updateQw qwKey.Idx (fun qw -> {qw with CommentImgKey = ""}) |> noCmd
     | UploadCommentImgResponse {Tag = qwKey; Rsp = {Value = Ok res}} -> cm |> editing |> updateQw qwKey.Idx (fun qw -> {qw with CommentImgKey = res.BucketKey}) |> noCmd
-    | UploadCommentImgResponse {Rsp = {Value = Error txt}} -> cm |> editing |> addError txt |> noCmd
-
+    | Exn ex -> cm |> addError ex.Message |> editing |> noCmd
+    | Err txt -> cm |> addError txt |> editing |> noCmd
+    | _ -> cm |> noCmd
 
 let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
     div[][
@@ -222,10 +220,12 @@ let card (dispatch : Msg -> unit) (card : MainModels.PackageProdCard) isLoading 
 
         table [Class "table is-fullwidth"][
             thead [][
-                th [Style [Width "30px"]] [str "#"]
-                th [] [str "Question"]
-                th [] [str "Answer"]
-                th [] [str "Comment"]
+                tr [][
+                    th [Style [Width "30px"]] [str "#"]
+                    th [] [str "Question"]
+                    th [] [str "Answer"]
+                    th [] [str "Comment"]
+                ]
             ]
 
             let rows =

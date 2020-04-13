@@ -1,4 +1,4 @@
-module Security
+module rec Security
 
 open System
 open System.Security.Claims
@@ -19,7 +19,7 @@ open Domain
 module CustomClaims =
     let Name = "name"
     let Role = "role'"
-    let CompetitorId = "competitorId"
+    let TeamId = "teamId"
     let QuizId = "quizId"
     let SessionId = "sessionId"
 
@@ -27,6 +27,7 @@ module CustomRoles =
     let Admin = "admin"
     let Competitor = "competitor"
     let Expert = "expert"
+
 
 let rand = Random(DateTime.UtcNow.Millisecond)
 
@@ -111,25 +112,7 @@ let refreshToken secret (req:REQ<{| RefreshToken: string |}>) =
 
     {Status = status; Value = value; ST = DateTime.UtcNow}
 
-let loginMainUser secret clientId clientName redirectUrl code =
-    async {
-        let! tokensResult = Aws.getUserToken clientName clientId redirectUrl code
-        match tokensResult with
-        | Ok tokens ->
-            let! userInfoResult = Aws.getUserInfo clientName tokens.AccessToken
-            match userInfoResult with
-            | Ok userInfo ->
-                let isProducer = match Data.Experts.get userInfo.Sub with Some exp -> exp.IsProducer | None -> false
-                let user = {Sub = userInfo.Sub; Name = userInfo.Name; PictureUrl = userInfo.Picture; IsProducer = isProducer}
-                let token = generateToken secret [Claim(CustomClaims.Name, userInfo.Sub); Claim(CustomClaims.Role, CustomRoles.Expert)]
-                let refreshToken = createRefreshToken()
-                Data.RefreshTokens.add refreshToken
-                return Ok {|Token = token; RefreshToken = refreshToken.Value; User = MainUser user|}
-            | Error txt ->
-                return Error txt
-        | Error txt ->
-            return Error txt
-    } |> Async.RunSynchronously
+
 
 // let private loginWithToken secret oldSessionId (args:{| GameId: int; TeamId: int; EntryToken: string |}) =
 
@@ -252,16 +235,63 @@ let execute (logger : ILogger) (proc:string) (f: REQ<'Req> -> RESP<'Resp>) : REQ
 
 //         serverResponse (fun arg -> f sessionId arg) req
 
+let loginResp secret claims user =
+    let token = generateToken secret claims
+    let refreshToken = createRefreshToken()
+    Data.RefreshTokens.add refreshToken
+    Ok {|Token = token; RefreshToken = refreshToken.Value; User = user|}
+
+let loginMainUser secret clientId clientName redirectUrl code =
+    async {
+        let! tokensResult = Aws.getUserToken clientName clientId redirectUrl code
+        match tokensResult with
+        | Ok tokens ->
+            let! userInfoResult = Aws.getUserInfo clientName tokens.AccessToken
+            match userInfoResult with
+            | Ok userInfo ->
+                let isProducer = match Data.Experts.get userInfo.Sub with Some exp -> exp.IsProducer | None -> false
+                let user = MainUser {Sub = userInfo.Sub; Name = userInfo.Name; PictureUrl = userInfo.Picture; IsProducer = isProducer}
+                let claims = [Claim(CustomClaims.Name, userInfo.Sub); Claim(CustomClaims.Role, CustomRoles.Expert)]
+                return loginResp secret claims user
+            | Error txt ->
+                return Error txt
+        | Error txt ->
+            return Error txt
+    } |> Async.RunSynchronously
+
+let loginAdminUser secret quizId token =
+    result{
+        let! quiz = ((Data.Quizzes.getDescriptor quizId), "Quiz not found")
+
+        return!
+            if quiz.AdminToken = token then
+                let claims = [Claim(CustomClaims.Role, CustomRoles.Admin); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
+                let user = AdminUser {QuizId = quiz.QuizId; QuizName = quiz.Name}
+                loginResp secret claims user
+            else
+                printfn "%s" quiz.AdminToken
+                printfn "%s" token
+                Error "Wrong entry token"
+    }
+
 let securityApi (context:HttpContext) : ISecurityApi =
     let logger : ILogger = context.Logger()
     let cfg = context.GetService<IConfiguration>()
     let secret = Config.getJwtSecret cfg
 
     let api : ISecurityApi = {
-        //loginWithToken = execute logger "loginWithToken" <| extractSessionId (loginWithToken secret)
-        loginAsMainUser = execute logger "loginAsMainUser" <| executedResponse (fun req ->
-            loginMainUser secret (Config.getCognitoClientId cfg) (Config.getCognitoClientName cfg) (Config.getRedirectUrl cfg) req.Code)
+        login = execute logger "login" <| executedResponse  (login secret cfg)
         refreshToken = execute logger "refreshToken" <| refreshToken secret
     }
 
     api
+
+let login secret (cfg:IConfiguration) (req : LoginReq) =
+    match req with
+    | LoginReq.MainUser data ->
+        let clientId = Config.getCognitoClientId cfg
+        let clientName = Config.getCognitoClientName cfg
+        let redirectUri = Config.getRedirectUrl cfg
+        loginMainUser secret clientId clientName redirectUri data.Code
+    | LoginReq.AdminUser data ->
+        loginAdminUser secret data.QuizId data.Token

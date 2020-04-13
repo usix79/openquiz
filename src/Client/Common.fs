@@ -10,6 +10,7 @@ open Fable.Import
 open Fable.Core
 open JsInterop
 open Fable.SimpleJson
+open Microsoft.FSharp.Reflection
 
 open Shared
 
@@ -31,8 +32,8 @@ let inline fromString<'a> (s:string) =
     |[|case|] -> Some(Reflection.FSharpValue.MakeUnion(case,[||]) :?> 'a)
     |_ -> None
 
-let urlForTeam quizId compId token =
-     sprintf "%s?who=team&quiz=%d&team=%d&token=%s" (Infra.locationFullPath ()) quizId compId token
+let urlForTeam quizId teamId token =
+     sprintf "%s?who=team&quiz=%d&team=%d&token=%s" (Infra.locationFullPath ()) quizId teamId token
 
 let urlForAdmin quizId token =
      sprintf "%s?who=admin&quiz=%d&token=%s" (Infra.locationFullPath ()) quizId token
@@ -65,6 +66,43 @@ type TRESP<'T, 'P> = {
 let taggedMsg msg tag =
     fun rsp ->
         msg {Tag = tag; Rsp = rsp}
+
+let ofInt (value : string option) : int option =
+    match value with
+    | Some v ->
+        match System.Int32.TryParse(v) with
+        | true, i -> Some i
+        | _ -> None
+    | None -> None
+
+let inline (|Err|_|) (msg:'msg) : string option =
+
+    let pi = FSharpType.GetRecordFields typeof<RESP<_>> |> Array.tryFind (fun pi -> pi.Name = "Value")
+
+    match pi with
+    | Some pi' ->
+
+        let msgType = msg.GetType()
+        if Reflection.FSharpType.IsUnion msgType then
+            let (_, objArray) = FSharpValue.GetUnionFields (msg, msgType)
+            if objArray.Length = 1 then
+                try
+                    let res = FSharpValue.GetRecordField (objArray.[0], pi')
+
+                    let (caseInfo, objArray) = FSharpValue.GetUnionFields (res, typedefof<Result<_,_>>)
+                    if caseInfo.Name = "Error" then
+                        let txt:string = unbox objArray.[0]
+                        printfn "TXT: %s" txt
+                        Some txt
+                    else
+                        None
+                with
+                | _ -> None
+            else
+                None
+        else
+            None
+    | None -> None
 
 module Infra =
 
@@ -211,7 +249,7 @@ module Infra =
 
         member x.CreateSecurityApi () =
             {
-                loginAsMainUser = x.Wrap securityApi.loginAsMainUser
+                login = x.Wrap securityApi.login
                 refreshToken = x.Wrap securityApi.refreshToken
             }
 
@@ -229,4 +267,10 @@ module Infra =
                 getProdPackageCard = x.Wrap mainApi.getProdPackageCard
                 createPackage = x.Wrap mainApi.createPackage
                 updateProdPackageCard = x.Wrap mainApi.updateProdPackageCard
+            }
+
+        member x.CreateAdminApi () =
+            {
+                login = x.Wrap securityApi.login
+                refreshToken = x.Wrap securityApi.refreshToken
             }

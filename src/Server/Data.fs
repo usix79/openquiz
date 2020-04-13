@@ -128,7 +128,7 @@ module Experts =
         let packagesEntry = PrimitiveList()
         for packageId in exp.Quizes do
             packagesEntry.Add(Primitive.op_Implicit packageId)
-        expItem.["Packages"] <- quizzesEntry
+        expItem.["Packages"] <- packagesEntry
 
         expItem
 
@@ -188,7 +188,8 @@ module Quizzes =
     let getDescriptor (quizId:int) : QuizDescriptor option =
         let config = GetItemOperationConfig()
         config.AttributesToGet <- new Collections.Generic.List<string> ([
-             "Id"; "Producer"; "StartTime"; "Brand"; "Name"; "Status"; "WelcomeText"; "FarewellText"; "IsPrivate"; "ImgKey";  "WithPremoderation"])
+             "Id"; "Producer"; "StartTime"; "Brand"; "Name"; "Status"; "WelcomeText"; "FarewellText";
+                    "IsPrivate"; "ImgKey";  "WithPremoderation"; "AdminToken"; "RegToken"; "ListenToken"])
 
         let table = loadTable "Quizzes"
         let task = table.GetItemAsync((Primitive.op_Implicit quizId), config)
@@ -221,6 +222,9 @@ module Quizzes =
         gameItem.["FarewellText"] <- v2.ConvertToEntry quiz.Dsc.FarewellText
         gameItem.["IsPrivate"] <- v2.ConvertToEntry quiz.Dsc.IsPrivate
         gameItem.["WithPremoderation"] <- v2.ConvertToEntry quiz.Dsc.WithPremoderation
+        gameItem.["ListenToken"] <- v2.ConvertToEntry quiz.Dsc.ListenToken
+        gameItem.["AdminToken"] <- v2.ConvertToEntry quiz.Dsc.AdminToken
+        gameItem.["RegToken"] <- v2.ConvertToEntry quiz.Dsc.RegToken
 
         let questionsEntry = DynamoDBList()
         for qw in quiz.Questions do
@@ -237,36 +241,31 @@ module Quizzes =
              questionsEntry.Add(qwItem)
 
         gameItem.["Questions"] <- questionsEntry
-        gameItem.["ListenToken"] <- v2.ConvertToEntry quiz.ListenToken
-        gameItem.["AdminToken"] <- v2.ConvertToEntry quiz.AdminToken
-        gameItem.["RegToken"] <- v2.ConvertToEntry quiz.RegToken
         gameItem.["Version"] <- v2.ConvertToEntry quiz.Version
 
         gameItem
 
     let private descriptorOfDocument (doc:Document) : QuizDescriptor =
-        let id = doc.["Id"].AsInt()
-        let producer = stringOfDoc doc "Producer"
-        let startTime = optionOfEntry doc "StartTime"
-        let brand = stringOfDoc doc "Brand"
-        let name = stringOfDoc doc "Name"
-        let welcomeTxt = stringOfDoc doc "WelcomeText"
-        let farewellTxt = stringOfDoc doc "FarewellText"
-        let name = stringOfDoc doc "Name"
-        let imgKey = stringOfDoc doc "ImgKey"
-        let status = defaultArg (fromString (doc.["Status"].AsString())) Draft
-        let isPrivate = boolOfDoc doc "IsPrivate"
-        let withPremoderation = boolOfDoc doc "WithPremoderation"
-
-        {QuizId = id; Producer = producer; StartTime = startTime; Brand = brand; Name = name; Status = status;
-            WelcomeText = welcomeTxt; FarewellText = farewellTxt; IsPrivate = isPrivate; ImgKey = imgKey; WithPremoderation = withPremoderation}
+        {
+            QuizId = doc.["Id"].AsInt()
+            Producer = stringOfDoc doc "Producer"
+            StartTime = optionOfEntry doc "StartTime"
+            Brand = stringOfDoc doc "Brand"
+            Name = stringOfDoc doc "Name"
+            Status = defaultArg (fromString (doc.["Status"].AsString())) Draft
+            WelcomeText = stringOfDoc doc "WelcomeText"
+            FarewellText = stringOfDoc doc "FarewellText"
+            IsPrivate = boolOfDoc doc "IsPrivate"
+            ImgKey = stringOfDoc doc "ImgKey"
+            AdminToken = stringOfDoc doc "AdminToken"
+            ListenToken = stringOfDoc doc "ListenToken"
+            RegToken = stringOfDoc doc "RegToken"
+            WithPremoderation = boolOfDoc doc "WithPremoderation"
+        }
 
     let quizOfDocument (doc:Document) : Quiz =
         let dsc = descriptorOfDocument doc
 
-        let listenToken = stringOfDoc doc "ListenToken"
-        let adminToken = stringOfDoc doc "AdminToken"
-        let regToken = stringOfDoc doc "RegToken"
         let version = doc.["Version"].AsInt()
 
         let qwList = doc.["Questions"].AsListOfDocument()
@@ -275,7 +274,7 @@ module Quizzes =
             |> Seq.map quizQuestionOfDocument
             |> List.ofSeq
 
-        {Dsc = dsc; ListenToken = listenToken; AdminToken = adminToken; RegToken = regToken; Version = version; Questions = questions}
+        {Dsc = dsc; Version = version; Questions = questions}
 
     let quizQuestionOfDocument  (qwDoc:Document) =
         let qwName = stringOfDoc qwDoc "Name"

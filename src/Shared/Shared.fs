@@ -27,6 +27,9 @@ type TRESP<'T, 'P> = {
     Rsp : RESP<'P>
 }
 
+type LoginReq =
+    | MainUser of {|Code: string|}
+    | AdminUser of {|QuizId:int; Token: string|}
 
 type User =
     | MainUser of MainUser
@@ -49,6 +52,7 @@ type QuizUser = {
 
 type AdminUser = {
     QuizId : int
+    QuizName : string
 }
 
 type ImgCategory =
@@ -180,7 +184,7 @@ module Infra =
     let defaultImg = "/logo256.png"
 
 type ISecurityApi = {
-    loginAsMainUser : REQ<{|Code : string|}> -> ARESP<{|Token: string; RefreshToken: string; User: User|}>
+    login : REQ<LoginReq> -> ARESP<{|Token: string; RefreshToken: string; User: User|}>
     refreshToken : REQ<{|RefreshToken: string|}> -> ARESP<{|Token: string; RefreshToken: string|}>
 }
 
@@ -198,3 +202,6 @@ type IMainApi = {
     createPackage : REQ<unit> -> ARESP<{|Record : MainModels.PackageProdRecord; Card:MainModels.PackageProdCard|}>
     updateProdPackageCard : REQ<MainModels.PackageProdCard> -> ARESP<{|Record : MainModels.PackageProdRecord; Card:MainModels.PackageProdCard|}>
 }
+
+// type IMainApi = {
+// }

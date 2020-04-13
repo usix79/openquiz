@@ -15,6 +15,7 @@
     <Compile Include="MainProd.fs" />
     <Compile Include="MainPub.fs" />
     <Compile Include="Main.fs" />
+    <Compile Include="Admin.fs" />
     <Compile Include="Root.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>

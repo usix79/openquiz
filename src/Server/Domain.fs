@@ -75,14 +75,14 @@ type QuizDescriptor = {
     IsPrivate : bool
     ImgKey : string
     WithPremoderation : bool
+    ListenToken : string
+    AdminToken : string
+    RegToken : string
 }
 
 type Quiz = {
     Dsc : QuizDescriptor
     Questions : QuizQuestion list
-    ListenToken : string
-    AdminToken : string
-    RegToken : string
     Version : int
 } with
     member this.CurrentQuestion =
@@ -109,11 +109,11 @@ module Quizzes =
                 FarewellText = ""
                 IsPrivate = false
                 WithPremoderation = false
+                ListenToken = Common.generateRandomToken()
+                AdminToken = Common.generateRandomToken()
+                RegToken = Common.generateRandomToken()
             }
             Questions = []
-            ListenToken = Common.generateRandomToken()
-            AdminToken = Common.generateRandomToken()
-            RegToken = Common.generateRandomToken()
             Version = 0
         }
 

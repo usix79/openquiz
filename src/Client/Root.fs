@@ -9,18 +9,15 @@ open Shared
 open Common
 
 type CurrentPage =
-    //| Admin of Admin.Model
-    | MainPage of Main.Model
-    //| Captain of Captain.Model
     | EmptyPage of string
+    | MainPage of Main.Model
+    | AdminPage of Admin.Model
 
 type Msg =
     | LoginResponse of RESP<{|Token: string; RefreshToken: string; User: User|}>
     | Exn of exn
-    // | Action of RootAction
-    // | Admin of Admin.Msg
     | MainMsg of Main.Msg
-//    | Captain of Captain.Msg
+    | AdminMsg of Admin.Msg
 
 type Model = {
     CurrentUser : User option
@@ -30,6 +27,7 @@ type Model = {
 let apiFactory = Infra.ApiFactory(fun () -> Infra.redirect "/login")
 let securityApi = apiFactory.CreateSecurityApi()
 let mainApi = apiFactory.CreateMainApi()
+let adminApi = apiFactory.CreateAdminApi()
 
 let getUserFromStorage() =
     let user = Infra.loadFromSessionStorage<User> "USER"
@@ -40,18 +38,16 @@ let getUserFromStorage() =
 
 let initChildPage user start cm =
     match user with
-    // | AdminUser u ->
-    //     let api = currentModel.ApiFactory.CreateAdminApi()
-    //     let submodel, subcmd = Admin.init api u start
-    //     {currentModel with CurrentPage = CurrentPage.Admin submodel; CurrentUser = Some user}, Cmd.map Admin subcmd
+    | MainUser u ->
+        let submodel, subCmd = Main.init mainApi u
+        {cm with CurrentPage = MainPage submodel; CurrentUser = Some user}, Cmd.map MainMsg subCmd
+    | AdminUser u ->
+        let submodel, subcmd = Admin.init mainApi u start
+        {cm with CurrentPage = AdminPage submodel; CurrentUser = Some user}, Cmd.map AdminMsg subcmd
     // | TeamUser u ->
     //     let api = currentModel.ApiFactory.CreateTeamApi()
     //     let submodel, subcmd = Main.init api u
     //     {currentModel with CurrentPage = CurrentPage.Main submodel; CurrentUser = Some user}, Cmd.map Main subcmd
-    | MainUser u ->
-        ///let api = currentModel.ApiFactory.CreateCaptainApi()
-        let subModel, subCmd = Main.init mainApi u
-        {cm with CurrentPage = MainPage subModel; CurrentUser = Some user}, Cmd.map MainMsg subCmd
     | _ -> cm |> noCmd
 
 let saveUser token refreshToken user serverTime =
@@ -59,31 +55,44 @@ let saveUser token refreshToken user serverTime =
     Infra.saveToSessionStorage "USER" user
     Infra.saveToSessionStorage "START" serverTime
 
-    Infra.clearQueryString() |> ignore
+let evaluateLoginReq (query : Map<string,string>) =
+    let qs x = query.TryFind x
+    let qi x = qs x |> ofInt
 
+    match qs "code" with
+    | Some code -> Some <| LoginReq.MainUser {|Code = code|}
+    | _ ->
+        match qs "who", qi "quiz", qs "token", qi "team" with
+        | Some "admin", Some quizId, Some token, _  ->
+            Some <| LoginReq.AdminUser {|QuizId = quizId; Token = token|}
+        | _ -> None
 
-let evaluateLoginCmd api =
-    let query = Infra.currentQueryString()
-    match query.TryFind "code" with
-    | Some code -> Some <| apiCmd' api.loginAsMainUser {|Code = code|} LoginResponse Exn
-    | _ -> None
+let isReqForSameUser (req:LoginReq) (user:User) =
+    match req, user with
+    | LoginReq.MainUser _, MainUser _ -> true
+    | LoginReq.AdminUser data, AdminUser usr -> data.QuizId = usr.QuizId
+    | _ -> false
 
 let init (): Model * Cmd<Msg> =
     let cm =  {CurrentPage = EmptyPage "Initializing..."; CurrentUser = None}
 
-    match evaluateLoginCmd securityApi with
-    | Some cmd -> cm, cmd
-    | None ->
-        match getUserFromStorage() with
-        | Some (user,start) -> cm |> initChildPage user start
-        | _ ->
-            Infra.redirect "/"
-            cm |> noCmd
+    match getUserFromStorage(), evaluateLoginReq (Infra.currentQueryString()) with
+    | Some (user,start), Some req when isReqForSameUser req user -> cm |> initChildPage user start
+    | _, Some req -> cm |> apiCmd securityApi.login req LoginResponse Exn
+    | Some (user,start), None -> cm |> initChildPage user start
+    | _ ->
+        Infra.redirect "/"
+        cm |> noCmd
 
 let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match cm.CurrentPage, cm.CurrentUser, msg with
     | EmptyPage _, _, LoginResponse {Value = Ok res; ST = serverTime} ->
             saveUser res.Token res.RefreshToken res.User serverTime
+
+            match res.User with
+            | MainUser _ -> Infra.clearQueryString()
+            | _ -> ()
+
             cm |> initChildPage res.User serverTime
     | EmptyPage _, _, LoginResponse {Value = Error txt} -> {cm with CurrentPage = EmptyPage txt} |> noCmd
     | EmptyPage _,  _, Exn ex -> {cm with CurrentPage = EmptyPage ex.Message} |> noCmd
@@ -98,6 +107,9 @@ let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
 
         let newModel,newCmd = Main.update mainApi user subMsg subModel
         {cm with CurrentPage = MainPage newModel; CurrentUser = Some (MainUser user)}, Cmd.map MainMsg newCmd
+    | AdminPage subModel, Some (AdminUser user), AdminMsg subMsg ->
+        let newModel,newCmd = Admin.update mainApi user subMsg subModel
+        {cm with CurrentPage = AdminPage newModel}, Cmd.map AdminMsg newCmd
     | _, _, _ -> cm |> noCmd
 
     //match msg, currentModel.CurrentPage, currentModel.CurrentUser with
@@ -135,6 +147,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
         match model.CurrentPage, model.CurrentUser with
         | EmptyPage txt, None -> str txt
         | MainPage subModel, Some (MainUser user) -> Main.view (MainMsg >> dispatch) user subModel
+        | AdminPage subModel, Some (AdminUser user) -> Admin.view (AdminMsg >> dispatch) user subModel
         // | CurrentPage.Captain submodel, _ -> Captain.view (Captain >> dispatch) submodel
         // | CurrentPage.Main submodel, Some (TeamUser user) -> Main.view (Main >> dispatch) user submodel
         // | CurrentPage.Admin submodel, _ -> Admin.view (Admin >> dispatch) submodel

@@ -5,6 +5,7 @@ open Fable.React
 open Fable.React.Props
 open Elmish.React
 open Fable.Core.JsInterop
+open Fable.FontAwesome
 
 open Shared
 open Common
@@ -106,14 +107,9 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
     | CreateQuiz -> cm |> apiCmd api.createQuiz () CreateQuizResp Exn
     | CreateQuizResp {Value = Ok res} -> {cm with Quizzes = res.Record :: cm.Quizzes; Card = Some res.Card} |> noCmd
-    | CreateQuizResp {Value = Error txt} -> cm |> addError txt |> noCmd
-    | Exn ex -> cm |> addError ex.Message |> noCmd
-    | DeleteError id -> cm |> delError id |> noCmd
     | GetQuizzesResp {Value = Ok res } -> {cm with Quizzes = res} |> noCmd
-    | GetQuizzesResp {Value = Error txt} -> cm |> addError txt |> noCmd
     | ToggleCard quizId -> cm |> toggleCard api quizId
     | GetCardResp {Value = Ok res } -> {cm with Card = Some res} |> editing |> noCmd
-    | GetCardResp {Value = Error txt} -> cm |> editing |> addError txt |> noCmd
     | UpdateBrand txt -> cm |> updateCard (fun c -> {c with Brand = txt.ToUpper()}) |> noCmd
     | UpdateStartTime dt -> cm |> updateCard (fun c -> {c with StartTime = Some dt}) |> noCmd
     | UpdateName txt -> cm |> updateCard (fun c -> {c with Name = txt}) |> noCmd
@@ -125,11 +121,13 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | CancelCard -> {cm with Card = None} |> noCmd
     | SubmitCard -> cm |> submitCard api
     | SubmitCardResp {Value = Ok res } -> {cm with Card = Some res.Card} |> editing |> replaceRecord res.Record |> noCmd
-    | SubmitCardResp {Value = Error txt} -> cm |> editing |> addError txt |> noCmd
     | QuizImgClear _ ->  cm |> updateCard (fun c -> {c with ImgKey = ""}) |> noCmd
     | QuizImgChanged res -> cm |> uploadFile res.Tag api (taggedMsg UploadQuizImgResp res.Tag) res.Type res.Body
     | UploadQuizImgResp {Tag = _; Rsp = {Value = Ok res}} -> cm |> editing |> updateCard (fun c -> {c with ImgKey = res.BucketKey}) |> noCmd
-    | UploadQuizImgResp {Rsp = {Value = Error txt}} -> cm |> editing |> addError txt |> noCmd
+    | DeleteError id -> cm |> delError id |> noCmd
+    | Exn ex -> cm |> addError ex.Message |> editing |> noCmd
+    | Err txt -> cm |> addError txt |> editing |> noCmd
+    | _ -> cm |> noCmd
 
 let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
     div[][
@@ -251,29 +249,6 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
                 ]
             ]
             div [Class "column"][
-                div [Class "field"][
-                    label [Class "label"][str "Questions Package"]
-                    div [Class "dropdown"][
-                        div [Class "dropdown-trigger"][
-                            button [Class "button"; AriaHasPopup true; AriaControls "dropdown-menu"][
-                                span[][str "Package is not selected" ]
-                                span [Class "icon is-small"][
-                                    i [Class "fas fa-angle-down"; AriaHidden true][]
-                                ]
-                            ]
-                        ]
-                        div [Class "dropdown-menu"; Id "dropdown-menu"; Role "menu"][
-                            div [Class "dropdown-content"][
-                                a [Href "#"; Class "dropdown-item"][str "Dropdown item"]
-                                a [Class "dropdown-item"][str "Other dropdown item"]
-                                a [Class "dropdown-item"][str "Other dropdown item"]
-                                a [Class "dropdown-item"][str "Other dropdownOther dropdownOther dropdownOther dropdownOther dropdownOther dropdown item"]
-                                a [Class "dropdown-item"][str "Other dropdown item"]
-                                a [Class "dropdown-item"][str "Other dropdown item"]
-                            ]
-                        ]
-                    ]
-                ]
 
                 div [Class "field"][
                     label [Class "label"][str "Application links"]
@@ -281,8 +256,10 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
                         ul[][
                             li[][
                                 str "Admin "
-                                a [urlForAdmin card.QuizId card.AdminToken |> Href][str "link"]
-                                str " (not implemented)"
+                                a [urlForAdmin card.QuizId card.AdminToken |> Href; Target "_blank"][
+                                    str "link"
+                                    span [Class "icon"][Fa.i [Fa.Solid.ExternalLinkAlt][]]
+                                ]
                             ]
                             li[][
                                 str "Private registration "
