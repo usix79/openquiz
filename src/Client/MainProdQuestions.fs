@@ -26,7 +26,7 @@ type Msg =
     | UpdateName of string
     | CancelCard
     | SubmitCard
-    | SubmitCardResp of RESP<{|Record : PackageProdRecord; Card:PackageProdCard|}>
+    | SubmitCardResp of RESP<PackageProdRecord>
     | AppendQuiestion
     | DelQuestion of int
     | QwTextChanged of int * string
@@ -45,7 +45,6 @@ type Model = {
     Errors : Map<string, string>
     CardIsLoading : int option // packageId
     Card : PackageProdCard option
-
 }
 
 let addError txt model =
@@ -54,8 +53,8 @@ let addError txt model =
 let delError id model =
     {model with Errors = model.Errors.Remove id}
 
-let loading quizId model =
-    {model with CardIsLoading = Some quizId}
+let loading pkgId model =
+    {model with CardIsLoading = Some pkgId}
 
 let toggleCard api packageId model =
     match model.CardIsLoading with
@@ -119,7 +118,7 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | UpdateName txt -> cm |> updateCard (fun c -> {c with Name = txt}) |> noCmd
     | CancelCard -> {cm with Card = None} |> noCmd
     | SubmitCard -> cm |> submitCard api
-    | SubmitCardResp {Value = Ok res } -> {cm with Card = Some res.Card} |> editing |> replaceRecord res.Record |> noCmd
+    | SubmitCardResp {Value = Ok res } -> {cm with Card = None} |> editing |> replaceRecord res |> noCmd
     | AppendQuiestion -> cm |> updateCard (fun c -> c.AddQuestion()) |> noCmd
     | DelQuestion idx -> cm |> updateCard (fun c -> c.DelQuestion idx) |> noCmd
     | QwTextChanged (idx,txt) -> cm |> updateQw idx (fun qw -> {qw with Text = txt}) |> noCmd
@@ -143,7 +142,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
             ]
             div [Class "level-right"][
                 p [Class "level-item"][
-                    a [Class "button is-dark"; OnClick (fun _ -> dispatch CreatePackage)][str "Create New Package"]
+                    button [Class "button is-dark"; OnClick (fun _ -> dispatch CreatePackage)][str "Create New Package"]
                 ]
             ]
         ]

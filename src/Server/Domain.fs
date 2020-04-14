@@ -135,10 +135,15 @@ type TeamStatus =
 
 type TeamAnswer = {
     Text : string
-    RecieveTime : System.DateTime
+    RecieveTime : DateTime
     Result : decimal option
     IsAutoResult : bool
-    UpdateTime : System.DateTime option
+    UpdateTime : DateTime option
+}
+
+type TeamKey = {
+    QuizId : int
+    TeamId : int
 }
 
 type TeamDescriptor = {
@@ -147,11 +152,13 @@ type TeamDescriptor = {
     Name : string
     Status : TeamStatus
     EntryToken : string
-}
+    RegistrationDate : DateTime
+} with
+    member x.Key = {QuizId = x.QuizId; TeamId = x.TeamId}
+
 
 type Team = {
     Dsc : TeamDescriptor
-    RegistrationDate : System.DateTime
     Answers : Map<int, TeamAnswer>
     ActiveSessionId : int
     Version : int
@@ -162,6 +169,7 @@ type Team = {
     member x.Points =
         x.Answers |> Map.fold (fun s _ aw -> match aw.Result with Some d -> s + d | None -> s) 0m
 
+    member x.Key = x.Dsc.Key
 
 module Teams =
 
@@ -172,19 +180,20 @@ module Teams =
             Name = teamName.Trim()
             Status = if quiz.WithPremoderation then New else Admitted
             EntryToken = generateRandomToken()
+            RegistrationDate = DateTime.UtcNow
         }
 
-        {Dsc = dsc; RegistrationDate = DateTime.UtcNow; Answers = Map.empty; ActiveSessionId = 0; Version = 0}
+        {Dsc = dsc; Answers = Map.empty; ActiveSessionId = 0; Version = 0}
 
     let validatePublicTeamUpdate isNewTeam (teamName: string) (teamsInQuiz : TeamDescriptor list) (quiz : QuizDescriptor) =
         let teamName = teamName.Trim()
         match isNewTeam with
-        | _ when String.IsNullOrWhiteSpace (teamName) -> Error "Empty name is not allowed"
-        | true when quiz.Status <> Published && quiz.Status <> Live -> Error  "Registration is not allowed"
-        | false when quiz.Status <> Published -> Error  "Changing name is not allowed"
-        | _ when quiz.IsPrivate -> Error  "Public registration is not allowed"
-        | _ when teamsInQuiz |> List.exists (fun t -> t.Name.Equals(teamName, StringComparison.InvariantCultureIgnoreCase)) -> Error "Team with such name is alreay registered"
-        | _ -> Ok ()
+        | _ when String.IsNullOrWhiteSpace (teamName) -> Some "Empty name is not allowed"
+        | true when quiz.Status <> Published && quiz.Status <> Live -> Some  "Registration is not allowed"
+        | false when quiz.Status <> Published -> Some  "Changing name is not allowed"
+        | _ when quiz.IsPrivate -> Some  "Public registration is not allowed"
+        | _ when teamsInQuiz |> List.exists (fun t -> t.Name.Equals(teamName, StringComparison.InvariantCultureIgnoreCase)) -> Some "Team with such name is alreay registered"
+        | _ -> None
 
     let changeName newName (team:Team) =
         {team with Dsc = {team.Dsc with Name = newName}}

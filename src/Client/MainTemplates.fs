@@ -27,6 +27,23 @@ let termsOfUse dispatch acceptMsg cancelMsg =
         ]
     ]
 
+let inputModal dispatch title txt changeMsg okMsg cancelMsg =
+    div [Class "modal is-active"][
+        div [Class "modal-background"][]
+        div [Class "modal-card"][
+            header [Class "modal-card-head"][
+                p [Class "modal-card-title"] [str title]
+            ]
+            section [Class "modal-card-body"][
+                input [Class "input"; AutoFocus true; valueOrDefault txt;  OnChange (fun ev -> changeMsg ev.Value |> dispatch ) ]
+            ]
+            footer [Class "modal-card-foot"][
+                button [Class "button"; Disabled (txt = "");  OnClick (fun _ ->dispatch okMsg)][str "Ok"]
+                button [Class "button"; OnClick (fun _ ->dispatch cancelMsg)][str"Cancel"]
+            ]
+        ]
+    ]
+
 let imgArea tag disabled changeMsg clearMsg imgKey defaultImg clearText =
     [
         if not (System.String.IsNullOrWhiteSpace imgKey) then

@@ -54,13 +54,13 @@ let layout (quizes : QuizDescriptor list) =
 
                         yield br[]
 
-                        let featureQuizzes = quizes |> List.filter (fun q -> q.Status <> Finished) |> List.sortBy (fun q -> q.StartTime)
+                        let featureQuizzes = quizes |> List.filter (fun q -> q.Status <> Domain.Finished) |> List.sortBy (fun q -> q.StartTime)
                         if not (List.isEmpty featureQuizzes) then
                             yield h3 [_class "title"] [rawText "Featured quizzes"]
                             for quizzes in featureQuizzes |> List.chunkBySize 3 do
                                 yield quizzesRow quizzes
 
-                        let finishedQuizzes = quizes |> List.filter (fun q -> q.Status =Finished) |> List.sortBy (fun q -> q.StartTime)
+                        let finishedQuizzes = quizes |> List.filter (fun q -> q.Status = Domain.Finished) |> List.sortBy (fun q -> q.StartTime)
                         if not (List.isEmpty finishedQuizzes) then
                             yield h3 [_class "title"] [rawText "Finished quizzes"]
                             for quizzes in finishedQuizzes |> List.chunkBySize 3 do
@@ -109,7 +109,7 @@ let quizBox quiz =
                         strong [][str quiz.Brand]
                         str "   "
                         match quiz.StartTime with Some dt -> str (dt.ToString("yyyy-MM-dd HH:mm")) | None -> str "???"
-                        if quiz.Status = Live then
+                        if quiz.Status = Domain.Live then
                             str " "
                             span [_class "tag is-danger is-light"][str "live"]
                         br[]
@@ -122,7 +122,7 @@ let quizBox quiz =
                         ]
                     ]
                 ]
-                if (quiz.Status <> Finished) then
+                if (quiz.Status <> Domain.Finished) then
                     nav [_class "level is-mobile"][
                         div [_class "level-left"][
                         ]

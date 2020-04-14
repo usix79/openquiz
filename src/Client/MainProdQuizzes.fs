@@ -9,7 +9,6 @@ open Fable.FontAwesome
 
 open Shared
 open Common
-open SharedModels
 open MainModels
 
 importAll "flatpickr/dist/themes/light.css"
@@ -32,7 +31,7 @@ type Msg =
     | UpdateIsPremoderated of bool
     | CancelCard
     | SubmitCard
-    | SubmitCardResp of RESP<{|Record : QuizProdRecord; Card:QuizProdCard|}>
+    | SubmitCardResp of RESP<QuizProdRecord>
     | QuizImgChanged of {|Type:string; Body:byte[]; Tag:int|}
     | QuizImgClear of unit
     | UploadQuizImgResp of TRESP<int, {|BucketKey:string|}>
@@ -120,7 +119,7 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | UpdateIsPremoderated b -> cm |> updateCard (fun c -> {c with WithPremoderation = b}) |> noCmd
     | CancelCard -> {cm with Card = None} |> noCmd
     | SubmitCard -> cm |> submitCard api
-    | SubmitCardResp {Value = Ok res } -> {cm with Card = Some res.Card} |> editing |> replaceRecord res.Record |> noCmd
+    | SubmitCardResp {Value = Ok res } -> {cm with Card = None} |> editing |> replaceRecord res |> noCmd
     | QuizImgClear _ ->  cm |> updateCard (fun c -> {c with ImgKey = ""}) |> noCmd
     | QuizImgChanged res -> cm |> uploadFile res.Tag api (taggedMsg UploadQuizImgResp res.Tag) res.Type res.Body
     | UploadQuizImgResp {Tag = _; Rsp = {Value = Ok res}} -> cm |> editing |> updateCard (fun c -> {c with ImgKey = res.BucketKey}) |> noCmd
@@ -137,7 +136,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
             ]
             div [Class "level-right"][
                 p [Class "level-item"][
-                    a [Class "button is-dark"; OnClick (fun _ -> dispatch CreateQuiz)][str "Create New Quiz"]
+                    button [Class "button is-dark"; OnClick (fun _ -> dispatch CreateQuiz)][str "Create New Quiz"]
                 ]
             ]
         ]
@@ -155,7 +154,8 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                     th [Style[Width "120px"]][str "Brand"]
                     th [Style[Width "120px"]][str "Start Time"]
                     th [][str "Name"]
-                    th [Style[Width "60px"]][str "Status"]
+                    th [Style[Width "30px"]][str "Status"]
+                    th [Style[Width "30px"]][str "Admin"]
                 ]
             ]
             tbody [][
@@ -173,11 +173,17 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                         th [] [str <| match quiz.StartTime with Some st -> st.ToString("dd/MM HH:mm") | None -> "???"]
                         td [] [str quiz.Name]
                         td [] [str <| quiz.Status.ToString()]
+                        td [] [
+                                a [urlForAdmin quiz.QuizId quiz.AdminToken |> Href; Target "_blank"][
+                                    str "link"
+                                    span [Class "icon"][Fa.i [Fa.Solid.ExternalLinkAlt][]]
+                                ]
+                        ]
                     ]
                     if hasCard then
                         tr [][
                             th [][]
-                            td [ColSpan 4] [ card dispatch model.Card.Value isLoading]
+                            td [ColSpan 5] [ card dispatch model.Card.Value isLoading]
                         ]
             ]
         ]
@@ -225,7 +231,7 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
                         label [Class "label"][str "Status"]
                         div [Class "select"][
                             select[valueOrDefault card.Status; OnChange (fun ev -> dispatch <| UpdateStatus ev.Value )][
-                                for case in Reflection.FSharpType.GetUnionCases typeof<SharedModels.QuizStatus> do
+                                for case in Reflection.FSharpType.GetUnionCases typeof<QuizStatus> do
                                     option [][str case.Name]
                             ]
                         ]

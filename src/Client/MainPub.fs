@@ -9,7 +9,6 @@ open Fable.FontAwesome
 
 open Shared
 open Common
-open SharedModels
 open MainModels
 
 type Msg =

@@ -3,27 +3,33 @@ module rec Presenter
 open Shared
 open Domain
 
-let quizStatus (status : QuizStatus) =
+let quizStatus (status : QuizStatus) : Shared.QuizStatus=
     match status with
-    | Draft -> SharedModels.QuizStatus.Draft
-    | Published -> SharedModels.QuizStatus.Published
-    | Live -> SharedModels.QuizStatus.Live
-    | QuizStatus.Finished -> SharedModels.QuizStatus.Finished
-    | Archived -> SharedModels.QuizStatus.Archived
+    | Draft -> Shared.QuizStatus.Draft
+    | Published -> Shared.QuizStatus.Published
+    | Live -> Shared.QuizStatus.Live
+    | QuizStatus.Finished -> Shared.QuizStatus.Finished
+    | Archived -> Shared.QuizStatus.Archived
 
-let quizStatusToDmain (status : SharedModels.QuizStatus) =
+let quizStatusToDmain (status : Shared.QuizStatus) =
     match status with
-    | SharedModels.QuizStatus.Draft -> Draft
-    | SharedModels.QuizStatus.Published -> Published
-    | SharedModels.QuizStatus.Live -> Live
-    | SharedModels.QuizStatus.Finished -> QuizStatus.Finished
-    | SharedModels.QuizStatus.Archived -> Archived
+    | Shared.Draft -> Draft
+    | Shared.Published -> Published
+    | Shared.Live -> Live
+    | Shared.Finished -> Finished
+    | Shared.Archived -> Archived
 
-let teamStatus (status : TeamStatus) =
+let teamStatus (status : TeamStatus) : Shared.TeamStatus=
     match status with
-    | New -> SharedModels.TeamStatus.New
-    | Admitted -> SharedModels.TeamStatus.Admitted
-    | Rejected -> SharedModels.TeamStatus.Rejected
+    | New -> Shared.TeamStatus.New
+    | Admitted -> Shared.TeamStatus.Admitted
+    | Rejected -> Shared.TeamStatus.Rejected
+
+let teamStatusToDomain (status : Shared.TeamStatus) : TeamStatus=
+    match status with
+    | Shared.New -> TeamStatus.New
+    | Shared.Admitted -> TeamStatus.Admitted
+    | Shared.Rejected -> TeamStatus.Rejected
 
 module Main =
 
@@ -48,6 +54,7 @@ module Main =
             Brand = quiz.Brand
             Name = quiz.Name
             Status = quizStatus quiz.Status
+            AdminToken = quiz.AdminToken
         }
 
     let quizProdCard (quiz:Quiz) : MainModels.QuizProdCard =
@@ -101,4 +108,23 @@ module Main =
             Answer = packageProdQw.Answer
             Comment = packageProdQw.Comment
             CommentImgKey = packageProdQw.CommentImgKey
+        }
+
+module Admin =
+
+    let teamRecord (team:TeamDescriptor) : AdminModels.TeamRecord =
+        {
+            TeamId = team.TeamId
+            TeamName = team.Name
+            TeamStatus = teamStatus team.Status
+            EntryToken = team.EntryToken
+        }
+
+    let teamCard (team:TeamDescriptor) : AdminModels.TeamCard =
+        {
+            TeamId = team.TeamId
+            TeamName = team.Name
+            TeamStatus = teamStatus team.Status
+            EntryToken = team.EntryToken
+            RegistrationDate = team.RegistrationDate
         }

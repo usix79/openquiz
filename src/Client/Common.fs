@@ -92,7 +92,6 @@ let inline (|Err|_|) (msg:'msg) : string option =
                     let (caseInfo, objArray) = FSharpValue.GetUnionFields (res, typedefof<Result<_,_>>)
                     if caseInfo.Name = "Error" then
                         let txt:string = unbox objArray.[0]
-                        printfn "TXT: %s" txt
                         Some txt
                     else
                         None
@@ -106,6 +105,12 @@ let inline (|Err|_|) (msg:'msg) : string option =
 
 module Infra =
 
+    [<Emit("window.location.href")>]
+    let locationHref : string = jsNative
+
+    [<Emit("window.location.hash")>]
+    let locationHash : string = jsNative
+
     [<Emit("window.location.pathname")>]
     let virtualPath : string = jsNative
 
@@ -117,6 +122,13 @@ module Infra =
 
     let locationFullPath () =
         locationOrign + virtualPath
+
+    let urlWithNewHash hash =
+        if System.String.IsNullOrEmpty window.location.hash then
+            printfn "HREF = %s" (window.location.href + hash)
+            window.location.href + hash
+        else
+            (window.location.href).Replace(window.location.hash, hash)
 
     let redirect url =
         window.location.replace(url)
@@ -183,6 +195,12 @@ module Infra =
             |> Remoting.withBaseUrl "/"
             |> Remoting.withRouteBuilder (Infra.routeBuilder "")
             |> Remoting.buildProxy<IMainApi>
+
+        let adminApi =
+            Remoting.createApi()
+            |> Remoting.withBaseUrl "/"
+            |> Remoting.withRouteBuilder (Infra.routeBuilder "")
+            |> Remoting.buildProxy<IAdminApi>
 
         member x.RefreshTokenAndProceed<'Req, 'Resp> failedToken =
             async{
@@ -271,6 +289,9 @@ module Infra =
 
         member x.CreateAdminApi () =
             {
-                login = x.Wrap securityApi.login
-                refreshToken = x.Wrap securityApi.refreshToken
+                getTeams = x.Wrap adminApi.getTeams
+                createTeam = x.Wrap adminApi.createTeam
+                getTeamCard = x.Wrap adminApi.getTeamCard
+                updateTeamCard = x.Wrap adminApi.updateTeamCard
+                changeTeamStatus = x.Wrap adminApi.changeTeamStatus
             }

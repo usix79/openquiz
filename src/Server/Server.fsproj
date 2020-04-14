@@ -2,8 +2,6 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <AspNetCoreHostingModel>OutOfProcess</AspNetCoreHostingModel>
-    <AspNetCoreModuleName>AspNetCoreModule</AspNetCoreModuleName>
   </PropertyGroup>
   <ItemGroup>
     <None Include="paket.references" />
@@ -14,7 +12,9 @@
     <Compile Include="Data.fs" />
     <Compile Include="Security.fs" />
     <Compile Include="Presenter.fs" />
-    <Compile Include="Service.fs" />
+    <Compile Include="CommonService.fs" />
+    <Compile Include="MainService.fs" />
+    <Compile Include="AdminService.fs" />
     <Compile Include="Index.fs" />
     <Compile Include="Server.fs" />
   </ItemGroup>

@@ -53,6 +53,7 @@ type QuizUser = {
 type AdminUser = {
     QuizId : int
     QuizName : string
+    QuizImg : string
 }
 
 type ImgCategory =
@@ -64,23 +65,20 @@ with
         | Quiz -> "qz"
         | Question -> "qw"
 
-module SharedModels =
 
-    type QuizStatus =
-        | Draft
-        | Published
-        | Live
-        | Finished
-        | Archived
+type QuizStatus =
+    | Draft
+    | Published
+    | Live
+    | Finished
+    | Archived
 
-    type TeamStatus =
-        | New
-        | Admitted
-        | Rejected
+type TeamStatus =
+    | New
+    | Admitted
+    | Rejected
 
 module MainModels =
-
-    open SharedModels
 
     type ExpertCompetition = {
         QuizId : int
@@ -113,6 +111,7 @@ module MainModels =
         Brand : string
         Name : string
         Status : QuizStatus
+        AdminToken : string
     }
 
     type QuizProdCard = {
@@ -170,6 +169,22 @@ module MainModels =
         CommentImgKey : string
     }
 
+module AdminModels =
+
+    type TeamRecord = {
+        TeamId : int
+        TeamName : string
+        TeamStatus : TeamStatus
+        EntryToken : string
+    }
+
+    type TeamCard = {
+        TeamId : int
+        TeamName : string
+        TeamStatus : TeamStatus
+        EntryToken : string
+        RegistrationDate : System.DateTime
+    }
 
 module Infra =
     let routeBuilder clientPath (typeName: string) (methodName: string) =
@@ -193,15 +208,20 @@ type IMainApi = {
     createQuiz : REQ<unit> -> ARESP<{|Record : MainModels.QuizProdRecord; Card:MainModels.QuizProdCard|}>
     getProdQuizzes : REQ<unit> -> ARESP<MainModels.QuizProdRecord list>
     getProdQuizCard : REQ<{|QuizId:int|}> -> ARESP<MainModels.QuizProdCard>
-    updateProdQuizCard : REQ<MainModels.QuizProdCard> -> ARESP<{|Record : MainModels.QuizProdRecord; Card:MainModels.QuizProdCard|}>
+    updateProdQuizCard : REQ<MainModels.QuizProdCard> -> ARESP<MainModels.QuizProdRecord>
     uploadFile : REQ<{|Cat:ImgCategory; FileType : string; FileBody : byte[]|}> -> ARESP<{|BucketKey: string|}>
     getPubModel : REQ<unit> -> ARESP<{|Profile : MainModels.ExpertProfile; Quizzes : MainModels.QuizPubRecord list|}>
     registerTeam : REQ<{|QuizId: int; TeamName: string|}> -> ARESP<MainModels.ExpertCompetition>
     getProdPackages : REQ<unit> -> ARESP<MainModels.PackageProdRecord list>
     getProdPackageCard : REQ<{|PackageId : int|}> -> ARESP<MainModels.PackageProdCard>
     createPackage : REQ<unit> -> ARESP<{|Record : MainModels.PackageProdRecord; Card:MainModels.PackageProdCard|}>
-    updateProdPackageCard : REQ<MainModels.PackageProdCard> -> ARESP<{|Record : MainModels.PackageProdRecord; Card:MainModels.PackageProdCard|}>
+    updateProdPackageCard : REQ<MainModels.PackageProdCard> -> ARESP<MainModels.PackageProdRecord>
 }
 
-// type IMainApi = {
-// }
+type IAdminApi = {
+    getTeams : REQ<unit> -> ARESP<AdminModels.TeamRecord list>
+    createTeam : REQ<{|TeamName : string|}> -> ARESP<{|Record : AdminModels.TeamRecord|}>
+    getTeamCard : REQ<{|TeamId : int|}> -> ARESP<AdminModels.TeamCard>
+    updateTeamCard : REQ<AdminModels.TeamCard> -> ARESP<AdminModels.TeamRecord>
+    changeTeamStatus : REQ<{|TeamId : int; TeamStatus : TeamStatus|}> -> ARESP<AdminModels.TeamRecord>
+}

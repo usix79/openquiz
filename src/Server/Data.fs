@@ -318,7 +318,7 @@ module Teams =
 
         let config = QueryOperationConfig()
         config.KeyExpression <- keyExpression
-        config.AttributesToGet <- new Collections.Generic.List<string> ([ "QuizId"; "TeamId"; "Name"; "Status"; "EntryToken"] )
+        config.AttributesToGet <- new Collections.Generic.List<string> ([ "QuizId"; "TeamId"; "Name"; "Status"; "EntryToken"; "RegistrationDate"] )
         config.Filter <- QueryFilter()
         config.Select <- SelectValues.SpecificAttributes
 
@@ -329,7 +329,7 @@ module Teams =
 
     let getDescriptor (quizId: int) (teamId: int) : TeamDescriptor option =
         let config = GetItemOperationConfig()
-        config.AttributesToGet <- new Collections.Generic.List<string> ([ "QuizId"; "TeamId"; "Name"; "Status"; "EntryToken"] )
+        config.AttributesToGet <- new Collections.Generic.List<string> ([ "QuizId"; "TeamId"; "Name"; "Status"; "EntryToken"; "RegistrationDate"] )
 
         let table = loadTable "Teams"
         let task = table.GetItemAsync(Primitive.op_Implicit quizId, Primitive.op_Implicit teamId, config)
@@ -355,7 +355,7 @@ module Teams =
 
         teamItem.["Name"] <- v2.ConvertToEntry team.Dsc.Name
         teamItem.["Status"] <- v2.ConvertToEntry <| team.Dsc.Status.ToString()
-        teamItem.["RegistrationDate"] <- v2.ConvertToEntry <| team.RegistrationDate
+        teamItem.["RegistrationDate"] <- v2.ConvertToEntry <| team.Dsc.RegistrationDate
         teamItem.["EntryToken"] <- v2.ConvertToEntry <| team.Dsc.EntryToken
         teamItem.["ActiveSessionId"] <- v2.ConvertToEntry <| team.ActiveSessionId
 
@@ -376,7 +376,6 @@ module Teams =
 
     let private teamOfDocument (doc:Document) : Team=
         let dsc = descriptorOfDocument doc
-        let regDate = doc.["RegistrationDate"].AsDateTime()
         let activeSessionId = doc.["ActiveSessionId"].AsInt()
         let version = doc.["Version"].AsInt()
 
@@ -386,16 +385,17 @@ module Teams =
             |> Seq.map (fun pair -> Int32.Parse(pair.Key), teamAnswerOfDocument(pair.Value))
             |> Map.ofSeq
 
-        {Dsc = dsc; RegistrationDate = regDate; Version = version; Answers = answers; ActiveSessionId = activeSessionId}
+        {Dsc = dsc; Version = version; Answers = answers; ActiveSessionId = activeSessionId}
 
     let private descriptorOfDocument (doc:Document) : TeamDescriptor =
-        let quizId = doc.["QuizId"].AsInt()
-        let teamId = doc.["TeamId"].AsInt()
-        let name = stringOfDoc doc "Name"
-        let status = defaultArg (fromString (doc.["Status"].AsString())) New
-        let entryToken = stringOfDoc doc "EntryToken"
-
-        {QuizId = quizId; TeamId = teamId; Name = name; Status = status; EntryToken = entryToken}
+        {
+            QuizId = doc.["QuizId"].AsInt()
+            TeamId = doc.["TeamId"].AsInt()
+            Name = stringOfDoc doc "Name"
+            Status = defaultArg (fromString (doc.["Status"].AsString())) New
+            EntryToken = stringOfDoc doc "EntryToken"
+            RegistrationDate = doc.["RegistrationDate"].AsDateTime()
+        }
 
     let private teamAnswerOfDocument  (entry:DynamoDBEntry) =
         let awDoc = entry.AsDocument()

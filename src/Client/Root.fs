@@ -22,6 +22,7 @@ type Msg =
 type Model = {
     CurrentUser : User option
     CurrentPage : CurrentPage
+    ServerTime : System.DateTime
 }
 
 let apiFactory = Infra.ApiFactory(fun () -> Infra.redirect "/login")
@@ -42,7 +43,7 @@ let initChildPage user start cm =
         let submodel, subCmd = Main.init mainApi u
         {cm with CurrentPage = MainPage submodel; CurrentUser = Some user}, Cmd.map MainMsg subCmd
     | AdminUser u ->
-        let submodel, subcmd = Admin.init mainApi u start
+        let submodel, subcmd = Admin.init adminApi u start
         {cm with CurrentPage = AdminPage submodel; CurrentUser = Some user}, Cmd.map AdminMsg subcmd
     // | TeamUser u ->
     //     let api = currentModel.ApiFactory.CreateTeamApi()
@@ -74,12 +75,12 @@ let isReqForSameUser (req:LoginReq) (user:User) =
     | _ -> false
 
 let init (): Model * Cmd<Msg> =
-    let cm =  {CurrentPage = EmptyPage "Initializing..."; CurrentUser = None}
+    let cm =  {CurrentPage = EmptyPage "Initializing..."; CurrentUser = None; ServerTime = System.DateTime.UtcNow}
 
     match getUserFromStorage(), evaluateLoginReq (Infra.currentQueryString()) with
-    | Some (user,start), Some req when isReqForSameUser req user -> cm |> initChildPage user start
+    | Some (user,st), Some req when isReqForSameUser req user -> {cm with ServerTime = st} |> initChildPage user st
     | _, Some req -> cm |> apiCmd securityApi.login req LoginResponse Exn
-    | Some (user,start), None -> cm |> initChildPage user start
+    | Some (user,st), None -> {cm with ServerTime = st} |> initChildPage user st
     | _ ->
         Infra.redirect "/"
         cm |> noCmd
@@ -93,7 +94,7 @@ let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
             | MainUser _ -> Infra.clearQueryString()
             | _ -> ()
 
-            cm |> initChildPage res.User serverTime
+            {cm with ServerTime = serverTime} |> initChildPage res.User serverTime
     | EmptyPage _, _, LoginResponse {Value = Error txt} -> {cm with CurrentPage = EmptyPage txt} |> noCmd
     | EmptyPage _,  _, Exn ex -> {cm with CurrentPage = EmptyPage ex.Message} |> noCmd
     | MainPage subModel, Some (MainUser user), MainMsg subMsg ->
@@ -108,7 +109,7 @@ let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
         let newModel,newCmd = Main.update mainApi user subMsg subModel
         {cm with CurrentPage = MainPage newModel; CurrentUser = Some (MainUser user)}, Cmd.map MainMsg newCmd
     | AdminPage subModel, Some (AdminUser user), AdminMsg subMsg ->
-        let newModel,newCmd = Admin.update mainApi user subMsg subModel
+        let newModel,newCmd = Admin.update adminApi user subMsg subModel cm.ServerTime
         {cm with CurrentPage = AdminPage newModel}, Cmd.map AdminMsg newCmd
     | _, _, _ -> cm |> noCmd
 

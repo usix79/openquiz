@@ -168,6 +168,11 @@ let authorizeExpert secret (f: string -> 'arg -> Result<'res, string>) =
         let subStr = principal.FindFirstValue CustomClaims.Name
         f subStr req
 
+let authorizeAdmin secret (f: string -> 'arg -> Result<'res, string>) =
+    authorize secret CustomRoles.Admin <| fun principal req ->
+        let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
+        f quizIdStr req
+
 // let competitorKey (principal : ClaimsPrincipal) =
 //     let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
 //     let compIdStr = principal.FindFirstValue CustomClaims.CompetitorId
@@ -266,7 +271,7 @@ let loginAdminUser secret quizId token =
         return!
             if quiz.AdminToken = token then
                 let claims = [Claim(CustomClaims.Role, CustomRoles.Admin); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
-                let user = AdminUser {QuizId = quiz.QuizId; QuizName = quiz.Name}
+                let user = AdminUser {QuizId = quiz.QuizId; QuizName = quiz.Name; QuizImg = quiz.ImgKey}
                 loginResp secret claims user
             else
                 printfn "%s" quiz.AdminToken
@@ -274,7 +279,7 @@ let loginAdminUser secret quizId token =
                 Error "Wrong entry token"
     }
 
-let securityApi (context:HttpContext) : ISecurityApi =
+let api (context:HttpContext) : ISecurityApi =
     let logger : ILogger = context.Logger()
     let cfg = context.GetService<IConfiguration>()
     let secret = Config.getJwtSecret cfg
