@@ -49,7 +49,7 @@ let private createAgent<'TKey,'T> (loader : Loader<'TKey,'T>) (saver : Saver<'T>
 let private _teamsLockObj = System.Object()
 let mutable private _teamAgents : Map<TeamKey, MailboxProcessor<UpdateCommand<TeamKey,Team>>> = Map.empty
 
-let private teamLoader (key:TeamKey) = Data.Teams.get key.QuizId key.TeamId
+let teamLoader (key:TeamKey) = Data.Teams.get key.QuizId key.TeamId
 let private teamSaver team = Data.Teams.update team
 
 let private getOrCreateTeamAgent key =
@@ -81,3 +81,40 @@ let updateTeam (key : TeamKey) (logic : Logic<Team>) : Result<Domain.Team,string
 let updateTeamNoReply (key : TeamKey) (logic : Logic<Team>) =
     let agent = getOrCreateTeamAgent key
     agent.Post (Update (key, logic))
+
+let private _quizzesLockObj = System.Object()
+let mutable private _quizAgents : Map<int, MailboxProcessor<UpdateCommand<int,Quiz>>> = Map.empty
+
+let  quizLoader (quizId : int) = Data.Quizzes.get quizId
+let private quizSaver quiz = Data.Quizzes.update quiz
+
+let private getOrCreateQuizAgent (quizId:int) =
+    let trans () =
+        match Map.tryFind quizId _quizAgents with
+        | Some agent -> agent
+        | None ->
+            let agent = createAgent quizLoader quizSaver
+            _quizAgents <- _quizAgents.Add (quizId, agent)
+            agent
+
+    lock _teamsLockObj trans
+
+let createQuiz (creator : Creator<int,Quiz>) : Result<Domain.Quiz,string> =
+    let trans () =
+        let quizId = Data.Quizzes.getMaxId () + 1
+
+        match creator quizId with
+        | Ok x -> Data.Quizzes.update x |> Ok
+        | Error txt -> Error txt
+
+    lock _teamsLockObj trans
+
+let updateQuiz (quizId : int) (logic : Logic<Quiz>) : Result<Domain.Quiz,string> =
+    let agent = getOrCreateQuizAgent quizId
+    agent.PostAndReply (fun rch -> UpdateAndReply (quizId, logic, rch))
+
+let updateQuizNoReply (quizId : int) (logic : Logic<Quiz>) =
+    let agent = getOrCreateQuizAgent quizId
+    agent.Post (Update (quizId, logic))
+
+let  packageLoader (id : int) = Data.Packages.get id

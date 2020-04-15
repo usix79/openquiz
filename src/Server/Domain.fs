@@ -1,7 +1,11 @@
 module rec Domain
 
 open System
+open System.Text.RegularExpressions
+
 open Common
+
+type Provider<'TKey, 'T> = 'TKey -> 'T option
 
 type RefreshToken = {
     Value : string
@@ -37,6 +41,53 @@ module Experts =
     let addComp quizId teamId (expert:Expert) =
         {expert with Competitions = expert.Competitions.Add(quizId, teamId)}
 
+type PackageDescriptor = {
+    PackageId : int
+    Producer : string
+    Name : string
+}
+
+type Package = {
+    Dsc : PackageDescriptor
+    Questions : PackageQuestion list
+    Version : int
+} with
+    member x.GetQuestion idx =
+        if idx >= 0 && idx <x.Questions.Length then
+            Some (x.Questions.Item(idx))
+        else None
+    member x.UpdateQuestion idx qw =
+        {x with
+            Questions = x.Questions |> List.mapi (fun i q -> if idx = i then qw else q)
+        }
+    member x.AddQuestion () =
+        {x with
+            Questions = x.Questions @ [{Text="";ImgKey="";Answer="";Comment="";CommentImgKey=""}]
+        }
+    member x.DelQuestion idx =
+        {x with
+            Questions = x.Questions
+                |> List.mapi (fun i q -> if idx = i then None else Some q)
+                |> List.filter (fun v -> v.IsSome)
+                |> List.map (fun v -> v.Value)
+        }
+
+type PackageQuestion = {
+    Text : string
+    ImgKey : string
+    Answer : string
+    Comment : string
+    CommentImgKey : string
+}
+
+module Packages =
+
+    let createNew packageId producerId : Package =
+        {
+            Dsc = {PackageId = packageId; Producer = producerId; Name = (sprintf "PKG #%i" packageId)}
+            Questions = []
+            Version = 0
+        }
 
 type QuizStatus =
     | Draft
@@ -46,7 +97,6 @@ type QuizStatus =
     | Archived
 
 type QuizQuestionStatus =
-    | Unknown
     | Announcing
     | Countdown
     | Settled
@@ -60,13 +110,13 @@ type QuizQuestion = {
     Answer : string
     Comment : string
     CommentImgKey : string
-    StartTime : System.DateTime option
+    StartTime : DateTime option
 }
 
 type QuizDescriptor = {
     QuizId : int
     Producer : string
-    StartTime : System.DateTime option
+    StartTime : DateTime option
     Brand : string
     Name : string
     Status : QuizStatus
@@ -78,6 +128,8 @@ type QuizDescriptor = {
     ListenToken : string
     AdminToken : string
     RegToken : string
+    PkgId : int option
+    PkgQwIdx : int option
 }
 
 type Quiz = {
@@ -112,6 +164,8 @@ module Quizzes =
                 ListenToken = Common.generateRandomToken()
                 AdminToken = Common.generateRandomToken()
                 RegToken = Common.generateRandomToken()
+                PkgId = None
+                PkgQwIdx = None
             }
             Questions = []
             Version = 0
@@ -127,6 +181,73 @@ module Quizzes =
             | Draft | Published | Live -> quiz.WelcomeText
             | Finished | Archived -> quiz.FarewellText
 
+    let setPackageId (packageId : int option) (quiz : Quiz) =
+        if (quiz.Dsc.PkgId <> packageId) then {quiz with Dsc = {quiz.Dsc with PkgId = packageId; PkgQwIdx = None}}
+        else quiz
+
+    let addQuestion (qw:PackageQuestion option) (quiz:Quiz) =
+        let name, seconds =
+            match quiz.CurrentQuestion with
+            | Some qw ->
+                let newName =
+                    let m = Regex.Match (qw.Name, "([^\\d]*)(\\d+)")
+                    if m.Success then ((m.Groups.Item 1).Value) + (System.Int32.Parse((m.Groups.Item 2).Value) + 1).ToString()
+                    else qw.Name  + "1"
+                newName, qw.Seconds
+            | None -> "1", 60
+
+        {quiz with Questions = {
+                    Name = name;
+                    Seconds = seconds;
+                    Status = Announcing
+                    Text = if qw.IsSome then qw.Value.Text else "";
+                    ImgKey = if qw.IsSome then qw.Value.ImgKey else "";
+                    Answer = if qw.IsSome then qw.Value.Answer else "";
+                    Comment = if qw.IsSome then qw.Value.Comment else "";
+                    CommentImgKey = if qw.IsSome then qw.Value.CommentImgKey else "";
+                    StartTime = None}
+                    :: quiz.Questions}
+
+    let changeStatus status  (pkgProvider : Provider<int,Package>) (quiz:Quiz) =
+        match {quiz with Dsc = {quiz.Dsc with Status = status}} with
+        | quiz when status = Live && quiz.Questions.Length = 0 && quiz.Dsc.PkgId.IsSome ->
+            match pkgProvider quiz.Dsc.PkgId.Value with
+            | Some pkg -> addQuestion (pkg.GetQuestion (defaultArg quiz.Dsc.PkgQwIdx 0)) quiz
+            | None -> quiz
+        | quiz -> quiz
+
+    let private updateCurrentQuestion (f : QuizQuestion -> QuizQuestion) quiz=
+        let newList =
+            match quiz.Questions with
+            | qw :: tail -> (f qw) :: tail
+            | _ -> quiz.Questions
+
+        {quiz with Questions = newList}
+
+    let startCountdown qwName seconds qwText qwImgKey qwAnswer qwComment qwCommentImgKey pkgQwIdx now (quiz:Quiz) =
+        match quiz.Dsc.Status with
+        | Live ->
+            {quiz with Dsc = {quiz.Dsc with PkgQwIdx = pkgQwIdx}}
+            |> updateCurrentQuestion (fun qw ->
+                        {qw with
+                            Name = qwName
+                            Seconds = seconds
+                            Status = Countdown
+                            StartTime = Some now
+                            Text = qwText
+                            ImgKey = qwImgKey
+                            Answer = qwAnswer
+                            Comment = qwComment
+                            CommentImgKey = qwCommentImgKey
+                        }
+            )
+            |> Ok
+        | _ -> Error "Quiz should be in 'Live' mode"
+
+    let pauseCountdown (quiz:Quiz) =
+        match quiz.Dsc.Status with
+        | Live -> quiz |> updateCurrentQuestion (fun qw -> {qw with Status = Announcing; StartTime = None}) |> Ok
+        | _ -> Error "Quiz should be in 'Live' mode"
 
 type TeamStatus =
     | New
@@ -198,50 +319,3 @@ module Teams =
     let changeName newName (team:Team) =
         {team with Dsc = {team.Dsc with Name = newName}}
 
-type PackageDescriptor = {
-    PackageId : int
-    Producer : string
-    Name : string
-}
-
-type Package = {
-    Dsc : PackageDescriptor
-    Questions : PackageQuestion list
-    Version : int
-} with
-    member x.GetQuestion idx =
-        if idx >= 0 && idx <x.Questions.Length then
-            Some (x.Questions.Item(idx))
-        else None
-    member x.UpdateQuestion idx qw =
-        {x with
-            Questions = x.Questions |> List.mapi (fun i q -> if idx = i then qw else q)
-        }
-    member x.AddQuestion () =
-        {x with
-            Questions = x.Questions @ [{Text="";ImgKey="";Answer="";Comment="";CommentImgKey=""}]
-        }
-    member x.DelQuestion idx =
-        {x with
-            Questions = x.Questions
-                |> List.mapi (fun i q -> if idx = i then None else Some q)
-                |> List.filter (fun v -> v.IsSome)
-                |> List.map (fun v -> v.Value)
-        }
-
-type PackageQuestion = {
-    Text : string
-    ImgKey : string
-    Answer : string
-    Comment : string
-    CommentImgKey : string
-}
-
-module Packages =
-
-    let createNew packageId producerId : Package =
-        {
-            Dsc = {PackageId = packageId; Producer = producerId; Name = (sprintf "PKG #%i" packageId)}
-            Questions = []
-            Version = 0
-        }

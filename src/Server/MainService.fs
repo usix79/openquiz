@@ -10,7 +10,6 @@ open Common
 open Presenter
 
 let private _packagesLockObj = System.Object()
-let private _quizzesLockObj = System.Object()
 
 let api (context:HttpContext) : IMainApi =
     let logger : ILogger = context.Logger()
@@ -59,19 +58,19 @@ let becomeProducer expertId _ =
     Ok ()
 
 let createQuiz expert _ =
-    let transaction = fun () ->
-        let quizId = Data.Quizzes.getMaxId() + 1
-        let quiz = Domain.Quizzes.createNew quizId expert.Id
-        Data.Quizzes.update quiz
+    let creator quizId =
+        Ok <| Domain.Quizzes.createNew quizId expert.Id
 
-    let quiz = lock _quizzesLockObj transaction
+    result{
+        let! quiz = CommonService.createQuiz creator
 
-    expert
-    |> Domain.Experts.addQuiz quiz.Dsc.QuizId
-    |> Data.Experts.update
-    |> ignore
+        expert
+        |> Domain.Experts.addQuiz quiz.Dsc.QuizId
+        |> Data.Experts.update
+        |> ignore
 
-    Ok {|Record = quiz.Dsc |> Main.quizProdRecord; Card = Main.quizProdCard quiz; |}
+        return {|Record = quiz.Dsc |> Main.quizProdRecord; Card = Main.quizProdCard quiz; |}
+    }
 
 let getProdQuizzes expert _ =
     expert.Quizes
@@ -87,17 +86,22 @@ let getProdQuizCard expert (req : {|QuizId : int|}) =
     | Some quiz -> Ok <| Main.quizProdCard quiz
 
 let updateProdQuizCard expert card =
-    match Data.Quizzes.get card.QuizId with
-    | Some quiz when quiz.Dsc.Producer <> expert.Id -> Error "Quiz is produced by someone else"
-    | None -> Error "Quiz not found"
-    | Some quiz ->
-        let dsc = { quiz.Dsc with Brand = card.Brand; Name = card.Name; StartTime = card.StartTime; Status = quizStatusToDmain card.Status;
-                                ImgKey = card.ImgKey; WelcomeText = card.WelcomeText; FarewellText = card.FarewellText; IsPrivate = card.IsPrivate;
-                                WithPremoderation = card.WithPremoderation}
+    let logic (quiz : Domain.Quiz) =
+        match quiz with
+        | _ when quiz.Dsc.Producer <> expert.Id -> Error "Quiz is produced by someone else"
+        | _ ->
+            let dsc = { quiz.Dsc with Brand = card.Brand; Name = card.Name; StartTime = card.StartTime; Status = quizStatusToDomain card.Status;
+                                    ImgKey = card.ImgKey; WelcomeText = card.WelcomeText; FarewellText = card.FarewellText; IsPrivate = card.IsPrivate;
+                                    WithPremoderation = card.WithPremoderation}
 
-        let updatedQuiz = { quiz with Dsc = dsc} |> Data.Quizzes.update
+            Ok { quiz with Dsc = dsc}
 
-        updatedQuiz.Dsc |> Main.quizProdRecord |> Ok
+    result{
+        let! quiz = CommonService.updateQuiz card.QuizId logic
+
+        return quiz.Dsc |> Main.quizProdRecord
+    }
+
 
 let uploadFile bucketName _ req =
     Bucket.uploadFile  bucketName req.Cat req.FileType req.FileBody
@@ -181,14 +185,14 @@ let getProdPackages expert _ =
     expert.Packages
     |> List.map Data.Packages.getDescriptor
     |> List.filter (fun p -> p.IsSome)
-    |> List.map (fun p -> Main.packageProdRecord p.Value)
+    |> List.map (fun p -> packageRecord p.Value)
     |> Ok
 
 let getProdPackageCard expert (req : {|PackageId : int|}) =
     match Data.Packages.get req.PackageId with
     | Some package when package.Dsc.Producer <> expert.Id -> Error "Package is produced by someone else"
     | None -> Error "Package not found"
-    | Some package -> Ok <| Main.packageProdCard package
+    | Some package -> Ok <| packageCard package
 
 let createPackage expert _ =
     let transaction = fun () ->
@@ -203,7 +207,7 @@ let createPackage expert _ =
     |> Data.Experts.update
     |> ignore
 
-    Ok {|Record = package.Dsc |> Main.packageProdRecord; Card = Main.packageProdCard package; |}
+    Ok {|Record = package.Dsc |> packageRecord; Card = packageCard package; |}
 
 let updateProdPackageCard expert card =
     match Data.Packages.get card.PackageId with
@@ -213,8 +217,8 @@ let updateProdPackageCard expert card =
         let updatedPkg =
             { pkg with
                 Dsc = { pkg.Dsc with Name = card.Name}
-                Questions = card.Questions |> List.map Main.packageQw
+                Questions = card.Questions |> List.map packageQwToDomain
             }
             |> Data.Packages.update
 
-        updatedPkg.Dsc |> Main.packageProdRecord |> Ok
+        updatedPkg.Dsc |> packageRecord |> Ok

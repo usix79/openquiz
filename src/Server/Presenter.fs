@@ -11,13 +11,19 @@ let quizStatus (status : QuizStatus) : Shared.QuizStatus=
     | QuizStatus.Finished -> Shared.QuizStatus.Finished
     | Archived -> Shared.QuizStatus.Archived
 
-let quizStatusToDmain (status : Shared.QuizStatus) =
+let quizStatusToDomain (status : Shared.QuizStatus) =
     match status with
     | Shared.Draft -> Draft
     | Shared.Published -> Published
     | Shared.Live -> Live
     | Shared.Finished -> Finished
     | Shared.Archived -> Archived
+
+let quizQuestionStatus (status : QuizQuestionStatus) : Shared.QuizQuestionStatus=
+    match status with
+    | Announcing -> Shared.QuizQuestionStatus.Announcing
+    | Countdown -> Shared.QuizQuestionStatus.Countdown
+    | Settled -> Shared.QuizQuestionStatus.Settled
 
 let teamStatus (status : TeamStatus) : Shared.TeamStatus=
     match status with
@@ -30,6 +36,39 @@ let teamStatusToDomain (status : Shared.TeamStatus) : TeamStatus=
     | Shared.New -> TeamStatus.New
     | Shared.Admitted -> TeamStatus.Admitted
     | Shared.Rejected -> TeamStatus.Rejected
+
+let packageRecord (package:PackageDescriptor) : PackageRecord =
+    {
+        PackageId = package.PackageId
+        Name = package.Name
+    }
+
+let packageCard (package: Package) : PackageCard =
+    {
+        PackageId = package.Dsc.PackageId
+        Name = package.Dsc.Name
+        Questions =
+            package.Questions
+            |> List.map packageQw
+    }
+
+let packageQw (packageQw : PackageQuestion) : Shared.PackageQuestion =
+    {
+        Text = packageQw.Text
+        ImgKey = packageQw.ImgKey
+        Answer = packageQw.Answer
+        Comment = packageQw.Comment
+        CommentImgKey = packageQw.CommentImgKey
+    }
+
+let packageQwToDomain (packageProdQw : Shared.PackageQuestion) : PackageQuestion =
+    {
+        Text = packageProdQw.Text
+        ImgKey = packageProdQw.ImgKey
+        Answer = packageProdQw.Answer
+        Comment = packageProdQw.Comment
+        CommentImgKey = packageProdQw.CommentImgKey
+    }
 
 module Main =
 
@@ -77,38 +116,6 @@ module Main =
     let expertCompetition (team:TeamDescriptor) : MainModels.ExpertCompetition=
         {QuizId = team.QuizId; TeamId = team.TeamId; TeamName = team.Name; TeamStatus = teamStatus team.Status; EntryToken = team.EntryToken}
 
-    let packageProdRecord (package:PackageDescriptor) : MainModels.PackageProdRecord =
-        {
-            PackageId = package.PackageId
-            Name = package.Name
-        }
-
-    let packageProdCard (package: Package) : MainModels.PackageProdCard =
-        {
-            PackageId = package.Dsc.PackageId
-            Name = package.Dsc.Name
-            Questions =
-                package.Questions
-                |> List.map packageProdQw
-        }
-
-    let packageProdQw (packageQw : PackageQuestion) : MainModels.PackageProdQuestion =
-        {
-            Text = packageQw.Text
-            ImgKey = packageQw.ImgKey
-            Answer = packageQw.Answer
-            Comment = packageQw.Comment
-            CommentImgKey = packageQw.CommentImgKey
-        }
-
-    let packageQw (packageProdQw : MainModels.PackageProdQuestion) : PackageQuestion =
-        {
-            Text = packageProdQw.Text
-            ImgKey = packageProdQw.ImgKey
-            Answer = packageProdQw.Answer
-            Comment = packageProdQw.Comment
-            CommentImgKey = packageProdQw.CommentImgKey
-        }
 
 module Admin =
 
@@ -127,4 +134,28 @@ module Admin =
             TeamStatus = teamStatus team.Status
             EntryToken = team.EntryToken
             RegistrationDate = team.RegistrationDate
+        }
+
+    let quizCard (quiz: Quiz) : AdminModels.QuizControlCard =
+        {
+            QuizStatus = quizStatus quiz.Dsc.Status
+            PackageId = quiz.Dsc.PkgId
+            PackageQwIdx = quiz.Dsc.PkgQwIdx
+            CurrentQw =
+                match quiz.Dsc.Status with
+                | Live -> match quiz.CurrentQuestion with Some qw -> Some <| quizQuestion qw | None -> None
+                | _ -> None
+        }
+
+    let quizQuestion (qw : QuizQuestion) : AdminModels.QuizQuestion =
+        {
+            Name = qw.Name
+            Seconds = qw.Seconds
+            Status = quizQuestionStatus qw.Status
+            Text = qw.Text
+            ImgKey = qw.ImgKey
+            Answer = qw.Answer
+            Comment = qw.Comment
+            CommentImgKey = qw.CommentImgKey
+            StartTime = qw.StartTime
         }

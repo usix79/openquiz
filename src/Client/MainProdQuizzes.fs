@@ -92,12 +92,11 @@ let submitCard api model =
 let replaceRecord record model =
     {model with Quizzes = record :: (model.Quizzes |> List.filter (fun q -> q.QuizId <> record.QuizId))}
 
-let uploadFile quizId api respMsg fileType body model =
+let uploadFile quizId (api:IMainApi) respMsg fileType body model =
     if Array.length body > (1024*128) then
         model |> addError "max image size is 128K" |> noCmd
     else
         model |> loading quizId |> apiCmd api.uploadFile {|Cat = Quiz; FileType=fileType; FileBody=body|} respMsg Exn
-
 
 let init (api:IMainApi) user : Model*Cmd<Msg> =
     {Quizzes = []; Card = None; CardIsLoading = None; Errors = Map.empty} |> apiCmd api.getProdQuizzes () GetQuizzesResp Exn

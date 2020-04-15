@@ -47,9 +47,9 @@ let inputModal dispatch title txt changeMsg okMsg cancelMsg =
 let imgArea tag disabled changeMsg clearMsg imgKey defaultImg clearText =
     [
         if not (System.String.IsNullOrWhiteSpace imgKey) then
-            figure [Class "image is-128x128"; Style[MaxWidth "320px"]][ img [Shared.Infra.urlForImg imgKey |> Src]]
+            figure [Class "image"; Style[MaxWidth "320px"]][ img [Shared.Infra.urlForImg imgKey |> Src]]
         else if not (System.String.IsNullOrWhiteSpace defaultImg) then
-            figure [Class "image is-128x128"; Style[MaxWidth "320px"]][ img [defaultImg |> Src]]
+            figure [Class "image"; Style[MaxWidth "320px"]][ img [defaultImg |> Src]]
 
         div [Class "file"; Style [MarginTop "8px"]][
             label [Class "file-label"][

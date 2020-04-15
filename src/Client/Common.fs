@@ -14,6 +14,11 @@ open Microsoft.FSharp.Reflection
 
 open Shared
 
+let timeDiff serverTime: System.TimeSpan = (serverTime - System.DateTime.UtcNow)
+
+let serverTime timeDiff =
+    System.DateTime.UtcNow.Add timeDiff
+
 let noCmd model =
     model, Cmd.none
 
@@ -26,6 +31,14 @@ let apiCmd proc arg ofSucccess ofExn model =
 let apiCmd' proc arg ofSucccess ofExn =
     Cmd.OfAsync.either proc (Infra.REQ arg) ofSucccess ofExn
 
+let timeoutCmd msg timeout =
+    let mutable isTickScheduled = false
+    let sub dispatch =
+        if not isTickScheduled then
+            isTickScheduled <- true
+            window.setTimeout((fun _ -> isTickScheduled <- false; dispatch msg), timeout) |> ignore
+
+    Cmd.ofSub sub
 
 let inline fromString<'a> (s:string) =
     match Reflection.FSharpType.GetUnionCases typeof<'a> |> Array.filter (fun case -> case.Name = s) with
@@ -74,6 +87,16 @@ let ofInt (value : string option) : int option =
         | true, i -> Some i
         | _ -> None
     | None -> None
+
+let trimEnd n suffix (str:string) =
+    if str.Length < n then str
+    else
+       str.Substring(0, n) + suffix
+
+let trimMiddle n suffix (str:string) =
+    if str.Length < n then str
+    else
+       str.Substring(0, n / 2) + suffix + str.Substring(str.Length - (n / 2), n / 2)
 
 let inline (|Err|_|) (msg:'msg) : string option =
 
@@ -294,4 +317,12 @@ module Infra =
                 getTeamCard = x.Wrap adminApi.getTeamCard
                 updateTeamCard = x.Wrap adminApi.updateTeamCard
                 changeTeamStatus = x.Wrap adminApi.changeTeamStatus
+                getQuizCard = x.Wrap adminApi.getQuizCard
+                changeQuizStatus = x.Wrap adminApi.changeQuizStatus
+                getPackages = x.Wrap adminApi.getPackages
+                setPackage = x.Wrap adminApi.setPackage
+                getPackageCard = x.Wrap adminApi.getPackageCard
+                uploadFile = x.Wrap adminApi.uploadFile
+                startCountDown = x.Wrap adminApi.startCountDown
+                pauseCountDown = x.Wrap adminApi.pauseCountDown
             }

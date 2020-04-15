@@ -78,6 +78,50 @@ type TeamStatus =
     | Admitted
     | Rejected
 
+type QuizQuestionStatus =
+    | Announcing
+    | Countdown
+    | Settled
+
+type PackageRecord = {
+    PackageId : int
+    Name : string
+}
+
+type PackageCard = {
+    PackageId : int
+    Name : string
+    Questions : PackageQuestion list
+}
+ with
+    member x.GetQuestion idx =
+        if idx >= 0 && idx <x.Questions.Length then
+            Some (x.Questions.Item(idx))
+        else None
+    member x.UpdateQuestion idx qw =
+        {x with
+            Questions = x.Questions |> List.mapi (fun i q -> if idx = i then qw else q)
+        }
+    member x.AddQuestion () =
+        {x with
+            Questions = x.Questions @ [{Text="";ImgKey="";Answer="";Comment="";CommentImgKey=""}]
+        }
+    member x.DelQuestion idx =
+        {x with
+            Questions = x.Questions
+                |> List.mapi (fun i q -> if idx = i then None else Some q)
+                |> List.filter (fun v -> v.IsSome)
+                |> List.map (fun v -> v.Value)
+        }
+
+type PackageQuestion = {
+    Text : string
+    ImgKey : string
+    Answer : string
+    Comment : string
+    CommentImgKey : string
+}
+
 module MainModels =
 
     type ExpertCompetition = {
@@ -130,45 +174,6 @@ module MainModels =
         WithPremoderation : bool
     }
 
-    type PackageProdRecord = {
-        PackageId : int
-        Name : string
-    }
-
-    type PackageProdCard = {
-        PackageId : int
-        Name : string
-        Questions : PackageProdQuestion list
-    }
-     with
-        member x.GetQuestion idx =
-            if idx >= 0 && idx <x.Questions.Length then
-                Some (x.Questions.Item(idx))
-            else None
-        member x.UpdateQuestion idx qw =
-            {x with
-                Questions = x.Questions |> List.mapi (fun i q -> if idx = i then qw else q)
-            }
-        member x.AddQuestion () =
-            {x with
-                Questions = x.Questions @ [{Text="";ImgKey="";Answer="";Comment="";CommentImgKey=""}]
-            }
-        member x.DelQuestion idx =
-            {x with
-                Questions = x.Questions
-                    |> List.mapi (fun i q -> if idx = i then None else Some q)
-                    |> List.filter (fun v -> v.IsSome)
-                    |> List.map (fun v -> v.Value)
-            }
-
-    type PackageProdQuestion = {
-        Text : string
-        ImgKey : string
-        Answer : string
-        Comment : string
-        CommentImgKey : string
-    }
-
 module AdminModels =
 
     type TeamRecord = {
@@ -184,6 +189,36 @@ module AdminModels =
         TeamStatus : TeamStatus
         EntryToken : string
         RegistrationDate : System.DateTime
+    }
+
+    type QuizQuestion = {
+        Name : string
+        Seconds : int
+        Status : QuizQuestionStatus
+        Text : string
+        ImgKey : string
+        Answer : string
+        Comment : string
+        CommentImgKey : string
+        StartTime : System.DateTime option
+    } with
+        member x.SecondsLeft now =
+            match x.StartTime with
+            | Some st ->
+                match  x.Seconds - int((now - st).TotalSeconds) with
+                | seconds when seconds > 0 -> seconds
+                | _ -> 0
+            | _ -> x.Seconds
+
+        member x.IsCoundownActive now =
+            x.Status = Countdown && x.SecondsLeft now > 0
+
+
+    type QuizControlCard = {
+        QuizStatus : QuizStatus
+        PackageId : int option
+        PackageQwIdx : int option
+        CurrentQw : QuizQuestion option
     }
 
 module Infra =
@@ -212,10 +247,10 @@ type IMainApi = {
     uploadFile : REQ<{|Cat:ImgCategory; FileType : string; FileBody : byte[]|}> -> ARESP<{|BucketKey: string|}>
     getPubModel : REQ<unit> -> ARESP<{|Profile : MainModels.ExpertProfile; Quizzes : MainModels.QuizPubRecord list|}>
     registerTeam : REQ<{|QuizId: int; TeamName: string|}> -> ARESP<MainModels.ExpertCompetition>
-    getProdPackages : REQ<unit> -> ARESP<MainModels.PackageProdRecord list>
-    getProdPackageCard : REQ<{|PackageId : int|}> -> ARESP<MainModels.PackageProdCard>
-    createPackage : REQ<unit> -> ARESP<{|Record : MainModels.PackageProdRecord; Card:MainModels.PackageProdCard|}>
-    updateProdPackageCard : REQ<MainModels.PackageProdCard> -> ARESP<MainModels.PackageProdRecord>
+    getProdPackages : REQ<unit> -> ARESP<PackageRecord list>
+    getProdPackageCard : REQ<{|PackageId : int|}> -> ARESP<PackageCard>
+    createPackage : REQ<unit> -> ARESP<{|Record : PackageRecord; Card: PackageCard|}>
+    updateProdPackageCard : REQ<PackageCard> -> ARESP<PackageRecord>
 }
 
 type IAdminApi = {
@@ -224,4 +259,12 @@ type IAdminApi = {
     getTeamCard : REQ<{|TeamId : int|}> -> ARESP<AdminModels.TeamCard>
     updateTeamCard : REQ<AdminModels.TeamCard> -> ARESP<AdminModels.TeamRecord>
     changeTeamStatus : REQ<{|TeamId : int; TeamStatus : TeamStatus|}> -> ARESP<AdminModels.TeamRecord>
+    getQuizCard : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
+    changeQuizStatus : REQ<{|QuizStatus : QuizStatus|}> -> ARESP<AdminModels.QuizControlCard>
+    getPackages : REQ<unit> -> ARESP<PackageRecord list>
+    setPackage : REQ<{|PackageId: int option|}> -> ARESP<AdminModels.QuizControlCard>
+    getPackageCard : REQ<{|PackageId: int|}> -> ARESP<PackageCard option>
+    uploadFile : REQ<{|Cat:ImgCategory; FileType : string; FileBody : byte[]|}> -> ARESP<{|BucketKey: string|}>
+    startCountDown : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
+    pauseCountDown : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
 }

@@ -189,7 +189,8 @@ module Quizzes =
         let config = GetItemOperationConfig()
         config.AttributesToGet <- new Collections.Generic.List<string> ([
              "Id"; "Producer"; "StartTime"; "Brand"; "Name"; "Status"; "WelcomeText"; "FarewellText";
-                    "IsPrivate"; "ImgKey";  "WithPremoderation"; "AdminToken"; "RegToken"; "ListenToken"])
+                    "IsPrivate"; "ImgKey";  "WithPremoderation"; "AdminToken"; "RegToken"; "ListenToken";
+                    "PkgId"; "PkgQwIdx"])
 
         let table = loadTable "Quizzes"
         let task = table.GetItemAsync((Primitive.op_Implicit quizId), config)
@@ -225,6 +226,8 @@ module Quizzes =
         gameItem.["ListenToken"] <- v2.ConvertToEntry quiz.Dsc.ListenToken
         gameItem.["AdminToken"] <- v2.ConvertToEntry quiz.Dsc.AdminToken
         gameItem.["RegToken"] <- v2.ConvertToEntry quiz.Dsc.RegToken
+        gameItem.["PkgId"] <- entryOfOption quiz.Dsc.PkgId
+        gameItem.["PkgQwIdx"] <- entryOfOption quiz.Dsc.PkgQwIdx
 
         let questionsEntry = DynamoDBList()
         for qw in quiz.Questions do
@@ -261,6 +264,8 @@ module Quizzes =
             ListenToken = stringOfDoc doc "ListenToken"
             RegToken = stringOfDoc doc "RegToken"
             WithPremoderation = boolOfDoc doc "WithPremoderation"
+            PkgId = optionOfEntry doc "PkgId"
+            PkgQwIdx = optionOfEntry doc "PkgQwIdx"
         }
 
     let quizOfDocument (doc:Document) : Quiz =

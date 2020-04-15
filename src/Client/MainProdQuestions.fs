@@ -19,14 +19,14 @@ type Msg =
     | Exn of exn
     | CreatePackage
     | DeleteError of string
-    | GetPackagesResp of RESP<PackageProdRecord list>
+    | GetPackagesResp of RESP<PackageRecord list>
     | ToggleCard of int
-    | GetPackageResp of RESP<PackageProdCard>
-    | CreatePackageResp of RESP<{|Record : PackageProdRecord; Card:PackageProdCard|}>
+    | GetPackageResp of RESP<PackageCard>
+    | CreatePackageResp of RESP<{|Record : PackageRecord; Card:PackageCard|}>
     | UpdateName of string
     | CancelCard
     | SubmitCard
-    | SubmitCardResp of RESP<PackageProdRecord>
+    | SubmitCardResp of RESP<PackageRecord>
     | AppendQuiestion
     | DelQuestion of int
     | QwTextChanged of int * string
@@ -41,10 +41,10 @@ type Msg =
 
 
 type Model = {
-    Packages : PackageProdRecord list
+    Packages : PackageRecord list
     Errors : Map<string, string>
     CardIsLoading : int option // packageId
-    Card : PackageProdCard option
+    Card : PackageCard option
 }
 
 let addError txt model =
@@ -70,7 +70,7 @@ let editing model =
 let validateName txt =
     if System.String.IsNullOrWhiteSpace(txt) then "Name is required" else ""
 
-let validate card =
+let validate (card : PackageCard) =
     [validateName card.Name]
     |> List.filter (fun s -> s <> "")
 
@@ -96,7 +96,7 @@ let submitCard api model =
 let replaceRecord record model =
     {model with Packages = record :: (model.Packages |> List.filter (fun q -> q.PackageId <> record.PackageId))}
 
-let uploadFile packageId api respMsg fileType body model =
+let uploadFile packageId (api:IMainApi) respMsg fileType body model =
     if Array.length body > (1024*128) then
         model |> addError "max image size is 128K" |> noCmd
     else
@@ -182,7 +182,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
         ]
     ]
 
-let card (dispatch : Msg -> unit) (card : MainModels.PackageProdCard) isLoading =
+let card (dispatch : Msg -> unit) (card : PackageCard) isLoading =
     div[][
         nav [Class "level"][
             div [Class "level-left"][
@@ -237,7 +237,7 @@ let card (dispatch : Msg -> unit) (card : MainModels.PackageProdCard) isLoading 
 
     ]
 
-let qwRow dispatch isLoading pkgId idx (qw: PackageProdQuestion) =
+let qwRow dispatch isLoading pkgId idx (qw: PackageQuestion) =
 
     let qwKey = {PackageId = pkgId; Idx=idx}
 
