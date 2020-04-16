@@ -53,7 +53,7 @@ let imgArea tag disabled changeMsg clearMsg imgKey defaultImg clearText =
 
         div [Class "file"; Style [MarginTop "8px"]][
             label [Class "file-label"][
-                input [Class "file-input"; Type "file"; Name "picture"; OnChange(fileOnChange tag changeMsg)]
+                input [Class "file-input"; Type "file"; Name "picture"; Disabled disabled; OnChange(fileOnChange tag changeMsg)]
                 span [Class "file-cta"][
                     span [Class "file-icon"][ Fa.i [Fa.Solid.Upload][]]
                     span [Class "file-label"][ str "Choose a file…"]

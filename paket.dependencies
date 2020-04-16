@@ -14,6 +14,7 @@ nuget Giraffe.SerilogExtensions
 nuget Json.Net
 nuget Serilog.Formatting.Compact
 nuget Serilog.Sinks.Console
+nuget String.Similarity 3.0.0
 nuget System.IdentityModel.Tokens.Jwt
 
 group Client

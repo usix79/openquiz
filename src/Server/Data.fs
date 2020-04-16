@@ -313,6 +313,25 @@ module Teams =
         (table.UpdateItemAsync (teamItem)).Wait()
         team
 
+    let getIds (quizId: int) : int list=
+        let table = loadTable "Teams"
+
+        let keyExpression = Expression()
+        keyExpression.ExpressionAttributeNames.["#N"] <- "QuizId"
+        keyExpression.ExpressionAttributeValues.[":v"] <- Primitive.op_Implicit quizId
+        keyExpression.ExpressionStatement <- "#N = :v"
+
+        let config = QueryOperationConfig()
+        config.KeyExpression <- keyExpression
+        config.AttributesToGet <- new Collections.Generic.List<string> (["TeamId"] )
+        config.Filter <- QueryFilter()
+        config.Select <- SelectValues.SpecificAttributes
+
+        table.Query(config)
+        |> readAll
+        |> Seq.map (fun (doc:Document) -> doc.["TeamId"].AsInt())
+        |> List.ofSeq
+
     let getDescriptors (quizId: int) : TeamDescriptor list=
         let table = loadTable "Teams"
 

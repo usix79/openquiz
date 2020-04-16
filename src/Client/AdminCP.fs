@@ -151,6 +151,8 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | Start -> cm |> loading |> apiCmd api.startCountDown cm.Quiz.Value QuizCardResp Exn
     | Tick -> cm |> noCmd |> scheduleTick
     | Pause -> cm |> loading |> apiCmd api.pauseCountDown () QuizCardResp Exn
+    | Finish -> cm |> loading |> apiCmd api.finishQuestion () QuizCardResp Exn
+    | Next -> cm |> loading |> apiCmd api.nextQuestion () QuizCardResp Exn
     | Exn ex -> cm |> addError ex.Message |> editing |> noCmd
     | Err txt -> cm |> addError txt |> editing |> noCmd
     | _ -> cm |> noCmd
@@ -179,19 +181,24 @@ let view (dispatch : Msg -> unit) (user:AdminUser) (model : Model) =
 
 let quizView (dispatch : Msg -> unit) (user:AdminUser) (model : Model) (quiz : QuizControlCard) =
 
-    let isCoundownActive =
+    let changesNotAllowed =
         match quiz.CurrentQw with
-        | Some qw -> qw.IsCoundownActive (serverTime model.TimeDiff)
-        | None -> false
+        | Some qw when qw.Status = Countdown || qw.Status = Settled -> true
+        | _ -> false
 
-    let isReadOnly = isCoundownActive || model.IsLoading
+    let isCountdown =
+        match quiz.CurrentQw with
+        | Some qw when qw.Status = Countdown -> true
+        | _ -> false
+
+    let isReadOnly = changesNotAllowed || model.IsLoading
 
     div [][
         div [Class "field"][
             div [Class "control"][
                 label [Class "label"][str "Status"]
                 div [Class "select"][
-                    select[Disabled isReadOnly; valueOrDefault quiz.QuizStatus; OnChange (fun ev -> dispatch <| ChangeStatus ev.Value )][
+                    select[Disabled (model.IsLoading || isCountdown); valueOrDefault quiz.QuizStatus; OnChange (fun ev -> dispatch <| ChangeStatus ev.Value )][
                         for case in Reflection.FSharpType.GetUnionCases typeof<QuizStatus> do
                             option [][str case.Name]
                     ]
@@ -236,13 +243,13 @@ let quizView (dispatch : Msg -> unit) (user:AdminUser) (model : Model) (quiz : Q
             match quiz.CurrentQw with
             | Some qw ->
                 yield hr[Class "has-background-grey"]
-                yield qwView dispatch user qw model.TimeDiff model.IsLoading
+                yield qwView dispatch user qw model.TimeDiff isReadOnly model.IsLoading
             | None -> ()
         ]
 
     ]
 
-let qwView (dispatch : Msg -> unit) (user:AdminUser) (qw : QuizQuestion) timeDiff isReadOnly =
+let qwView (dispatch : Msg -> unit) (user:AdminUser) (qw : QuizQuestion) timeDiff isReadOnly isLoading =
 
     div[][
         div [Class "field is-grouped"][
@@ -251,18 +258,25 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (qw : QuizQuestion) timeDif
                 input [Class "input is-large"; Type "text"; Disabled isReadOnly;  valueOrDefault qw.Name; OnChange (fun ev -> dispatch <| UpdateQwName ev.Value)]
             ]
 
-            div [Class "control"; Style [Width "min-content"]][
-                label [Class "label is-large"][str "Seconds"]
-                input [Class "input is-large"; Type "number"; Disabled isReadOnly; valueOrDefault qw.Seconds; OnChange (fun ev -> dispatch <| UpdateQwSeconds ev.Value)]
-            ]
+            match qw.Status, qw.SecondsLeft (serverTime timeDiff) with
+            | Countdown, sec when sec > 0 ->
+                div [Class "control"][
+                    label [classList ["label", true; "is-large", true; "has-text-danger", sec < 10]][str "Seconds Left"]
+                    input [classList ["input", true; "is-large", true; "has-text-danger", sec < 10]; Type "number"; Disabled true; Value sec]
+                ]
+            | _ ->
+                div [Class "control"; Style [Width "min-content"]][
+                    label [Class "label is-large"][str "Seconds"]
+                    input [Class "input is-large"; Type "number"; Disabled isReadOnly; valueOrDefault qw.Seconds; OnChange (fun ev -> dispatch <| UpdateQwSeconds ev.Value)]
+                ]
         ]
 
         let ctrlBtn msg caption =
-            button [Class "button is-large is-fullwidth"; OnClick (fun _ -> dispatch msg)][str caption]
+            button [Class "button is-large is-fullwidth"; Disabled isLoading; OnClick (fun _ -> dispatch msg)][str caption]
 
         match qw.Status, qw.SecondsLeft (serverTime timeDiff) with
         | Announcing, _ -> ctrlBtn Start "Start"
-        | Countdown, sec when sec > 0 -> ctrlBtn Pause (sprintf "%i" sec)
+        | Countdown, sec when sec > 0 -> ctrlBtn Pause "Reset countdown"
         | Countdown, _ -> ctrlBtn Finish "Show answer"
         | Settled, _ -> ctrlBtn Next "Next"
 

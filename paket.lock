@@ -899,6 +899,8 @@ NUGET
       System.Console (>= 4.3)
       System.Runtime.InteropServices (>= 4.3)
       System.Runtime.InteropServices.RuntimeInformation (>= 4.3)
+    String.Similarity (3.0)
+      NETStandard.Library (>= 1.6.1)
     System.Buffers (4.5.1)
     System.Collections (4.3)
       Microsoft.NETCore.Platforms (>= 1.1)

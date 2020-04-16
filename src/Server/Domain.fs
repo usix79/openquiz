@@ -216,38 +216,51 @@ module Quizzes =
             | None -> quiz
         | quiz -> quiz
 
-    let private updateCurrentQuestion (f : QuizQuestion -> QuizQuestion) quiz=
-        let newList =
-            match quiz.Questions with
-            | qw :: tail -> (f qw) :: tail
-            | _ -> quiz.Questions
-
-        {quiz with Questions = newList}
-
-    let startCountdown qwName seconds qwText qwImgKey qwAnswer qwComment qwCommentImgKey pkgQwIdx now (quiz:Quiz) =
+    let private updateCurrentQuestion (f : QuizQuestion -> QuizQuestion) (quiz:Quiz) =
         match quiz.Dsc.Status with
         | Live ->
-            {quiz with Dsc = {quiz.Dsc with PkgQwIdx = pkgQwIdx}}
-            |> updateCurrentQuestion (fun qw ->
-                        {qw with
-                            Name = qwName
-                            Seconds = seconds
-                            Status = Countdown
-                            StartTime = Some now
-                            Text = qwText
-                            ImgKey = qwImgKey
-                            Answer = qwAnswer
-                            Comment = qwComment
-                            CommentImgKey = qwCommentImgKey
-                        }
-            )
-            |> Ok
-        | _ -> Error "Quiz should be in 'Live' mode"
+            let newList =
+                match quiz.Questions with
+                | qw :: tail -> (f qw) :: tail
+                | _ -> quiz.Questions
+
+            {quiz with Questions = newList}
+        | _ ->
+            quiz
+
+    let startCountdown qwName seconds qwText qwImgKey qwAnswer qwComment qwCommentImgKey pkgQwIdx now (quiz:Quiz) =
+        {quiz with Dsc = {quiz.Dsc with PkgQwIdx = pkgQwIdx}}
+        |> updateCurrentQuestion (fun qw ->
+                    {qw with
+                        Name = qwName
+                        Seconds = seconds
+                        Status = Countdown
+                        StartTime = Some now
+                        Text = qwText
+                        ImgKey = qwImgKey
+                        Answer = qwAnswer
+                        Comment = qwComment
+                        CommentImgKey = qwCommentImgKey
+                    }
+        )
+        |> Ok
 
     let pauseCountdown (quiz:Quiz) =
-        match quiz.Dsc.Status with
-        | Live -> quiz |> updateCurrentQuestion (fun qw -> {qw with Status = Announcing; StartTime = None}) |> Ok
-        | _ -> Error "Quiz should be in 'Live' mode"
+        quiz |> updateCurrentQuestion (fun qw -> {qw with Status = Announcing; StartTime = None}) |> Ok
+
+    let settle (quiz:Quiz) =
+        quiz |> updateCurrentQuestion (fun qw -> {qw with Status = Settled}) |> Ok
+
+    let next (pkgProvider : Provider<int,Package>) (quiz:Quiz) =
+        match quiz.Dsc.PkgId with
+        | Some pkgId ->
+            let qwIdx = (defaultArg quiz.Dsc.PkgQwIdx 0) + 1
+            let qw =
+                match pkgProvider pkgId with
+                | Some pkg -> pkg.GetQuestion qwIdx
+                | None -> None
+            {quiz with Dsc = {quiz.Dsc with PkgQwIdx = Some qwIdx}} |> addQuestion qw
+        | None -> quiz |> addQuestion None
 
 type TeamStatus =
     | New
@@ -319,3 +332,18 @@ module Teams =
     let changeName newName (team:Team) =
         {team with Dsc = {team.Dsc with Name = newName}}
 
+    let updateAnswer qwIdx (f : TeamAnswer -> TeamAnswer) (team: Team) =
+        match team.GetAnswer qwIdx with
+        | Some aw -> {team with Answers = team.Answers |> Map.add qwIdx (f aw)}
+        | None -> team
+
+    let settleAnswer qwIdx (jury : string -> bool) now (team: Team) =
+        team |> updateAnswer qwIdx (fun aw ->
+            if aw.IsAutoResult || aw.Result.IsNone then
+                {aw with
+                    Result = Some <| if jury aw.Text then 1m else 0m
+                    IsAutoResult = true
+                    UpdateTime = Some now
+                }
+            else aw
+        )

@@ -325,4 +325,6 @@ module Infra =
                 uploadFile = x.Wrap adminApi.uploadFile
                 startCountDown = x.Wrap adminApi.startCountDown
                 pauseCountDown = x.Wrap adminApi.pauseCountDown
+                finishQuestion = x.Wrap adminApi.finishQuestion
+                nextQuestion = x.Wrap adminApi.nextQuestion
             }

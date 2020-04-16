@@ -267,4 +267,6 @@ type IAdminApi = {
     uploadFile : REQ<{|Cat:ImgCategory; FileType : string; FileBody : byte[]|}> -> ARESP<{|BucketKey: string|}>
     startCountDown : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     pauseCountDown : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
+    finishQuestion : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
+    nextQuestion : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
 }

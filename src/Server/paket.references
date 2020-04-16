@@ -11,3 +11,4 @@ System.IdentityModel.Tokens.Jwt
 Json.Net
 AWSSDK.DynamoDBv2
 AWSSDK.S3
+String.Similarity
