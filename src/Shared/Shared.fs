@@ -30,11 +30,12 @@ type TRESP<'T, 'P> = {
 type LoginReq =
     | MainUser of {|Code: string|}
     | AdminUser of {|QuizId:int; Token: string|}
+    | TeamUser of {|QuizId: int; TeamId: int; Token: string|}
 
 type User =
     | MainUser of MainUser
     | AdminUser of AdminUser
-    | QuizUser of QuizUser
+    | TeamUser of TeamUser
 
 type MainUser = {
     Sub : string
@@ -43,11 +44,11 @@ type MainUser = {
     IsProducer : bool
 }
 
-type QuizUser = {
+type TeamUser = {
     QuizId : int
     QuizName : string
-    CompetitorId : int
-    CompetitorName : string
+    TeamId : int
+    TeamName : string
 }
 
 type AdminUser = {
@@ -221,6 +222,41 @@ module AdminModels =
         CurrentQw : QuizQuestion option
     }
 
+module TeamModels =
+    type QuizCard = {
+        QS : QuizStatus
+        TS : TeamStatus
+        Img : string
+        Msg : string
+        Qw : QuestionCard option
+        Aw : string option
+        LT : string
+        GV : int
+    }
+
+    type QuestionCard = {
+        Idx : int
+        Cap : string
+        Sec : int
+        QQS : QuizQuestionStatus
+        Txt : string
+        Img : string
+        Com : string
+        ST : System.DateTime option
+    } with
+        member x.SecondsLeft now =
+            match x.ST with
+            | Some st ->
+                match  x.Sec - int((now - st).TotalSeconds) with
+                | seconds when seconds > 0 -> seconds
+                | _ -> 0
+            | _ -> x.Sec
+
+        member x.IsCountdownActive now =
+            match x.ST with
+            | Some _ when x.QQS = Countdown -> x.SecondsLeft now > 0
+            | _ -> false
+
 module Infra =
     let routeBuilder clientPath (typeName: string) (methodName: string) =
         sprintf "%s/app/api/%s/%s" clientPath typeName methodName
@@ -230,6 +266,9 @@ module Infra =
 
     let urlForImg key =
         sprintf "/img/%s" key
+
+    let urlForImgSafe key =
+        if key <> "" then sprintf "/img/%s" key else defaultImg
 
     let defaultImg = "/logo256.png"
 
@@ -269,4 +308,9 @@ type IAdminApi = {
     pauseCountDown : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
     finishQuestion : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
     nextQuestion : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
+}
+
+type ITeamApi = {
+    getState : REQ<unit> -> ARESP<TeamModels.QuizCard>
+    takeActiveSession : REQ<unit> -> ARESP<TeamModels.QuizCard>
 }

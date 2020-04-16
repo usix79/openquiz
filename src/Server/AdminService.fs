@@ -32,24 +32,24 @@ let api (context:HttpContext) : IAdminApi =
                 Error "Wrong Quiz Id"
         )
 
-        Security.execute logger proc <| Security.authorizeAdmin secret (ff f)
+        SecurityService.execute logger proc <| SecurityService.authorizeAdmin secret (ff f)
 
     let api : IAdminApi = {
-        getTeams = ex  "getTeams" <| getTeams
-        createTeam = ex  "createTeam" <| createTeam
-        getTeamCard = ex  "getTeamCard" <| getTeamCard
-        updateTeamCard = ex  "updateTeamCard" <| updateTeamCard
-        changeTeamStatus = ex  "changeTeamStatus" <| changeTeamStatus
-        getQuizCard = ex  "getQuizCard" <| getQuizCard
-        changeQuizStatus = ex  "changeQuizStatus" <| changeQuizStatus
-        getPackages = ex "getPackages" <| getPackages
-        setPackage = ex "setPackage" <| setPackage
-        getPackageCard = ex "getPackageCard" <| getPackageCard
+        getTeams = ex  "getTeams" getTeams
+        createTeam = ex  "createTeam" createTeam
+        getTeamCard = ex  "getTeamCard" getTeamCard
+        updateTeamCard = ex  "updateTeamCard" updateTeamCard
+        changeTeamStatus = ex  "changeTeamStatus" changeTeamStatus
+        getQuizCard = ex  "getQuizCard" getQuizCard
+        changeQuizStatus = ex  "changeQuizStatus" changeQuizStatus
+        getPackages = ex "getPackages" getPackages
+        setPackage = ex "setPackage" setPackage
+        getPackageCard = ex "getPackageCard" getPackageCard
         uploadFile = ex "uploadFile" <| uploadFile (Config.getFilesAccessPoint cfg)
-        startCountDown = ex "startCountDown" <| startCountDown
-        pauseCountDown = ex "pauseCountDown" <| pauseCountDown
-        finishQuestion = ex "finishQuestion" <| finishQuestion
-        nextQuestion = ex "nextQuestion" <| nextQuestion
+        startCountDown = ex "startCountDown" startCountDown
+        pauseCountDown = ex "pauseCountDown" pauseCountDown
+        finishQuestion = ex "finishQuestion" finishQuestion
+        nextQuestion = ex "nextQuestion" nextQuestion
     }
 
     api

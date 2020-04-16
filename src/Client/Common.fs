@@ -225,6 +225,12 @@ module Infra =
             |> Remoting.withRouteBuilder (Infra.routeBuilder "")
             |> Remoting.buildProxy<IAdminApi>
 
+        let teamApi =
+            Remoting.createApi()
+            |> Remoting.withBaseUrl "/"
+            |> Remoting.withRouteBuilder (Infra.routeBuilder "")
+            |> Remoting.buildProxy<ITeamApi>
+
         member x.RefreshTokenAndProceed<'Req, 'Resp> failedToken =
             async{
                 if failedToken <> token then  // token has been already refreshed
@@ -327,4 +333,11 @@ module Infra =
                 pauseCountDown = x.Wrap adminApi.pauseCountDown
                 finishQuestion = x.Wrap adminApi.finishQuestion
                 nextQuestion = x.Wrap adminApi.nextQuestion
+            }
+
+        member x.CreateTeamApi () =
+            {
+                getState = x.Wrap teamApi.getState
+                takeActiveSession = x.Wrap teamApi.takeActiveSession
+
             }

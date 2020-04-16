@@ -10,11 +10,12 @@
     <Compile Include="Domain.fs" />
     <Compile Include="Bucket.fs" />
     <Compile Include="Data.fs" />
-    <Compile Include="Security.fs" />
     <Compile Include="Presenter.fs" />
     <Compile Include="CommonService.fs" />
+    <Compile Include="SecurityService.fs" />
     <Compile Include="MainService.fs" />
     <Compile Include="AdminService.fs" />
+    <Compile Include="TeamService.fs" />
     <Compile Include="Index.fs" />
     <Compile Include="Server.fs" />
   </ItemGroup>

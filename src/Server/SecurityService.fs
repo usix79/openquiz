@@ -1,4 +1,4 @@
-module rec Security
+module rec SecurityService
 
 open System
 open System.Security.Claims
@@ -10,11 +10,9 @@ open Giraffe.SerilogExtensions
 open Serilog
 open Microsoft.Extensions.Configuration
 
-
 open Shared
 open Common
 open Domain
-
 
 module CustomClaims =
     let Name = "name"
@@ -27,7 +25,7 @@ module CustomRoles =
     let Admin = "admin"
     let Competitor = "competitor"
     let Expert = "expert"
-
+    let Team = "team"
 
 let rand = Random(DateTime.UtcNow.Millisecond)
 
@@ -112,47 +110,6 @@ let refreshToken secret (req:REQ<{| RefreshToken: string |}>) =
 
     {Status = status; Value = value; ST = DateTime.UtcNow}
 
-
-
-// let private loginWithToken secret oldSessionId (args:{| GameId: int; TeamId: int; EntryToken: string |}) =
-
-//     let team = Data.getTeam args.GameId args.TeamId
-//     let game = Data.getGame args.GameId
-
-//     match game, team with
-//     | Some game, Some team ->
-//         let sessionId =
-//             match oldSessionId with
-//             | Some id -> id
-//             | None -> rand.Next(Int32.MaxValue)
-
-//         let takeActiveSessionResult =
-//             if team.ActiveSessionId = sessionId then Ok true
-//             else if team.ActiveSessionId = 0 then
-//                 match Data.updateTeam {team with ActiveSessionId = sessionId} with
-//                 | Ok _ -> Ok true
-//                 | Error txt -> Error txt
-//             else Ok false
-
-//         match takeActiveSessionResult with
-//         | Ok isActive ->
-//             let user = {GameId = team.GameId; GameName = game.Name; TeamId = team.Id; TeamName = team.Name}
-
-//             let token = generateToken secret [
-//                 Claim(CustomClaims.Name, user.TeamName)
-//                 Claim(CustomClaims.Role, CustomRoles.Team)
-//                 Claim(CustomClaims.GameId, user.GameId.ToString())
-//                 Claim(CustomClaims.TeamId, user.TeamId.ToString())
-//                 Claim(CustomClaims.SessionId, sessionId.ToString())
-//             ]
-
-//             let refreshToken = createRefreshToken()
-//             Data.addRefreshToken refreshToken
-
-//             Ok {|Token = token; RefreshToken = refreshToken.Value; User = TeamUser user|}
-//         | Error txt -> Error txt
-//     | _ -> Error "authenticaton error"
-
 let authorize secret role (f : ClaimsPrincipal -> 'Arg -> Result<'Value, string>) : REQ<'Arg> -> RESP<'Value> =
     fun req ->
         let status, res =
@@ -173,50 +130,30 @@ let authorizeAdmin secret (f: string -> 'arg -> Result<'res, string>) =
         let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
         f quizIdStr req
 
-// let competitorKey (principal : ClaimsPrincipal) =
-//     let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
-//     let compIdStr = principal.FindFirstValue CustomClaims.CompetitorId
+let private teamKey (principal : ClaimsPrincipal) =
+    let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
+    let teamIdStr = principal.FindFirstValue CustomClaims.TeamId
 
-//     match Int32.TryParse quizIdStr with
-//     | (true, quizId) ->
-//         match Int32.TryParse compIdStr with
-//         | (true, compId) -> Some {|QuizId = quizId; CompetirorId = compId|}
-//         | _ -> None
-//     | _ -> None
+    match (Int32.TryParse quizIdStr),(Int32.TryParse teamIdStr) with
+    | (true, quizId), (true, teamId) -> Some {QuizId = quizId; TeamId = teamId}
+    | _ -> None
 
-// let competitorSessionId (principal : ClaimsPrincipal) =
-//     let sessionIdStr = principal.FindFirstValue CustomClaims.SessionId
-//     match Int32.TryParse sessionIdStr with
-//     | (true, sessionId) -> Some sessionId
-//     | _ -> None
+let private teamSessionId (principal : ClaimsPrincipal) =
+    let sessionIdStr = principal.FindFirstValue CustomClaims.SessionId
+    match Int32.TryParse sessionIdStr with
+    | (true, sessionId) -> Some sessionId
+    | _ -> None
 
-// let authorizeAdmin secret f =
-//     authorize secret CustomRoles.Admin f
+let authorizeTeam secret (f: int -> TeamKey -> 'arg -> Result<'res, string>) =
+    authorize secret CustomRoles.Team <| fun principal req ->
+        result {
+            let! teamKey = (teamKey principal, "Invalid team's key")
+            let! sessionId = (teamSessionId principal, "Wrong session Id")
 
-// let authorizeTeamWithSession secret (f: int -> Team -> 'arg -> Result<'res, string>) =
-//     authorize secret CustomRoles.Team <| fun principal req ->
-//         match teamKey principal with
-//         | Some key ->
-//             let sessionId = teamSessionId principal
-//             match Data.getTeam key.GameId key.TeamId with
-//             | Some team ->
-//                 match sessionId with
-//                 | Some sessionId -> f sessionId team req
-//                 | _ -> Error "Wrong session Id"
-//             | None -> Error "Team not found"
-//         | None -> Error "Invalid team's key"
-
-
-
-// let authorizeTeam secret (f: Team -> 'arg -> Result<'res, string>) =
-//     authorizeTeamWithSession secret <| fun sessionId team req ->
-//         if team.ActiveSessionId = sessionId then f team req
-//         else Error Errors.SessionIsNotActive
-
-
+            return! f sessionId teamKey req
+        }
 
 let execute (logger : ILogger) (proc:string) (f: REQ<'Req> -> RESP<'Resp>) : REQ<'Req> -> ARESP<'Resp> =
-
     fun req ->
         async {
             let claims = getClaimsFromToken req.Token
@@ -225,20 +162,6 @@ let execute (logger : ILogger) (proc:string) (f: REQ<'Req> -> RESP<'Resp>) : REQ
             logger.Information("{@Op} {@Proc} {@ServerResponse}", "Done", proc, resp)
             return resp
         }
-
-// let extractSessionId (f: int option -> 'Req -> Result<'Resp, string>) : ServerRequest<'Req> -> ServerResponse<'Resp> =
-
-//     fun req ->
-//         let claims = getClaimsFromToken req.Token
-//         let sessionId =
-//             match claims.TryFind CustomClaims.SessionId with
-//             | Some strId ->
-//                 match Int32.TryParse strId with
-//                 | true, id -> Some id
-//                 | _ -> None
-//             | _ -> None
-
-//         serverResponse (fun arg -> f sessionId arg) req
 
 let loginResp secret claims user =
     let token = generateToken secret claims
@@ -279,6 +202,36 @@ let loginAdminUser secret quizId token =
                 Error "Wrong entry token"
     }
 
+let loginTeamUser secret quizId teamId token =
+    match Data.Teams.getDescriptor quizId teamId with
+    | Some team when team.EntryToken = token ->
+        result {
+            let! quiz = ((Data.Quizzes.getDescriptor quizId), "Quiz not found")
+
+            let sessionId = rand.Next(Int32.MaxValue)
+
+            // if this is first login, than take active session
+            do if team.ActiveSessionId = 0 then
+                CommonService.updateTeamNoReply {QuizId = quizId; TeamId = teamId}
+                    (fun team -> team |> Domain.Teams.dsc (fun dsc -> {dsc with ActiveSessionId = sessionId} |> Ok))
+
+            let user = {QuizId = team.QuizId; QuizName = quiz.Name; TeamId = team.TeamId; TeamName = team.Name}
+
+            let token = generateToken secret [
+                Claim(CustomClaims.Name, user.TeamName)
+                Claim(CustomClaims.Role, CustomRoles.Team)
+                Claim(CustomClaims.QuizId, user.QuizId.ToString())
+                Claim(CustomClaims.TeamId, user.TeamId.ToString())
+                Claim(CustomClaims.SessionId, sessionId.ToString())
+            ]
+
+            let refreshToken = createRefreshToken()
+            Data.RefreshTokens.add refreshToken
+
+            return {|Token = token; RefreshToken = refreshToken.Value; User = TeamUser user|}
+        }
+    | _ -> Error "Authenticaton Error"
+
 let api (context:HttpContext) : ISecurityApi =
     let logger : ILogger = context.Logger()
     let cfg = context.GetService<IConfiguration>()
@@ -300,3 +253,5 @@ let login secret (cfg:IConfiguration) (req : LoginReq) =
         loginMainUser secret clientId clientName redirectUri data.Code
     | LoginReq.AdminUser data ->
         loginAdminUser secret data.QuizId data.Token
+    | LoginReq.TeamUser data ->
+        loginTeamUser secret data.QuizId data.TeamId data.Token

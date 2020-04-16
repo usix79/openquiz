@@ -287,6 +287,7 @@ type TeamDescriptor = {
     Status : TeamStatus
     EntryToken : string
     RegistrationDate : DateTime
+    ActiveSessionId : int
 } with
     member x.Key = {QuizId = x.QuizId; TeamId = x.TeamId}
 
@@ -294,7 +295,6 @@ type TeamDescriptor = {
 type Team = {
     Dsc : TeamDescriptor
     Answers : Map<int, TeamAnswer>
-    ActiveSessionId : int
     Version : int
 } with
     member x.GetAnswer index =
@@ -315,9 +315,16 @@ module Teams =
             Status = if quiz.WithPremoderation then New else Admitted
             EntryToken = generateRandomToken()
             RegistrationDate = DateTime.UtcNow
+            ActiveSessionId = 0
         }
 
-        {Dsc = dsc; Answers = Map.empty; ActiveSessionId = 0; Version = 0}
+        {Dsc = dsc; Answers = Map.empty; Version = 0}
+
+    let dsc (f : TeamDescriptor -> Result<TeamDescriptor,string>) (team:Team) =
+        result {
+            let! dsc = f team.Dsc
+            return {team with Dsc = dsc}
+        }
 
     let validatePublicTeamUpdate isNewTeam (teamName: string) (teamsInQuiz : TeamDescriptor list) (quiz : QuizDescriptor) =
         let teamName = teamName.Trim()

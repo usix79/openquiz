@@ -17,7 +17,7 @@ let api (context:HttpContext) : IMainApi =
     let secret = Config.getJwtSecret cfg
 
     let ex proc f =
-        Security.execute logger proc <| Security.authorizeExpert secret f
+        SecurityService.execute logger proc <| SecurityService.authorizeExpert secret f
 
     let exPublisher proc f =
 
@@ -30,21 +30,21 @@ let api (context:HttpContext) : IMainApi =
                 Error "Wrong Publisher Id"
         )
 
-        Security.execute logger proc <| Security.authorizeExpert secret (ff f)
+        SecurityService.execute logger proc <| SecurityService.authorizeExpert secret (ff f)
 
     let api : IMainApi = {
-        becomeProducer = ex  "becomeProducer" <| becomeProducer
-        getPubModel = ex "getPubModel"<| getPubModel
-        registerTeam = ex "registerTeam" <| registerTeam
-        createQuiz = exPublisher  "createQuiz" <| createQuiz
-        getProdQuizzes = exPublisher "getProdQuizzes"<| getProdQuizzes
-        getProdQuizCard = exPublisher "getProdQuizCard" <| getProdQuizCard
-        updateProdQuizCard = exPublisher "updateProdQuizCard" <| updateProdQuizCard
+        becomeProducer = ex  "becomeProducer" becomeProducer
+        getPubModel = ex "getPubModel" getPubModel
+        registerTeam = ex "registerTeam" registerTeam
+        createQuiz = exPublisher  "createQuiz" createQuiz
+        getProdQuizzes = exPublisher "getProdQuizzes" getProdQuizzes
+        getProdQuizCard = exPublisher "getProdQuizCard" getProdQuizCard
+        updateProdQuizCard = exPublisher "updateProdQuizCard" updateProdQuizCard
         uploadFile = exPublisher "uploadFile" <| uploadFile (Config.getFilesAccessPoint cfg)
-        getProdPackages = exPublisher "getProdPackages"<| getProdPackages
-        getProdPackageCard = exPublisher  "getProdPackageCard"<| getProdPackageCard
-        createPackage = exPublisher  "createPackage" <| createPackage
-        updateProdPackageCard = exPublisher  "updateProdPackageCard" <| updateProdPackageCard
+        getProdPackages = exPublisher "getProdPackages" getProdPackages
+        getProdPackageCard = exPublisher  "getProdPackageCard" getProdPackageCard
+        createPackage = exPublisher  "createPackage" createPackage
+        updateProdPackageCard = exPublisher  "updateProdPackageCard" updateProdPackageCard
     }
 
     api

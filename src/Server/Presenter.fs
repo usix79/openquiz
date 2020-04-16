@@ -159,3 +159,51 @@ module Admin =
             CommentImgKey = qw.CommentImgKey
             StartTime = qw.StartTime
         }
+
+module Teams =
+
+    let quizCard (quiz:Quiz) (team:Team): TeamModels.QuizCard =
+        {
+            QS = quizStatus quiz.Dsc.Status
+            TS = teamStatus team.Dsc.Status
+            Img = quiz.Dsc.ImgKey
+            Msg =
+                match quiz.Dsc.Status with
+                | Published -> quiz.Dsc.WelcomeText
+                | Finished -> quiz.Dsc.FarewellText
+                | _ -> ""
+            Qw =
+                match quiz.CurrentQuestion with
+                | Some qw when quiz.Dsc.Status = Live -> Some <| questionCard quiz.CurrentQuestionIndex qw
+                | _ -> None
+            Aw =
+                match team.GetAnswer quiz.CurrentQuestionIndex with
+                | Some aw when quiz.Dsc.Status = Live -> Some aw.Text
+                | _ -> None
+            LT = quiz.Dsc.ListenToken
+            GV = quiz.Version
+        }
+
+    let questionCard idx (qw:QuizQuestion) : TeamModels.QuestionCard =
+        {
+            Idx = idx
+            Cap = qw.Name
+            Sec = qw.Seconds
+            QQS = quizQuestionStatus qw.Status
+            Txt =
+                match qw.Status with
+                | Announcing -> ""
+                | Countdown -> qw.Text
+                | Settled -> qw.Answer
+            Img =
+                match qw.Status with
+                | Announcing -> ""
+                | Countdown -> qw.ImgKey
+                | Settled -> qw.CommentImgKey
+            Com =
+                match qw.Status with
+                | Settled -> qw.Comment
+                | _ -> ""
+
+            ST = qw.StartTime
+        }

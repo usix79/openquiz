@@ -84,9 +84,10 @@ let appRouter =
         route "/default.html" >=> redirectTo false "/"
         route "/login" >=> loginHandler
         routef "/img/%s/%s" imgHandler
-        apiHandler Security.api
+        apiHandler SecurityService.api
         apiHandler MainService.api
         apiHandler AdminService.api
+        apiHandler TeamService.api
     ]
 
 let serilogConfig = {

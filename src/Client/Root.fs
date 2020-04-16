@@ -2,8 +2,6 @@ module Root
 
 open Elmish
 open Fable.React
-open Fable.React.Props
-open Fulma
 
 open Shared
 open Common
@@ -12,23 +10,26 @@ type CurrentPage =
     | EmptyPage of string
     | MainPage of Main.Model
     | AdminPage of Admin.Model
+    | TeamPage of Team.Model
 
 type Msg =
     | LoginResponse of RESP<{|Token: string; RefreshToken: string; User: User|}>
     | Exn of exn
     | MainMsg of Main.Msg
     | AdminMsg of Admin.Msg
+    | TeamMsg of Team.Msg
 
 type Model = {
     CurrentUser : User option
     CurrentPage : CurrentPage
-    ServerTime : System.DateTime
+    LoginTime : System.DateTime
 }
 
 let apiFactory = Infra.ApiFactory(fun () -> Infra.redirect "/login")
 let securityApi = apiFactory.CreateSecurityApi()
 let mainApi = apiFactory.CreateMainApi()
 let adminApi = apiFactory.CreateAdminApi()
+let teamApi = apiFactory.CreateTeamApi()
 
 let getUserFromStorage() =
     let user = Infra.loadFromSessionStorage<User> "USER"
@@ -45,11 +46,9 @@ let initChildPage user start cm =
     | AdminUser u ->
         let submodel, subcmd = Admin.init adminApi u start
         {cm with CurrentPage = AdminPage submodel; CurrentUser = Some user}, Cmd.map AdminMsg subcmd
-    // | TeamUser u ->
-    //     let api = currentModel.ApiFactory.CreateTeamApi()
-    //     let submodel, subcmd = Main.init api u
-    //     {currentModel with CurrentPage = CurrentPage.Main submodel; CurrentUser = Some user}, Cmd.map Main subcmd
-    | _ -> cm |> noCmd
+    | TeamUser u ->
+        let submodel, subcmd = Team.init teamApi u
+        {cm with CurrentPage = TeamPage submodel; CurrentUser = Some user}, Cmd.map TeamMsg subcmd
 
 let saveUser token refreshToken user serverTime =
     apiFactory.UpdateTokens token refreshToken |> ignore
@@ -64,23 +63,24 @@ let evaluateLoginReq (query : Map<string,string>) =
     | Some code -> Some <| LoginReq.MainUser {|Code = code|}
     | _ ->
         match qs "who", qi "quiz", qs "token", qi "team" with
-        | Some "admin", Some quizId, Some token, _  ->
-            Some <| LoginReq.AdminUser {|QuizId = quizId; Token = token|}
+        | Some "admin", Some quizId, Some token, _  -> LoginReq.AdminUser {|QuizId = quizId; Token = token|} |> Some
+        | Some "team", Some quizId, Some token, Some teamId  -> LoginReq.TeamUser {|QuizId = quizId; TeamId = teamId; Token = token|} |> Some
         | _ -> None
 
 let isReqForSameUser (req:LoginReq) (user:User) =
     match req, user with
     | LoginReq.MainUser _, MainUser _ -> true
     | LoginReq.AdminUser data, AdminUser usr -> data.QuizId = usr.QuizId
+    | LoginReq.TeamUser data, TeamUser usr -> data.QuizId = usr.QuizId && data.TeamId = usr.TeamId
     | _ -> false
 
 let init (): Model * Cmd<Msg> =
-    let cm =  {CurrentPage = EmptyPage "Initializing..."; CurrentUser = None; ServerTime = System.DateTime.UtcNow}
+    let cm =  {CurrentPage = EmptyPage "Initializing..."; CurrentUser = None; LoginTime = System.DateTime.UtcNow}
 
     match getUserFromStorage(), evaluateLoginReq (Infra.currentQueryString()) with
-    | Some (user,st), Some req when isReqForSameUser req user -> {cm with ServerTime = st} |> initChildPage user st
+    | Some (user,st), Some req when isReqForSameUser req user -> {cm with LoginTime = st} |> initChildPage user st
     | _, Some req -> cm |> apiCmd securityApi.login req LoginResponse Exn
-    | Some (user,st), None -> {cm with ServerTime = st} |> initChildPage user st
+    | Some (user,st), None -> {cm with LoginTime = st} |> initChildPage user st
     | _ ->
         Infra.redirect "/"
         cm |> noCmd
@@ -94,7 +94,7 @@ let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
             | MainUser _ -> Infra.clearQueryString()
             | _ -> ()
 
-            {cm with ServerTime = serverTime} |> initChildPage res.User serverTime
+            {cm with LoginTime = serverTime} |> initChildPage res.User serverTime
     | EmptyPage _, _, LoginResponse {Value = Error txt} -> {cm with CurrentPage = EmptyPage txt} |> noCmd
     | EmptyPage _,  _, Exn ex -> {cm with CurrentPage = EmptyPage ex.Message} |> noCmd
     | MainPage subModel, Some (MainUser user), MainMsg subMsg ->
@@ -109,39 +109,12 @@ let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
         let newModel,newCmd = Main.update mainApi user subMsg subModel
         {cm with CurrentPage = MainPage newModel; CurrentUser = Some (MainUser user)}, Cmd.map MainMsg newCmd
     | AdminPage subModel, Some (AdminUser user), AdminMsg subMsg ->
-        let newModel,newCmd = Admin.update adminApi user subMsg subModel cm.ServerTime
+        let newModel,newCmd = Admin.update adminApi user subMsg subModel cm.LoginTime
         {cm with CurrentPage = AdminPage newModel}, Cmd.map AdminMsg newCmd
+    | TeamPage subModel, Some (TeamUser user), TeamMsg subMsg ->
+        let newModel,newCmd = Team.update teamApi user subMsg subModel cm.LoginTime
+        {cm with CurrentPage = TeamPage newModel}, Cmd.map TeamMsg newCmd
     | _, _, _ -> cm |> noCmd
-
-    //match msg, currentModel.CurrentPage, currentModel.CurrentUser with
-    // | Action action, _, _ -> execute action currentModel
-
-    // | Login subMsg, CurrentPage.Login subModel, _ ->
-    //     match subMsg with
-    //     | Login.Msg.LoginResult {Value = Ok res; ServerTime = serverTime} ->
-
-    //         // save all data we need after refresh
-    //         currentModel.ApiFactory.UpdateTokens res.Token res.RefreshToken |> ignore
-    //         saveToSessionStorage "USER" res.User
-    //         saveToSessionStorage "START" serverTime
-
-    //         initChildPage currentModel res.User serverTime
-    //     | _ ->
-    //         let api = currentModel.ApiFactory.CreateSecurityApi()
-    //         let subModel, subCmd = Login.update api subMsg subModel
-    //         {currentModel with CurrentPage = CurrentPage.Login subModel}, Cmd.map Login subCmd
-    // | Admin subMsg, CurrentPage.Admin subState, Some (AdminUser _) ->
-    //     let api = currentModel.ApiFactory.CreateAdminApi()
-    //     let subModel, subCmd = Admin.update api subMsg subState
-    //     {currentModel with CurrentPage = CurrentPage.Admin subModel}, Cmd.map Admin subCmd
-    // | Main mainPageMsg, CurrentPage.Main mainPageState, _ ->
-    //     let subModel, subCmd = Main.update mainPageMsg mainPageState
-    //     {currentModel with CurrentPage = CurrentPage.Main subModel}, Cmd.map Main subCmd
-    // | Captain subMsg, CurrentPage.Captain subState, _ ->
-    //     let api = currentModel.ApiFactory.CreateCaptainApi()
-    //     let subModel, subCmd = Captain.update api subMsg subState
-    //     {currentModel with CurrentPage = CurrentPage.Captain subModel}, Cmd.map Captain subCmd
-    //| _, _, _ -> currentModel, Cmd.none
 
 let view (model : Model) (dispatch : Msg -> unit) =
     let pageHtml =
@@ -149,9 +122,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
         | EmptyPage txt, None -> str txt
         | MainPage subModel, Some (MainUser user) -> Main.view (MainMsg >> dispatch) user subModel
         | AdminPage subModel, Some (AdminUser user) -> Admin.view (AdminMsg >> dispatch) user subModel
-        // | CurrentPage.Captain submodel, _ -> Captain.view (Captain >> dispatch) submodel
-        // | CurrentPage.Main submodel, Some (TeamUser user) -> Main.view (Main >> dispatch) user submodel
-        // | CurrentPage.Admin submodel, _ -> Admin.view (Admin >> dispatch) submodel
+        | TeamPage subModel, Some (TeamUser user) -> Team.view (TeamMsg >> dispatch) user subModel
         | _ -> str "Oops"
 
     div [] [pageHtml]
