@@ -30,6 +30,7 @@ type Msg =
     | CountdownTick of {|QwIndex: int|}
     | QuizChanged of QuizChangedEvent
     | SourceError of string
+    | Heartbeat
     | AnswerResponse of RESP<unit>
 
 type Model = {
@@ -40,6 +41,7 @@ type Model = {
     Error : string
     TimeDiff: TimeSpan
     SseSource: Infra.SseSource option
+    IsConnectionOk : bool
 } with
     member x.CurrentQuestion =
         match x.Quiz with
@@ -109,7 +111,8 @@ let subscribe quizId (model:Model) =
 
         let subUpdate dispatch = source.OnMessage (QuizChanged >> dispatch)
         let subError dispatch = source.OnError (SourceError >> dispatch)
-        {model with SseSource = Some source}, Cmd.batch[Cmd.ofSub subUpdate; Cmd.ofSub subError]
+        let heartbeat dispatch = source.OnHeartbeat (fun _ ->  dispatch Heartbeat)
+        {model with SseSource = Some source}, Cmd.batch[Cmd.ofSub subUpdate; Cmd.ofSub subError; Cmd.ofSub heartbeat]
     | None -> model |> noCmd
 
 let unsubscribe (model:Model) =
@@ -147,9 +150,12 @@ let sendAnswer api (model : Model) =
         | _ -> model |> noCmd
     | _ -> model |> noCmd
 
+let connection isOk model =
+    {model with IsConnectionOk = isOk}
+
 let init (api:ITeamApi) user : Model*Cmd<Msg> =
-    {IsActive = true; Quiz = None; Answer = None;
-        ActiveTab = Question; Error = ""; TimeDiff = TimeSpan.Zero; SseSource = None} |> apiCmd api.getState () QuizCardResp Exn
+    {IsActive = true; Quiz = None; Answer = None; IsConnectionOk = false;  ActiveTab = Question;
+        Error = ""; TimeDiff = TimeSpan.Zero; SseSource = None} |> apiCmd api.getState () QuizCardResp Exn
 
 let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) st : Model * Cmd<Msg> =
     match msg with
@@ -158,8 +164,9 @@ let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) st : Model * 
     | CountdownTick _ -> cm |> sendAnswer api |> setupCountdown
     | QuizChanged evt -> cm |> applyEvent evt |> sendAnswer api |> initAnswer |> setupCountdown
     | AnswerResponse {Value = Ok _} -> cm |> answerStatus Sent |> ok |> noCmd
-    | SourceError txt -> cm |> error txt |> noCmd
+    | SourceError txt -> cm |> connection false |> noCmd
     | UpdateAnswer txt -> cm |> answerText txt |> noCmd
+    | Heartbeat -> cm |> connection true |> noCmd
     | Exn ex when ex.Message = Errors.SessionIsNotActive ->
         unsubscribe cm
         {cm with IsActive = false} |> noCmd
@@ -198,11 +205,17 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
 
     div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
+            if model.IsConnectionOk then
+                Fa.i [Fa.Solid.Wifi; Fa.Props [Style[Position PositionOptions.Absolute; Top "5px"; Left "5px"]]][str " connected"]
+            else
+                span [Class "has-text-danger"][Fa.i [Fa.Solid.Wifi; Fa.Props [Style[Position PositionOptions.Absolute; Top "5px"; Left "5px"]]][ str " disconnected"]]
+
             br []
             figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Infra.urlForImgSafe quiz.Img ] ]
             br []
             h3 [Class "title is-3"] [ str user.QuizName ]
             h4 [Class "subtitle is-4" ] [ str user.TeamName ]
+
             div [Class "container"] [
                 match quiz.TS with
                 | New -> div [Class "notification is-white"][str "Waiting for confirmation of the registration..."]

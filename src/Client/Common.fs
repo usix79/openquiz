@@ -214,6 +214,10 @@ module Infra =
                 subscription "SERVER STREAM ERROR"
             )
 
+        member x.OnHeartbeat (subscription: unit -> unit) =
+            printfn "AGA - OnHeartbeat"
+            sse.addEventListener("heartbeat", (fun _ -> subscription ()))
+
         member x.Close () =
             sse.close()
 
