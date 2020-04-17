@@ -58,6 +58,8 @@ let answer team req =
     let logic (team:Domain.Team) =
         team |> Domain.Teams.registerAnswer req.QwIndex req.Answer DateTime.UtcNow
 
-    CommonService.updateTeamNoReply team.Key logic
-
-    Ok ()
+    match team.Status with
+    | Domain.Admitted ->
+        CommonService.updateTeamNoReply team.Key logic
+        Ok ()
+    | _ -> Error "Team's status does not suppose sending answers"
