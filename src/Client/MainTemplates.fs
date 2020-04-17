@@ -62,3 +62,11 @@ let imgArea tag disabled changeMsg clearMsg imgKey defaultImg clearText =
             button [Class "button"; Disabled disabled; Style [MarginLeft "5px"]; OnClick (fun _ -> clearMsg())] [str clearText]
         ]
     ]
+
+let imgEl imgKey =
+    seq {
+        if not (System.String.IsNullOrWhiteSpace imgKey) then
+            figure [Class "image"; Style[MaxWidth "320px"; Display DisplayOptions.InlineBlock]][ img [Shared.Infra.urlForImg imgKey |> Src]]
+    }
+
+

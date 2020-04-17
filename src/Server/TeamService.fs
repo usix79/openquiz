@@ -30,6 +30,7 @@ let api (context:HttpContext) : ITeamApi =
     let api : ITeamApi = {
         takeActiveSession = SecurityService.execute logger "takeActiveSession" <| SecurityService.authorizeTeam secret takeActiveSession
         getState = ex "getState" getState
+        answer = ex "answer" answer
     }
 
     api
@@ -52,3 +53,11 @@ let takeActiveSession (sessionId:int) (teamKey:Domain.TeamKey) req =
 
         return Teams.quizCard quiz team
     }
+
+let answer team req =
+    let logic (team:Domain.Team) =
+        team |> Domain.Teams.registerAnswer req.QwIndex req.Answer DateTime.UtcNow
+
+    CommonService.updateTeamNoReply team.Key logic
+
+    Ok ()

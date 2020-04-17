@@ -1,5 +1,6 @@
 open System
 open System.IO
+open System.Threading.Tasks
 
 open AWS.Logger
 open AWS.Logger.SeriLog
@@ -22,7 +23,6 @@ open Serilog
 
 open Shared
 open Common
-open Data
 
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 
@@ -70,12 +70,65 @@ let imgHandler (dir,key) : HttpHandler =
 
 let indexHandler =
     warbler (fun _ ->
-        Quizzes.getDescriptors()
+        Data.Quizzes.getDescriptors()
         |> List.filter Domain.Quizzes.isPubQuiz
         |> Index.layout
         |> htmlView
     )
 
+let gameChangedSse = Sse.SseService<QuizChangedEvent>()
+
+CommonService.DomainEvents.subscribeOnQuizChanges (fun evt ->
+        Log.Information ("{@Op} {@Evt}", "Event", evt)
+        gameChangedSse.Send evt
+     )
+
+let sseHandler _next (ctx: HttpContext)  =
+    let (|QInt|_|) key =
+       match ctx.TryGetQueryStringValue key with
+       | Some str ->
+           match System.Int32.TryParse(str) with
+           | (true,int) -> Some(int)
+           | _ -> None
+       | None -> None
+
+    let (|QStr|_|) key =
+        ctx.TryGetQueryStringValue key
+
+    let error code txt =
+        task {
+            ctx.SetContentType "plain/text"
+            ctx.SetStatusCode code
+            return! ctx.WriteTextAsync txt
+        }
+
+    task {
+        match "quiz", "start", "token" with
+        | QInt quizId, QInt startVersion, QStr listenToken ->
+            match Data.Quizzes.get quizId with
+            | Some quiz when quiz.Dsc.ListenToken = listenToken->
+                ctx.SetContentType "text/event-stream"
+                do! gameChangedSse.WriteHeartbeat ctx.Response
+                //do! ctx.Response.Body.FlushAsync()
+
+                if quiz.Version > startVersion then
+                    do! Task.Delay(1000)
+                    let evt = Presenter.quizChangeEvent quiz
+                    do! gameChangedSse.WriteMessage ctx.Response evt
+
+                gameChangedSse.Subscribe ctx.TraceIdentifier ctx.Response (fun evt -> evt.Id = quizId)
+
+                ctx.RequestAborted.WaitHandle.WaitOne() |> ignore
+
+                gameChangedSse.Unsubscribe ctx.TraceIdentifier
+
+                return None
+            | Some _ -> return! error 401 "wrong token"
+            | None -> return! error 400 "game not found"
+
+        | _ ->
+            return! error 400 "(-)"
+    }
 
 let appRouter =
     choose [
@@ -84,6 +137,7 @@ let appRouter =
         route "/default.html" >=> redirectTo false "/"
         route "/login" >=> loginHandler
         routef "/img/%s/%s" imgHandler
+        route "/sse" >=> sseHandler
         apiHandler SecurityService.api
         apiHandler MainService.api
         apiHandler AdminService.api

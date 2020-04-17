@@ -84,6 +84,35 @@ type QuizQuestionStatus =
     | Countdown
     | Settled
 
+type QuestionCard = {
+    Idx : int
+    Cap : string
+    Sec : int
+    QQS : QuizQuestionStatus
+    Txt : string
+    Img : string
+    Com : string
+    ST : System.DateTime option
+} with
+    member x.SecondsLeft now =
+        match x.ST with
+        | Some st ->
+            match  x.Sec - int((now - st).TotalSeconds) with
+            | seconds when seconds > 0 -> seconds
+            | _ -> 0
+        | _ -> x.Sec
+
+    member x.IsCountdownActive now =
+        match x.ST with
+        | Some _ when x.QQS = Countdown -> x.SecondsLeft now > 0
+        | _ -> false
+
+type QuizChangedEvent = {
+    Id : int
+    QS : QuizStatus
+    Qw : QuestionCard option
+}
+
 type PackageRecord = {
     PackageId : int
     Name : string
@@ -227,42 +256,24 @@ module TeamModels =
         QS : QuizStatus
         TS : TeamStatus
         Img : string
-        Msg : string
+        Wcm : string
+        Fwl : string
         Qw : QuestionCard option
         Aw : string option
         LT : string
-        GV : int
-    }
-
-    type QuestionCard = {
-        Idx : int
-        Cap : string
-        Sec : int
-        QQS : QuizQuestionStatus
-        Txt : string
-        Img : string
-        Com : string
-        ST : System.DateTime option
+        V : int
     } with
-        member x.SecondsLeft now =
-            match x.ST with
-            | Some st ->
-                match  x.Sec - int((now - st).TotalSeconds) with
-                | seconds when seconds > 0 -> seconds
-                | _ -> 0
-            | _ -> x.Sec
-
-        member x.IsCountdownActive now =
-            match x.ST with
-            | Some _ when x.QQS = Countdown -> x.SecondsLeft now > 0
-            | _ -> false
+        member x.Msg =
+            match x.QS with
+            | Draft | Published | Live -> x.Wcm
+            | Finished | Archived -> x.Fwl
 
 module Infra =
     let routeBuilder clientPath (typeName: string) (methodName: string) =
         sprintf "%s/app/api/%s/%s" clientPath typeName methodName
 
-    let sseUrl gameId lastGameVersion listenToken =
-        sprintf "api/sse?gameId=%i&startVersion=%i&listenToken=%s" gameId lastGameVersion listenToken
+    let sseUrl quizId lastQuizVersion listenToken =
+        sprintf "/sse?quiz=%i&start=%i&token=%s" quizId lastQuizVersion listenToken
 
     let urlForImg key =
         sprintf "/img/%s" key
@@ -313,4 +324,5 @@ type IAdminApi = {
 type ITeamApi = {
     getState : REQ<unit> -> ARESP<TeamModels.QuizCard>
     takeActiveSession : REQ<unit> -> ARESP<TeamModels.QuizCard>
+    answer : REQ<{|QwIndex:int; Answer:string|}> -> ARESP<unit>
 }

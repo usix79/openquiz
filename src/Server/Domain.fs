@@ -354,3 +354,13 @@ module Teams =
                 }
             else aw
         )
+
+    let registerAnswer qwIndex awText now (team:Team) =
+        if String.IsNullOrWhiteSpace awText then Error "Answer is empty"
+        else
+            let awText = if awText.Length <= 256 then awText else awText.Substring(0, 256)
+
+            match team.Answers.TryFind qwIndex with
+            | None ->
+                Ok {team with Answers = team.Answers.Add (qwIndex, {Text = awText; RecieveTime = now; Result = None; IsAutoResult = false; UpdateTime = Some now})}
+            | Some aw -> Error <| "Answer is alredy registered: " + aw.Text

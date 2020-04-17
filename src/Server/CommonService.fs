@@ -9,13 +9,26 @@ type Creator<'TKey, 'T> = 'TKey -> Result<'T, string>
 type Logic<'T> = 'T -> Result<'T, string>
 type Loader<'TKey, 'T> = 'TKey -> 'T option
 type Saver<'T> = 'T -> 'T
+type Broker<'T> = 'T -> unit
 
+module DomainEvents =
+
+    let mutable private subscribers = []
+
+    let subscribeOnQuizChanges (f: Shared.QuizChangedEvent -> unit) =
+        subscribers <- f :: subscribers
+
+    let quizChanged (quiz : Quiz) =
+        let evt = Presenter.quizChangeEvent quiz
+
+        subscribers
+        |> List.iter (fun f -> f evt)
 
 type private UpdateCommand<'TKey, 'T> =
     | Update of 'TKey * Logic<'T>
     | UpdateAndReply of 'TKey * Logic<'T> * AsyncReplyChannel<Result<'T, string>>
 
-let private createAgent<'TKey,'T> (loader : Loader<'TKey,'T>) (saver : Saver<'T>) =
+let private createAgent<'TKey,'T> (loader : Loader<'TKey,'T>) (saver : Saver<'T>) (broker : Broker<'T>) =
     MailboxProcessor<UpdateCommand<'TKey,'T>>.Start (fun inbox ->
 
         let update key logic =
@@ -23,7 +36,10 @@ let private createAgent<'TKey,'T> (loader : Loader<'TKey,'T>) (saver : Saver<'T>
                 match loader key with
                 | Some entity ->
                     match logic entity with
-                    | Ok entity -> saver entity |> Ok
+                    | Ok entity ->
+                        let savedEntity = saver entity
+                        broker savedEntity
+                        savedEntity |> Ok
                     | Error txt -> Error txt
                 | None -> Error (sprintf "Not Found %A" key)
             with
@@ -57,7 +73,7 @@ let private getOrCreateTeamAgent key =
         match Map.tryFind key _teamAgents with
         | Some agent -> agent
         | None ->
-            let agent = createAgent teamLoader teamSaver
+            let agent = createAgent teamLoader teamSaver ignore
             _teamAgents <- _teamAgents.Add (key, agent)
             agent
 
@@ -87,13 +103,14 @@ let mutable private _quizAgents : Map<int, MailboxProcessor<UpdateCommand<int,Qu
 
 let  quizLoader (quizId : int) = Data.Quizzes.get quizId
 let private quizSaver quiz = Data.Quizzes.update quiz
+let private quizBroker quiz = DomainEvents.quizChanged quiz
 
 let private getOrCreateQuizAgent (quizId:int) =
     let trans () =
         match Map.tryFind quizId _quizAgents with
         | Some agent -> agent
         | None ->
-            let agent = createAgent quizLoader quizSaver
+            let agent = createAgent quizLoader quizSaver quizBroker
             _quizAgents <- _quizAgents.Add (quizId, agent)
             agent
 
@@ -118,3 +135,4 @@ let updateQuizNoReply (quizId : int) (logic : Logic<Quiz>) =
     agent.Post (Update (quizId, logic))
 
 let  packageLoader (id : int) = Data.Packages.get id
+

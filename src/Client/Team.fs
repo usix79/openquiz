@@ -4,28 +4,55 @@ open System
 open Elmish
 open Fable.React
 open Fable.React.Props
+open Fable.FontAwesome
 open Elmish.React
-open Elmish.Navigation
 
 open Shared
-open Shared.TeamModels
 open Common
+open TeamModels
 
 type Tab = History | Question | Results
 
+type AnswerStatus = Input | Sending | Sent | Failed
+
+type Answer = {
+    QwIdx : int
+    Status : AnswerStatus
+    Text : string
+}
+
 type Msg =
-    | QuizCardResp of RESP<TeamModels.QuizCard>
+    | QuizCardResp of RESP<QuizCard>
     | Exn of exn
     | Reactivate
     | ChangeTab of Tab
+    | UpdateAnswer of string
+    | CountdownTick of {|QwIndex: int|}
+    | QuizChanged of QuizChangedEvent
+    | SourceError of string
+    | AnswerResponse of RESP<unit>
 
 type Model = {
     IsActive : bool
     Quiz : QuizCard option
+    Answer : Answer option
     ActiveTab : Tab
     Error : string
-    TimeDiff: System.TimeSpan
-}
+    TimeDiff: TimeSpan
+    SseSource: Infra.SseSource option
+} with
+    member x.CurrentQuestion =
+        match x.Quiz with
+        | Some quiz -> quiz.Qw
+        | None -> None
+
+    member x.IsCountdownActive =
+        match x.Quiz with
+        | Some quiz ->
+            match quiz.Qw with
+            | Some qw -> quiz.QS = Live && qw.IsCountdownActive (serverTime x.TimeDiff)
+            | None -> false
+        | None -> false
 
 let error txt model =
     {model with Error = txt}
@@ -34,16 +61,108 @@ let ok model =
     {model with Error = ""}
 
 let startup quiz serverTime model =
-    {model with IsActive = true; Quiz = Some quiz; TimeDiff = timeDiff serverTime} |> ok
+    {model with
+        IsActive = true
+        Quiz = Some quiz
+        TimeDiff = timeDiff serverTime
+        Answer =
+            match quiz.Aw with
+            | Some txt -> Some {QwIdx = (match quiz.Qw with Some qw -> qw.Idx | None -> -1); Status = Sent; Text = txt}
+            | None -> None
+    }
+
+let updateQuiz (f : QuizCard -> QuizCard) model  =
+    match model.Quiz with
+    | Some quiz -> {model with Quiz = Some <| f quiz}
+    | None -> model
+
+let initAnswer (model : Model, cmd : Cmd<Msg>) =
+    let createAnswer qw timeDiff =
+        {QwIdx = qw.Idx; Text = ""; Status = if qw.IsCountdownActive (serverTime timeDiff) then Input else Failed}
+
+    match model.CurrentQuestion with
+    | Some qw ->
+        match qw.QQS with
+        | Announcing -> {model with Answer = None}
+        | Countdown | Settled ->
+            match model.Answer with
+            | Some aw when aw.QwIdx <> qw.Idx -> {model with Answer = Some (createAnswer qw model.TimeDiff)}
+            | None -> {model with Answer = Some (createAnswer qw model.TimeDiff)}
+            | _ -> model
+    | None -> {model with Answer = None}
+    , cmd
+
+let setupCountdown (model : Model, cmd : Cmd<Msg>) =
+    match model.IsCountdownActive with
+    | true ->
+        match model.CurrentQuestion with
+        | Some qw ->  model, timeoutCmd (CountdownTick {|QwIndex = qw.Idx|}) 1000
+        | None -> model |> noCmd
+    | false -> model |> noCmd
+    |> batchCmd cmd
+
+let subscribe quizId (model:Model) =
+    match model.Quiz with
+    | Some quiz ->
+        let url = Infra.sseUrl quizId quiz.V quiz.LT
+        let source = Infra.SseSource(url)
+
+        let subUpdate dispatch = source.OnMessage (QuizChanged >> dispatch)
+        let subError dispatch = source.OnError (SourceError >> dispatch)
+        {model with SseSource = Some source}, Cmd.batch[Cmd.ofSub subUpdate; Cmd.ofSub subError]
+    | None -> model |> noCmd
+
+let unsubscribe (model:Model) =
+    match model.SseSource with
+    | Some source -> source.Close()
+    | _ -> ()
+
+let applyEvent (evt:QuizChangedEvent) (model:Model) =
+    model |> updateQuiz (fun quiz -> {quiz with QS = evt.QS; Qw = evt.Qw})
+
+let answerStatus satus model =
+    match model.Answer with
+    | Some aw -> {model with Answer = Some {aw with Status = satus}}
+    | _ -> model
+
+let answerText txt model =
+    match model.Answer with
+    | Some aw when aw.Status = Input -> {model with Answer = Some {aw with Text = txt}}
+    | _ -> model
+
+let sendAnswer api (model : Model) =
+    let answerCmd api model =
+        match model.Answer with
+        | Some aw when not (String.IsNullOrWhiteSpace aw.Text) ->
+            model |> answerStatus Sending |> apiCmd api.answer {|Answer = aw.Text; QwIndex = aw.QwIdx|} AnswerResponse Exn
+        | _ ->  model |> answerStatus Failed |> noCmd
+
+    match model.Answer with
+    | Some aw when aw.Status = Input ->
+        match model.CurrentQuestion with
+        | Some qw when (aw.QwIdx <> qw.Idx)
+            || (qw.QQS = Countdown && not (qw.IsCountdownActive (serverTime model.TimeDiff)))
+            || (qw.QQS = Settled)
+            -> model |> answerCmd api
+        | _ -> model |> noCmd
+    | _ -> model |> noCmd
 
 let init (api:ITeamApi) user : Model*Cmd<Msg> =
-    {IsActive = true; Quiz = None; ActiveTab = Question; Error = ""; TimeDiff = TimeSpan.Zero} |> apiCmd api.getState () QuizCardResp Exn
+    {IsActive = true; Quiz = None; Answer = None;
+        ActiveTab = Question; Error = ""; TimeDiff = TimeSpan.Zero; SseSource = None} |> apiCmd api.getState () QuizCardResp Exn
 
-let update (api:ITeamApi) user (msg : Msg) (cm : Model) st : Model * Cmd<Msg> =
+let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) st : Model * Cmd<Msg> =
     match msg with
-    | QuizCardResp {Value = Ok res; ST = st} -> cm |> startup res st |> noCmd
     | Reactivate -> cm |> apiCmd api.takeActiveSession () QuizCardResp Exn
-    | Exn ex when ex.Message = Errors.SessionIsNotActive -> {cm with IsActive = false} |> noCmd
+    | QuizCardResp {Value = Ok res; ST = st} -> cm |> startup res st |> ok |> subscribe user.QuizId |> initAnswer |> setupCountdown
+    | CountdownTick _ -> cm |> sendAnswer api |> setupCountdown
+    | QuizChanged evt -> cm |> applyEvent evt |> sendAnswer api |> initAnswer |> setupCountdown
+    | AnswerResponse {Value = Ok _} -> cm |> answerStatus Sent |> ok |> noCmd
+    | SourceError txt -> cm |> error txt |> noCmd
+    | UpdateAnswer txt -> cm |> answerText txt |> noCmd
+    | Exn ex when ex.Message = Errors.SessionIsNotActive ->
+        unsubscribe cm
+        {cm with IsActive = false} |> noCmd
     | Exn ex -> cm |> error ex.Message |> noCmd
     | Err txt -> cm |> error txt |> noCmd
     | _ -> cm |> noCmd
@@ -71,43 +190,47 @@ let notActiveView (dispatch : Msg -> unit) (user:TeamUser) error =
     ]
 
 let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
+    let serverTime = serverTime model.TimeDiff
+    let secondsLeft, isCountdownActive =
+        match quiz.Qw with
+        | Some q -> q.SecondsLeft serverTime, q.IsCountdownActive serverTime
+        | None -> 0, false
+
     div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
-
             br []
             figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Infra.urlForImgSafe quiz.Img ] ]
             br []
             h3 [Class "title is-3"] [ str user.QuizName ]
             h4 [Class "subtitle is-4" ] [ str user.TeamName ]
-
-            match quiz.TS with
-            | New -> div [Class "notification is-white"][str "Waiting for confirmation of the registration..."]
-            | Admitted ->
-                div[][
-                    match model.ActiveTab with
-                    | History -> yield str "ANSWERS"
-                    | Question ->
-                        match quiz.QS with
-                        | Live -> yield quiestionView dispatch user quiz model
-                        | _ ->
-                            yield
-                                div [Class "notification is-white"][
-                                    p [Class "subtitle is-5"][
-                                        match quiz.QS with
-                                        | Draft | Published -> str "Coming soon ..."
-                                        | Finished | Archived -> str "Finished"
-                                        | _ -> ()
-                                    ]
-                                    p [][for l in quiz.Msg.Split ([|'\n'|]) do yield str l; yield br[]]
-                                 ]
-                    | Results -> yield str "RESULTS"
-                ]
-            | Rejected -> div [Class "notification is-white"][span[Class "has-text-danger has-text-weight-bold"][str "Registration has been rejected ("]]
-
+            div [Class "container"] [
+                match quiz.TS with
+                | New -> div [Class "notification is-white"][str "Waiting for confirmation of the registration..."]
+                | Admitted ->
+                    div[][
+                        match model.ActiveTab with
+                        | History -> yield str "ANSWERS"
+                        | Question ->
+                            match quiz.QS with
+                            | Live -> yield quiestionView dispatch quiz model.Answer isCountdownActive
+                            | _ ->
+                                yield
+                                    div [Class "notification is-white"][
+                                        p [Class "subtitle is-5"][
+                                            match quiz.QS with
+                                            | Draft | Published -> str "Coming soon ..."
+                                            | Finished | Archived -> str "Finished"
+                                            | _ -> ()
+                                        ]
+                                        p [][for l in quiz.Msg.Split ([|'\n'|]) do yield str l; yield br[]]
+                                     ]
+                        | Results -> yield str "RESULTS"
+                    ]
+                | Rejected -> div [Class "notification is-white"][span[Class "has-text-danger has-text-weight-bold"][str "Registration has been rejected ("]]
+            ]
             p [Class "help is-danger"][ str model.Error ]
             div [ Style [Height "66px"]] []
         ]
-
         if quiz.TS = Admitted then
             div [Style [Position PositionOptions.Fixed; Bottom "0"; Height "62px"; Width "100%"; BackgroundColor "#FFFFFF"; OverflowX OverflowOptions.Hidden]]  [
                 div [Class "tabs is-white is-large is-toggle is-fullwidth"] [
@@ -115,10 +238,9 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
                         li [classList ["has-text-weight-bold", model.ActiveTab = History] ] [
                             a [OnClick (fun _ -> dispatch (ChangeTab History))] [ str "History" ]
                         ]
-                        li [classList ["has-text-weight-bold", model.ActiveTab = Question; "has-background-danger", false]] [
+                        li [classList ["has-text-weight-bold", model.ActiveTab = Question; "has-background-danger", isCountdownActive && secondsLeft < 10]] [
                             a [OnClick (fun _ -> dispatch (ChangeTab Question))] [
-                                str "Question"
-                                //if isCountdownActive then str (secondsLeft.ToString()) else str "Quiestion"
+                                if isCountdownActive then str (secondsLeft.ToString()) else str "Question"
                             ]
                         ]
                         li [classList ["has-text-weight-bold", model.ActiveTab = History] ] [
@@ -129,5 +251,37 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
            ]
     ]
 
-let quiestionView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
-    str "QUESTION"
+let quiestionView (dispatch : Msg -> unit) quiz answer isCountdownActive =
+    div [] [
+        h5 [Class "title is-5"] [ str <| "Question: " + match quiz.Qw with Some qw -> qw.Cap | None -> "???" ]
+
+        match quiz.Qw with
+        | Some q ->
+            yield! MainTemplates.imgEl q.Img
+            if q.QQS = Settled then
+                p [ Class "has-text-weight-bold" ] [ str "Answer" ]
+            p [ Class "has-text-weight-semibold" ] [ str q.Txt ]
+            if (q.Com <> "") then
+                p [ Class "has-text-weight-bold" ] [ str "Comment" ]
+                p [ ] [ str q.Com ]
+            br[]
+        | _ -> ()
+
+        match answer with
+        | Some aw ->
+            label [Class "label"][str "Your answer"]
+            div [Class "control has-icons-right"][
+                textarea [ Class "textarea"; MaxLength 128.0;
+                    ReadOnly (not isCountdownActive); valueOrDefault aw.Text;
+                    OnChange (fun ev -> dispatch <| UpdateAnswer ev.Value )][]
+                span [Class "icon is-large is-right has-text-black"][
+                    Fa.i [ match aw.Status with
+                            | Input -> Fa.Solid.Question
+                            | Sending -> Fa.Solid.Spinner
+                            | Sent -> Fa.Solid.Check
+                            | Failed -> Fa.Solid.Exclamation ] [
+                    ]
+                ]
+            ]
+        | _ -> ()
+    ]

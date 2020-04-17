@@ -8,6 +8,7 @@
     <None Include="style.scss" />
     <Compile Include="../Shared/Shared.fs" />
     <Compile Include="Version.fs" />
+    <Compile Include="SSE.fs" />
     <Compile Include="Common.fs" />
     <Compile Include="MainTemplates.fs" />
     <Compile Include="MainProdQuestions.fs" />

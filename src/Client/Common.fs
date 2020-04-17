@@ -199,6 +199,24 @@ module Infra =
     let REQ<'Arg> (arg:'Arg) =
         {Token = ""; Arg = arg}
 
+    type SseSource (url:string)=
+
+        let sse = createEmpty<EventSource.EventSource>.Create(url)
+
+        member inline x.OnMessage (subscription: 'msg -> unit) =
+            sse.onmessage <- (fun evt ->
+                let evt = Json.parseAs<'msg> (sprintf "%A" evt.data)
+                subscription evt
+            )
+
+        member x.OnError (subscription: string -> unit) =
+            sse.onerror <- (fun _ ->
+                subscription "SERVER STREAM ERROR"
+            )
+
+        member x.Close () =
+            sse.close()
+
     type ApiFactory (switchToLoginAction: unit -> unit) =
 
         let o = sessionStorage.getItem "TOKEN"
@@ -339,5 +357,6 @@ module Infra =
             {
                 getState = x.Wrap teamApi.getState
                 takeActiveSession = x.Wrap teamApi.takeActiveSession
+                answer = x.Wrap teamApi.answer
 
             }
