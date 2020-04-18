@@ -102,6 +102,34 @@ let questionCard idx (qw:QuizQuestion) : QuestionCard =
 
         ST = qw.StartTime
     }
+
+let teamResults withHistory (teams: Team list) : TeamResult list =
+    let mutable currentPlace = 1
+    [for (points,teams) in
+        teams
+        |> List.filter (fun t -> t.Dsc.Status = Admitted)
+        |> List.groupBy (fun t -> t.Points)
+        |> List.sortByDescending (fun (points, _) -> points) do
+            let len = teams.Length
+
+            for team in teams do
+                {TeamId = team.Dsc.TeamId; TeamName = team.Dsc.Name; Points = points;
+                    PlaceFrom = currentPlace; PlaceTo = currentPlace + len - 1;
+                        History = if withHistory then history team else Map.empty}
+
+            currentPlace <- currentPlace + len
+    ]
+
+let questionResults (quiz:Quiz) : QuestionResult list =
+    quiz.Questions
+    |> List.rev
+    |> List.mapi (fun idx qw -> {Idx = idx + 1; Name = qw.Name})
+
+let history (team : Team) =
+    team.Answers
+    |> Map.filter (fun _  aw -> aw.Result.IsSome)
+    |> Map.map (fun idx  aw -> aw.Result.Value)
+
 module Main =
 
     let quizPubRecord (quiz:QuizDescriptor) : MainModels.QuizPubRecord =

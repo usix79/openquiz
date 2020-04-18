@@ -32,6 +32,7 @@ let api (context:HttpContext) : ITeamApi =
         getState = ex "getState" getState
         answer = ex "answer" answer
         getHistory = ex "getHistory" getHistory
+        getResults = ex "getResults" getResults
     }
 
     api
@@ -71,4 +72,12 @@ let getHistory team _ =
         let! team = (Data.Teams.get team.QuizId team.TeamId, "Team not found")
 
         return Teams.quizHistory quiz team
+    }
+
+let getResults quiz _ =
+    result{
+        let! quiz = (Data.Quizzes.get quiz.QuizId, "Quiz not found")
+        let teams = Data.Teams.getAllInQuiz quiz.Dsc.QuizId
+
+        return {|Teams = teams |> teamResults false; Questions = questionResults quiz|}
     }

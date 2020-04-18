@@ -152,6 +152,20 @@ type PackageQuestion = {
     CommentImgKey : string
 }
 
+type TeamResult = {
+    TeamId : int
+    TeamName : string
+    Points : decimal
+    PlaceFrom : int
+    PlaceTo : int
+    History : Map<int, decimal>
+}
+
+type QuestionResult = {
+    Idx : int
+    Name : string
+}
+
 module MainModels =
 
     type ExpertCompetition = {
@@ -381,6 +395,7 @@ type IAdminApi = {
     nextQuestion : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
     getAnswers : REQ<unit> -> ARESP<AdminModels.AnswersBundle>
     updateResults : REQ<{|TeamId: int; Idx: int; Res: decimal option |} list> -> ARESP<unit>
+    getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
 }
 
 type ITeamApi = {
@@ -388,4 +403,5 @@ type ITeamApi = {
     takeActiveSession : REQ<unit> -> ARESP<TeamModels.QuizCard>
     answer : REQ<{|QwIndex:int; Answer:string|}> -> ARESP<unit>
     getHistory : REQ<unit> -> ARESP<TeamModels.TeamHistoryRecord list>
+    getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
 }

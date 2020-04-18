@@ -52,6 +52,7 @@ let api (context:HttpContext) : IAdminApi =
         nextQuestion = ex "nextQuestion" nextQuestion
         getAnswers = ex "getAnswers" getAnswers
         updateResults = ex "updateResults" updateResults
+        getResults = ex "getResults" getResults
     }
 
     api
@@ -345,3 +346,11 @@ let updateResults quiz req =
         CommonService.updateTeamNoReply {QuizId = quiz.QuizId; TeamId = r.TeamId} (logic r.Idx r.Res)
 
     Ok()
+
+let getResults quiz _ =
+    result{
+        let! quiz = (Data.Quizzes.get quiz.QuizId, "Quiz not found")
+        let teams = Data.Teams.getAllInQuiz quiz.Dsc.QuizId
+
+        return {|Teams = teams |> teamResults true; Questions = questionResults quiz|}
+    }

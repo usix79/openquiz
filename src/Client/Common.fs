@@ -376,6 +376,7 @@ module Infra =
                 nextQuestion = x.Wrap adminApi.nextQuestion
                 getAnswers = x.Wrap adminApi.getAnswers
                 updateResults = x.Wrap adminApi.updateResults
+                getResults = x.Wrap adminApi.getResults
             }
 
         member x.CreateTeamApi () =
@@ -384,4 +385,5 @@ module Infra =
                 takeActiveSession = x.Wrap teamApi.takeActiveSession
                 answer = x.Wrap teamApi.answer
                 getHistory = x.Wrap teamApi.getHistory
+                getResults = x.Wrap teamApi.getResults
             }

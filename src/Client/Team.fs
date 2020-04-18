@@ -33,6 +33,7 @@ type Msg =
     | Heartbeat
     | AnswerResponse of RESP<unit>
     | GetHistoryResp of RESP<TeamHistoryRecord list>
+    | GetResultsResp of RESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
 
 type Model = {
     IsActive : bool
@@ -44,6 +45,8 @@ type Model = {
     SseSource: Infra.SseSource option
     IsConnectionOk : bool
     History : TeamHistoryRecord list
+    TeamResults : TeamResult list
+    QuestionResults : QuestionResult list
 } with
     member x.CurrentQuestion =
         match x.Quiz with
@@ -81,7 +84,7 @@ let updateQuiz (f : QuizCard -> QuizCard) model  =
     | None -> model
 
 let initAnswer (model : Model, cmd : Cmd<Msg>) =
-    let createAnswer qw timeDiff =
+    let createAnswer (qw:QuestionCard) timeDiff =
         {QwIdx = qw.Idx; Text = ""; Status = if qw.IsCountdownActive (serverTime timeDiff) then Input else Failed}
 
     match model.CurrentQuestion with
@@ -157,7 +160,7 @@ let connection isOk model =
 
 let init (api:ITeamApi) user : Model*Cmd<Msg> =
     {IsActive = true; Quiz = None; Answer = None; IsConnectionOk = false;  ActiveTab = Question;
-        Error = ""; TimeDiff = TimeSpan.Zero; SseSource = None; History = []} |> apiCmd api.getState () QuizCardResp Exn
+        Error = ""; TimeDiff = TimeSpan.Zero; SseSource = None; History = []; TeamResults = []; QuestionResults = []} |> apiCmd api.getState () QuizCardResp Exn
 
 let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
@@ -171,7 +174,9 @@ let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) : Model * Cmd
     | Heartbeat -> cm |> connection true |> noCmd
     | ChangeTab Question -> {cm with ActiveTab = Question} |> noCmd
     | ChangeTab History -> {cm with ActiveTab = History} |> apiCmd api.getHistory () GetHistoryResp Exn
+    | ChangeTab Results -> {cm with ActiveTab = Results} |> apiCmd api.getResults () GetResultsResp Exn
     | GetHistoryResp {Value = Ok res} -> {cm with History = res} |> noCmd
+    | GetResultsResp {Value = Ok res} -> {cm with TeamResults = res.Teams; QuestionResults = res.Questions} |> noCmd
     | Exn ex when ex.Message = Errors.SessionIsNotActive ->
         unsubscribe cm
         {cm with IsActive = false} |> noCmd
@@ -242,7 +247,7 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
                                         ]
                                         p [] (splitByLines quiz.Msg)
                                      ]
-                        | Results -> yield str "RESULTS"
+                        | Results -> yield resultsView dispatch user model
                     ]
                 | Rejected -> div [Class "notification is-white"][span[Class "has-text-danger has-text-weight-bold"][str "Registration has been rejected ("]]
             ]
@@ -346,5 +351,42 @@ let historyView dispatch model =
                             ]
                         ]
                     ]
+        ]
+    ]
+
+let resultsView dispatch (user:TeamUser) model =
+    table [Class "table is-hoverable is-fullwidth"] [
+        thead [ ] [
+            yield tr [ ] [
+                th [ ] [ str "#" ]
+                th [ ] [ str "Team" ]
+                th [ ] [ str "Points" ]
+                th [ ] [ str "Place" ]
+            ]
+
+            match model.TeamResults |> List.tryFind (fun r -> r.TeamId = user.TeamId) with
+            | Some res ->
+                 yield resultsRow res [FontWeight "bold"]
+                 yield tr[][td[][];td[][];td[][];td[][]]
+            | None -> ()
+
+        ]
+        tbody [] [
+            for res in model.TeamResults |> List.sortByDescending (fun r -> r.Points, -r.TeamId) do
+                let style = if res.TeamId = user.TeamId then [FontWeight "bold"] else []
+                yield resultsRow res style
+        ]
+    ]
+
+let resultsRow res style =
+    tr [Style style] [
+        td [ ][ str <| res.TeamId.ToString()]
+        td [ ][ str res.TeamName]
+        td [ ][ str <| res.Points.ToString()]
+        td [] [
+            if res.PlaceFrom = res.PlaceTo
+            then res.PlaceFrom.ToString()
+            else sprintf "%i-%i" res.PlaceFrom res.PlaceTo
+            |> str
         ]
     ]
