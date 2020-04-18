@@ -192,6 +192,43 @@ module Admin =
             StartTime = qw.StartTime
         }
 
+    let teamAnswersRecord (team:Team) : AdminModels.TeamAnswersRecord =
+        {
+            Id = team.Dsc.TeamId
+            Nm = team.Dsc.Name
+            Awrs =
+                team.Answers
+                |> Map.map (fun idx aw ->
+                                {
+                                    Txt = aw.Text
+                                    RT = aw.RecieveTime
+                                    Res = aw.Result
+                                    IsA = aw.IsAutoResult
+                                    UT = aw.UpdateTime
+                                }
+                            )
+        }
+
+    let questionRecords  (quiz:Quiz) : AdminModels.QuestionRecord list =
+        quiz.Questions
+        |> List.rev
+        |> List.mapi (fun idx qw ->
+                        {
+                            Idx = idx + 1
+                            Nm = qw.Name
+                            Sec = qw.Seconds
+                            QQS = quizQuestionStatus qw.Status
+                            ST = qw.StartTime
+                        }
+        )
+
+
+    let AnswersBundle (quiz:Quiz) (teams:Team list): AdminModels.AnswersBundle =
+        {
+            Questions = questionRecords quiz
+            Teams  = teams |> List.map teamAnswersRecord
+        }
+
 module Teams =
 
     let quizCard (quiz:Quiz) (team:Team): TeamModels.QuizCard =
@@ -212,3 +249,28 @@ module Teams =
             LT = quiz.Dsc.ListenToken
             V = quiz.Version
         }
+
+    let quizHistory (quiz:Quiz) (team:Team): TeamModels.TeamHistoryRecord list =
+        quiz.Questions
+        |> List.rev
+        |> List.mapi (fun idx qw ->
+            let idx = idx + 1
+            let r =
+                {
+                    QwIdx = idx
+                    QwName = qw.Name
+                    QwAw =
+                        if idx = quiz.CurrentQuestionIndex then
+                            match qw.Status with
+                            | Announcing | Countdown -> ""
+                            | Settled -> qw.Answer
+                        else
+                            qw.Answer
+                    AwTxt = None
+                    Result = None
+                } :  TeamModels.TeamHistoryRecord
+
+            match team.GetAnswer idx with
+            | Some aw -> {r with AwTxt = Some aw.Text; Result = aw.Result}
+            | None -> r
+        )

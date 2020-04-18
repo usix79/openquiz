@@ -23,7 +23,6 @@ module CustomClaims =
 
 module CustomRoles =
     let Admin = "admin"
-    let Competitor = "competitor"
     let Expert = "expert"
     let Team = "team"
 

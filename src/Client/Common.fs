@@ -19,6 +19,9 @@ let timeDiff serverTime: System.TimeSpan = (serverTime - System.DateTime.UtcNow)
 let serverTime timeDiff =
     System.DateTime.UtcNow.Add timeDiff
 
+let compareDates (d1:System.DateTime) (d2:System.DateTime) =
+    ((d1 - d2):System.TimeSpan).TotalMilliseconds
+
 let noCmd model =
     model, Cmd.none
 
@@ -57,6 +60,12 @@ let urlForReg quizId token =
 let urlForPub quizId token =
      sprintf "%s?who=pub&quiz=%d&token=%s" (Infra.locationFullPath ()) quizId token
 
+let splitByLines (txt:string) =
+    [for l in txt.Split ([|'\n'|]) do
+        str l
+        br[]
+    ]
+
 let fileOnChange tag callback (ev:Types.Event) =
     let files : Types.FileList = !!ev.target.["files"]
     let file = files.[0]
@@ -79,6 +88,16 @@ type TRESP<'T, 'P> = {
 let taggedMsg msg tag =
     fun rsp ->
         msg {Tag = tag; Rsp = rsp}
+
+let saveToSessionStorage key value =
+    sessionStorage.setItem (key, Json.stringify value)
+
+let inline loadFromSessionStorage<'t>  key : 't option =
+    let str = sessionStorage.getItem key
+
+    match Json.tryParseAs<'t> str with
+    | Ok data -> Some data
+    | Error _ -> None
 
 let ofInt (value : string option) : int option =
     match value with
@@ -355,6 +374,8 @@ module Infra =
                 pauseCountDown = x.Wrap adminApi.pauseCountDown
                 finishQuestion = x.Wrap adminApi.finishQuestion
                 nextQuestion = x.Wrap adminApi.nextQuestion
+                getAnswers = x.Wrap adminApi.getAnswers
+                updateResults = x.Wrap adminApi.updateResults
             }
 
         member x.CreateTeamApi () =
@@ -362,5 +383,5 @@ module Infra =
                 getState = x.Wrap teamApi.getState
                 takeActiveSession = x.Wrap teamApi.takeActiveSession
                 answer = x.Wrap teamApi.answer
-
+                getHistory = x.Wrap teamApi.getHistory
             }

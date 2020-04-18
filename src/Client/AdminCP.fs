@@ -124,7 +124,7 @@ let scheduleTick (model : Model,  cmd : Cmd<Msg>) =
         | _ -> model, cmd
     | _ -> model, cmd
 
-let init (api:IAdminApi) user st : Model*Cmd<Msg> =
+let init (api:IAdminApi) user : Model*Cmd<Msg> =
     {Errors = Map.empty; Quiz = None; Package = None; IsLoading = true; AvailablePackages = None; TimeDiff = TimeSpan.Zero} |> apiCmd api.getQuizCard () QuizCardResp Exn
 
 let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =

@@ -11,13 +11,13 @@ open Common
 let termsOfUse dispatch acceptMsg cancelMsg =
     div [Class "modal is-active"][
         div [Class "modal-background"][]
-        div [Class "modal-card"][
+        div [Class "modal-card"; Style [Height "70%"; Width "80%"]][
             header [Class "modal-card-head"][
                 p [Class "modal-card-title"] [str "Welcome to Open Quiz production area!"]
                 button [Class "delete"; AriaLabel "close"; OnClick (fun _ ->dispatch cancelMsg)][]
             ]
             section [Class "modal-card-body"][
-                iframe [Src "/terms.html"; Style [Width "100%"]][]
+                iframe [Src "/terms.html"; Style [Width "100%"; Height "100%"]][]
 
             ]
             footer [Class "modal-card-foot"][

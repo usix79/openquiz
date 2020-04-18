@@ -12,10 +12,6 @@ open Common
 open MainModels
 
 type Msg =
-    | BecomeProducer
-    | AcceptTermsOfUse
-    | CancelTermsOfUse
-    | BecomeProducerResp of RESP<unit>
     | Exn of exn
     | DeleteError of string
     | GetPubModelResp of RESP<{|Profile : MainModels.ExpertProfile; Quizzes : MainModels.QuizPubRecord list|}>
@@ -26,7 +22,6 @@ type Msg =
     | RegisterTeamResp of RESP<MainModels.ExpertCompetition>
 
 type Model = {
-    IsTermsOfUseOpen : bool
     Errors : Map<string, string>
     Profile : MainModels.ExpertProfile option
     Quizzes : MainModels.QuizPubRecord list
@@ -89,15 +84,10 @@ let registerResp comp cm =
     | None -> cm
 
 let init (api:IMainApi) user : Model*Cmd<Msg> =
-    {IsTermsOfUseOpen = false; Errors = Map.empty; Quizzes = []; RegForm = None; Profile = None} |> apiCmd api.getPubModel () GetPubModelResp Exn
+    {Errors = Map.empty; Quizzes = []; RegForm = None; Profile = None} |> apiCmd api.getPubModel () GetPubModelResp Exn
 
 let update (api:IMainApi)(user:MainUser) (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
-    | BecomeProducer -> {cm with IsTermsOfUseOpen = true} |> noCmd
-    | CancelTermsOfUse -> {cm with IsTermsOfUseOpen = false} |> noCmd
-    | AcceptTermsOfUse -> {cm with IsTermsOfUseOpen = false} |> apiCmd api.becomeProducer () BecomeProducerResp Exn
-    | BecomeProducerResp {Value = Ok _} -> cm |> noCmd
-    | BecomeProducerResp {Value = Error txt} -> cm |> addError txt |> noCmd
     | Exn ex -> cm |> addError ex.Message |> noCmd
     | DeleteError id -> cm |> delError id |> noCmd
     | GetPubModelResp {Value = Ok res} -> {cm with Profile = Some res.Profile; Quizzes = res.Quizzes}|>  noCmd
@@ -143,17 +133,6 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                 ]
         br[]
 
-        if not user.IsProducer then
-            p [Class "title"] [str "Want to participate?"]
-            p [Class "subtitle"] [
-                a [Class "button is-text has-text-danger"; OnClick (fun _ -> dispatch BecomeProducer)][str "Become a producer!"]
-            ]
-
-        if model.IsTermsOfUseOpen then
-            MainTemplates.termsOfUse dispatch AcceptTermsOfUse CancelTermsOfUse
-
-        br[]
-
         let finishedQuizzes = model.Quizzes |> List.filter (fun q -> q.Status = Finished) |> List.sortBy (fun q -> q.StartTime)
         if not (List.isEmpty finishedQuizzes) then
             h3 [Class "title"] [str "Finished quizzes"]
@@ -188,11 +167,7 @@ let quizBox (dispatch : Msg -> unit) (profile:ExpertProfile option) (quiz : Quiz
                         br[]
                         strong [][str quiz.Name]
                         br[]
-                        small [][
-                            for l in quiz.Description.Split ([|'\n'|]) do
-                                str l
-                                br[]
-                        ]
+                        small [] (splitByLines quiz.Description)
                     ]
                 ]
                 match quiz.Status <> Finished, profile, regForm with

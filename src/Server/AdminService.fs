@@ -50,6 +50,8 @@ let api (context:HttpContext) : IAdminApi =
         pauseCountDown = ex "pauseCountDown" pauseCountDown
         finishQuestion = ex "finishQuestion" finishQuestion
         nextQuestion = ex "nextQuestion" nextQuestion
+        getAnswers = ex "getAnswers" getAnswers
+        updateResults = ex "updateResults" updateResults
     }
 
     api
@@ -326,3 +328,20 @@ let nextQuestion quiz _ =
         let! quiz = CommonService.updateQuiz quiz.QuizId logic
         return Admin.quizCard quiz
     }
+
+let getAnswers quiz _ =
+    result{
+        let! quiz = (Data.Quizzes.get quiz.QuizId, "Quiz not found")
+        let teams = Data.Teams.getAllInQuiz quiz.Dsc.QuizId
+
+        return Admin.AnswersBundle quiz teams
+    }
+
+let updateResults quiz req =
+    let logic idx res team =
+        team |> Domain.Teams.updateResult idx res DateTime.UtcNow |> Ok
+
+    for r in req do
+        CommonService.updateTeamNoReply {QuizId = quiz.QuizId; TeamId = r.TeamId} (logic r.Idx r.Res)
+
+    Ok()

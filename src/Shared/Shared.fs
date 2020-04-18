@@ -251,6 +251,57 @@ module AdminModels =
         CurrentQw : QuizQuestion option
     }
 
+    type Answer = {
+        Txt : string
+        RT : System.DateTime
+        Res : decimal option
+        IsA : bool
+        UT : System.DateTime option
+    }
+
+    type QuestionRecord = {
+        Idx : int
+        Nm : string
+        Sec : int
+        QQS : QuizQuestionStatus
+        ST : System.DateTime option
+    }
+
+    type TeamAnswersRecord = {
+        Id : int
+        Nm : string
+        Awrs : Map<int,Answer>
+    } with
+        member x.GetAw idx =
+            match x.Awrs.TryGetValue idx with
+            | true, aw -> Some aw
+            | _ -> None
+        member x.UpdateAwr idx aw =
+            { x with Awrs = x.Awrs.Add(idx, aw)}
+
+    type AnswersBundle = {
+        Questions : QuestionRecord list
+        Teams : TeamAnswersRecord list
+    } with
+        member x.GetAw teamId idx =
+            match x.Teams |> List.tryFind (fun t -> t.Id = teamId) with
+            | Some team -> team.GetAw idx
+            | None -> None
+        member x.FindAnswers idx txt =
+            x.Teams
+            |> List.map (fun t -> t.Id, (t.GetAw idx))
+            |> List.filter (fun (_,a) -> a.IsSome && a.Value.Txt = txt)
+            |> List.map (fun (teamId,a) -> teamId,a.Value)
+        member x.UpdateAnswers idx (answersToUpdate : Map<int,Answer>) =
+            { x with
+                Teams = x.Teams |> List.map ( fun team ->
+                    match answersToUpdate.TryGetValue team.Id with
+                    | true, aw -> team.UpdateAwr idx aw
+                    | _ -> team
+                )
+            }
+
+
 module TeamModels =
     type QuizCard = {
         QS : QuizStatus
@@ -267,6 +318,15 @@ module TeamModels =
             match x.QS with
             | Draft | Published | Live -> x.Wcm
             | Finished | Archived -> x.Fwl
+
+    type TeamHistoryRecord = {
+        QwIdx : int
+        QwName : string
+        QwAw : string
+        AwTxt : string option
+        Result : decimal option
+    }
+
 
 module Infra =
     let routeBuilder clientPath (typeName: string) (methodName: string) =
@@ -319,10 +379,13 @@ type IAdminApi = {
     pauseCountDown : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
     finishQuestion : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
     nextQuestion : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
+    getAnswers : REQ<unit> -> ARESP<AdminModels.AnswersBundle>
+    updateResults : REQ<{|TeamId: int; Idx: int; Res: decimal option |} list> -> ARESP<unit>
 }
 
 type ITeamApi = {
     getState : REQ<unit> -> ARESP<TeamModels.QuizCard>
     takeActiveSession : REQ<unit> -> ARESP<TeamModels.QuizCard>
     answer : REQ<{|QwIndex:int; Answer:string|}> -> ARESP<unit>
+    getHistory : REQ<unit> -> ARESP<TeamModels.TeamHistoryRecord list>
 }

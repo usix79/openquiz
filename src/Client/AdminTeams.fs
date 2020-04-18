@@ -81,10 +81,10 @@ let submitCard api model =
         model |> loading card.TeamId |> apiCmd api.updateTeamCard card SubmitResp Exn
     | None -> model |> noCmd
 
-let replaceRecord record model =
+let replaceRecord record model : Model=
     {model with Teams = record :: (model.Teams |> List.filter (fun q -> q.TeamId <> record.TeamId))}
 
-let init (api:IAdminApi) user st : Model*Cmd<Msg> =
+let init (api:IAdminApi) user : Model*Cmd<Msg> =
     {Errors = Map.empty; Teams = []; CardIsLoading = None; Card = None; CreateDlg = None} |> apiCmd api.getTeams () GetTeamsResp Exn
 
 let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =

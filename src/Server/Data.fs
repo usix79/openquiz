@@ -370,6 +370,14 @@ module Teams =
         | null -> None
         | doc -> Some (teamOfDocument doc)
 
+    let getAllInQuiz (quizId:int) : Team list =
+        let table = loadTable "Teams"
+
+        table.Query(Primitive.op_Implicit quizId, QueryFilter())
+        |> readAll
+        |> Seq.map teamOfDocument
+        |> List.ofSeq
+
 //#region Converters
 
     let private documentOfTeam (team:Team) =

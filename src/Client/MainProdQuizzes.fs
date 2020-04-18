@@ -283,7 +283,7 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
                     div [Class "control"][
                         label [Class "checkbox"][
                             input [Type "checkbox"; Checked card.IsPrivate; OnChange (fun ev -> dispatch <| UpdateIsPrivat ev.Checked)]
-                            str " the quiz is private (will not displayed on the main page)"
+                            str " the quiz is private (will not be displayed on the main page)"
                         ]
                     ]
                 ]

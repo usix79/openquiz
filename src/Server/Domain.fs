@@ -346,9 +346,9 @@ module Teams =
 
     let settleAnswer qwIdx (jury : string -> bool) now (team: Team) =
         team |> updateAnswer qwIdx (fun aw ->
-            if aw.IsAutoResult || aw.Result.IsNone then
+            if (aw.IsAutoResult || aw.Result.IsNone) && (jury aw.Text) then
                 {aw with
-                    Result = Some <| if jury aw.Text then 1m else 0m
+                    Result = Some 1m
                     IsAutoResult = true
                     UpdateTime = Some now
                 }
@@ -364,3 +364,8 @@ module Teams =
             | None ->
                 Ok {team with Answers = team.Answers.Add (qwIndex, {Text = awText; RecieveTime = now; Result = None; IsAutoResult = false; UpdateTime = Some now})}
             | Some aw -> Error <| "Answer is alredy registered: " + aw.Text
+
+    let updateResult qwIdx res now (team:Team) =
+        team |> updateAnswer qwIdx (fun aw ->
+            {aw with Result = res; IsAutoResult = false; UpdateTime = Some now}
+        )

@@ -31,6 +31,7 @@ let api (context:HttpContext) : ITeamApi =
         takeActiveSession = SecurityService.execute logger "takeActiveSession" <| SecurityService.authorizeTeam secret takeActiveSession
         getState = ex "getState" getState
         answer = ex "answer" answer
+        getHistory = ex "getHistory" getHistory
     }
 
     api
@@ -63,3 +64,11 @@ let answer team req =
         CommonService.updateTeamNoReply team.Key logic
         Ok ()
     | _ -> Error "Team's status does not suppose sending answers"
+
+let getHistory team _ =
+    result{
+        let! quiz = (Data.Quizzes.get team.QuizId, "Quiz not found")
+        let! team = (Data.Teams.get team.QuizId team.TeamId, "Team not found")
+
+        return Teams.quizHistory quiz team
+    }

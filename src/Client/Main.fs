@@ -2,6 +2,7 @@ module rec Main
 
 open Elmish
 open Fable.React
+open Fable.FontAwesome
 open Fable.React.Props
 open Elmish.React
 
@@ -16,6 +17,13 @@ type Msg =
     | Prod of MainProd.Msg
     | SwithToPublic
     | SwithToProd
+    | BecomeProducer
+    | AcceptTermsOfUse
+    | CancelTermsOfUse
+    | BecomeProducerResp of RESP<unit>
+    | Exn of exn
+    | DeleteError of string
+
 
 type Model = {
     IsBurgerOpen : bool
@@ -28,6 +36,12 @@ type Area =
     | Public of MainPub.Model
     | Prod of MainProd.Model
 
+let addError txt model =
+    {model with Errors = model.Errors.Add(System.Guid.NewGuid().ToString(),txt)}
+
+let delError id model =
+    {model with Errors = model.Errors.Remove id}
+
 let init api user : Model*Cmd<Msg> =
     let subModel,subCmd = MainPub.init api user
     {IsBurgerOpen = false; IsTermsOfUseOpen = false; Errors = Map.empty; Area = Public subModel}, Cmd.map Msg.Public subCmd
@@ -35,6 +49,11 @@ let init api user : Model*Cmd<Msg> =
 let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg, cm.Area with
     | ToggleBurger, _ -> {cm with IsBurgerOpen = not cm.IsBurgerOpen} |> noCmd
+    | BecomeProducer, _ -> {cm with IsTermsOfUseOpen = true} |> noCmd
+    | CancelTermsOfUse, _ -> {cm with IsTermsOfUseOpen = false} |> noCmd
+    | AcceptTermsOfUse, _ -> {cm with IsTermsOfUseOpen = false} |> apiCmd api.becomeProducer () BecomeProducerResp Exn
+    | BecomeProducerResp {Value = Ok _}, _ -> cm, Cmd.OfFunc.result SwithToProd
+    | DeleteError id, _ -> cm |> delError id |> noCmd
     | SwithToProd, _ ->
         let subModel,subCmd = MainProd.init api user
         {cm with Area = Prod subModel}, Cmd.map Msg.Prod subCmd
@@ -48,6 +67,8 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | Msg.Prod subMsg, Prod subModel ->
         let subModel,subCmd = MainProd.update api user subMsg subModel
         {cm with Area = Prod subModel}, Cmd.map Msg.Prod subCmd
+    | Err txt, _ -> cm |> addError txt |> noCmd
+    | Exn ex, _ -> cm |> addError ex.Message |> noCmd
     | _ -> cm |> noCmd
 
 let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
@@ -64,11 +85,6 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                                 img [Src "/logo.png"; Alt "logo"; Style [Height "64px"; Width "64px"; MaxHeight "64px"]]
                             ]
                         ]
-
-                        match user.IsProducer, model.Area with
-                        | true, Public _ -> a [Class "navbar-item"; OnClick (fun _ -> dispatch SwithToProd)][str "to production area >>"]
-                        | true, Prod _ -> a [Class "navbar-item"; OnClick (fun _ -> dispatch SwithToPublic)][str "<< to public area"]
-                        | _ -> ()
 
                         a [Class "navbar-item is-paddingleft is-hidden-desktop"][str user.Name]
 
@@ -96,11 +112,32 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                             ]
                         ]
                     ]
+                    match user.IsProducer, model.Area with
+                    | true, Public _ ->
+                        a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch SwithToProd)][
+                            Fa.i [Fa.Regular.HandPointer][str " to production area"]
+                        ]
+                    | true, Prod _ ->
+                        a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch SwithToPublic)][
+                            Fa.i [Fa.Solid.HandPointer][str " to public area"]
+                        ]
+                    | false, Public _ ->
+                        a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch BecomeProducer)][
+                            Fa.i [Fa.Regular.HandPointer][str " become a quiz maker!"]
+                        ]
+                    | _ -> ()
                 ]
             ]
         ]
         div [Class "hero-body"] [
             div [Class "container"; Style [MarginBottom "auto"]] [
+
+                for error in model.Errors do
+                    div [Class "notification is-danger"][
+                        button [Class "delete"; OnClick (fun _ -> dispatch (DeleteError error.Key))][]
+                        str error.Value
+                    ]
+
                 match model.Area with
                 | Public subModel -> MainPub.view (Msg.Public >> dispatch) user subModel
                 | Prod subModel -> MainProd.view (Msg.Prod >> dispatch) user subModel
@@ -121,4 +158,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                 a [Href "https://t.me/open_quiz"; Class "has-text-grey-light" ] [str "Contact"]
             ]
         ]
+
+        if model.IsTermsOfUseOpen then
+            MainTemplates.termsOfUse dispatch AcceptTermsOfUse CancelTermsOfUse
     ]

@@ -43,31 +43,31 @@ let switchByHashMsg () =
     | "#results" -> SwitchToResults
     | _ -> SwitchToTeams
 
-let init api user st : Model*Cmd<Msg> =
+let init api user : Model*Cmd<Msg> =
     Empty, Cmd.OfFunc.result <| switchByHashMsg()
 
-let update (api:IAdminApi) user (msg : Msg) (cm : Model) st : Model * Cmd<Msg> =
+let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg, cm with
     | Msg.SwitchToTeams, _ ->
-        let subModel, subCmd = AdminTeams.init api user st
+        let subModel, subCmd = AdminTeams.init api user
         Teams subModel, Cmd.batch[Cmd.map Msg.Teams subCmd; replaceHashCmd msg]
     | Msg.Teams subMsg, Teams subModel ->
         let subModel,subCmd = AdminTeams.update api user subMsg subModel
         Teams subModel, Cmd.map Msg.Teams subCmd
     | Msg.SwitchToCP, _ ->
-        let subModel, subCmd = AdminCP.init api user st
+        let subModel, subCmd = AdminCP.init api user
         CP subModel, Cmd.batch[Cmd.map Msg.CP subCmd; replaceHashCmd msg]
     | Msg.CP subMsg, CP subModel ->
         let subModel,subCmd = AdminCP.update api user subMsg subModel
         CP subModel, Cmd.map Msg.CP subCmd
     | Msg.SwitchToAnswers, _ ->
-        let subModel, subCmd = AdminAnswers.init api user st
+        let subModel, subCmd = AdminAnswers.init api user
         Answers subModel, Cmd.batch[Cmd.map Msg.Answers subCmd; replaceHashCmd msg]
     | Msg.Answers subMsg, Answers subModel ->
         let subModel,subCmd = AdminAnswers.update api user subMsg subModel
         Answers subModel, Cmd.map Msg.Answers subCmd
     | Msg.SwitchToResults, _ ->
-        let subModel, subCmd = AdminResults.init api user st
+        let subModel, subCmd = AdminResults.init api user
         Results subModel, Cmd.batch[Cmd.map Msg.Results subCmd; replaceHashCmd msg]
     | Msg.Results subMsg, Results subModel ->
         let subModel,subCmd = AdminResults.update api user subMsg subModel

@@ -17,7 +17,7 @@ type Model = {
     Error : string
 }
 
-let init (api:IAdminApi) user st : Model*Cmd<Msg> =
+let init (api:IAdminApi) user : Model*Cmd<Msg> =
     {Error = ""}, Cmd.none
 
 let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =

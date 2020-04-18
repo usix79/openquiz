@@ -32,6 +32,7 @@ type Msg =
     | SourceError of string
     | Heartbeat
     | AnswerResponse of RESP<unit>
+    | GetHistoryResp of RESP<TeamHistoryRecord list>
 
 type Model = {
     IsActive : bool
@@ -42,6 +43,7 @@ type Model = {
     TimeDiff: TimeSpan
     SseSource: Infra.SseSource option
     IsConnectionOk : bool
+    History : TeamHistoryRecord list
 } with
     member x.CurrentQuestion =
         match x.Quiz with
@@ -155,18 +157,21 @@ let connection isOk model =
 
 let init (api:ITeamApi) user : Model*Cmd<Msg> =
     {IsActive = true; Quiz = None; Answer = None; IsConnectionOk = false;  ActiveTab = Question;
-        Error = ""; TimeDiff = TimeSpan.Zero; SseSource = None} |> apiCmd api.getState () QuizCardResp Exn
+        Error = ""; TimeDiff = TimeSpan.Zero; SseSource = None; History = []} |> apiCmd api.getState () QuizCardResp Exn
 
-let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) st : Model * Cmd<Msg> =
+let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
     | Reactivate -> cm |> apiCmd api.takeActiveSession () QuizCardResp Exn
     | QuizCardResp {Value = Ok res; ST = st} -> cm |> startup res st |> ok |> subscribe user.QuizId |> initAnswer |> setupCountdown
     | CountdownTick _ -> cm |> sendAnswer api |> setupCountdown
     | QuizChanged evt -> cm |> applyEvent evt |> sendAnswer api |> initAnswer |> setupCountdown
     | AnswerResponse {Value = Ok _} -> cm |> answerStatus Sent |> ok |> noCmd
-    | SourceError txt -> cm |> connection false |> noCmd
+    | SourceError _ -> cm |> connection false |> noCmd
     | UpdateAnswer txt -> cm |> answerText txt |> noCmd
     | Heartbeat -> cm |> connection true |> noCmd
+    | ChangeTab Question -> {cm with ActiveTab = Question} |> noCmd
+    | ChangeTab History -> {cm with ActiveTab = History} |> apiCmd api.getHistory () GetHistoryResp Exn
+    | GetHistoryResp {Value = Ok res} -> {cm with History = res} |> noCmd
     | Exn ex when ex.Message = Errors.SessionIsNotActive ->
         unsubscribe cm
         {cm with IsActive = false} |> noCmd
@@ -222,7 +227,7 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
                 | Admitted ->
                     div[][
                         match model.ActiveTab with
-                        | History -> yield str "ANSWERS"
+                        | History -> yield historyView dispatch model
                         | Question ->
                             match quiz.QS with
                             | Live -> yield quiestionView dispatch quiz model.Answer isCountdownActive
@@ -235,7 +240,7 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
                                             | Finished | Archived -> str "Finished"
                                             | _ -> ()
                                         ]
-                                        p [][for l in quiz.Msg.Split ([|'\n'|]) do yield str l; yield br[]]
+                                        p [] (splitByLines quiz.Msg)
                                      ]
                         | Results -> yield str "RESULTS"
                     ]
@@ -256,7 +261,7 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
                                 if isCountdownActive then str (secondsLeft.ToString()) else str "Question"
                             ]
                         ]
-                        li [classList ["has-text-weight-bold", model.ActiveTab = History] ] [
+                        li [classList ["has-text-weight-bold", model.ActiveTab = Results] ] [
                             a [OnClick (fun _ -> dispatch (ChangeTab Results))] [ str "Results" ]
                         ]
                     ]
@@ -273,10 +278,10 @@ let quiestionView (dispatch : Msg -> unit) quiz answer isCountdownActive =
             yield! MainTemplates.imgEl q.Img
             if q.QQS = Settled then
                 p [ Class "has-text-weight-bold" ] [ str "Answer" ]
-            p [ Class "has-text-weight-semibold" ] [ str q.Txt ]
+            p [ Class "has-text-weight-semibold" ] (splitByLines q.Txt)
             if (q.Com <> "") then
                 p [ Class "has-text-weight-bold" ] [ str "Comment" ]
-                p [ ] [ str q.Com ]
+                p [ ] (splitByLines q.Com)
             br[]
         | _ -> ()
 
@@ -297,4 +302,49 @@ let quiestionView (dispatch : Msg -> unit) quiz answer isCountdownActive =
                 ]
             ]
         | _ -> ()
+    ]
+
+
+let historyView dispatch model =
+    table [Class "table is-hoverable is-fullwidth"][
+        thead [ ] [
+            tr [ ] [
+                th [Style [Width "30px"] ] [ str "#" ]
+                th [ ] [ str "Answer" ]
+                th [ ] [ str "Result" ]
+            ]
+        ]
+
+        tbody [ ] [
+            for aw in model.History |> List.sortByDescending (fun aw -> aw.QwIdx)  do
+                let modifiers =
+                    match aw.Result with
+                    | Some v when v > 0m -> ["has-text-success", true]
+                    | Some _ -> ["has-text-danger", true]
+                    | None -> []
+
+                tr [ ][
+                    td [] [p [classList modifiers][str aw.QwName]]
+                    td [] [p [classList modifiers][str (defaultArg aw.AwTxt "")]]
+                    td [] [
+                        let txt =
+                            match aw.Result with
+                            | Some d when d > 0m -> (sprintf "+%M" d)
+                            | Some d -> d.ToString()
+                            | None -> ""
+                        p [classList modifiers][str txt]
+                    ]
+                ]
+
+                if aw.QwAw <> "" then
+                    tr [ ][
+                        td [] []
+                        td [ColSpan 2] [
+                            span [Class "is-italic has-text-weight-light is-family-secondary is-size-7"][
+                                str "correct answer: "
+                                str (aw.QwAw.Replace('\n', '/'))
+                            ]
+                        ]
+                    ]
+        ]
     ]

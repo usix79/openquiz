@@ -15,3 +15,5 @@ $family-primary: 'Open Sans';
 
 // Bulma
 @import "~bulma/bulma";
+
+.light-item:hover { background-color: #ffffff !important; }

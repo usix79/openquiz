@@ -22,7 +22,6 @@ type Msg =
 type Model = {
     CurrentUser : User option
     CurrentPage : CurrentPage
-    LoginTime : System.DateTime
 }
 
 let apiFactory = Infra.ApiFactory(fun () -> Infra.redirect "/login")
@@ -32,28 +31,23 @@ let adminApi = apiFactory.CreateAdminApi()
 let teamApi = apiFactory.CreateTeamApi()
 
 let getUserFromStorage() =
-    let user = Infra.loadFromSessionStorage<User> "USER"
-    let start = Infra.loadFromSessionStorage<System.DateTime> "START"
-    match user, start with
-    | Some user, Some start -> Some (user, start)
-    | _ -> None
+    Infra.loadFromSessionStorage<User> "USER"
 
-let initChildPage user start cm =
+let initChildPage user cm =
     match user with
     | MainUser u ->
         let submodel, subCmd = Main.init mainApi u
         {cm with CurrentPage = MainPage submodel; CurrentUser = Some user}, Cmd.map MainMsg subCmd
     | AdminUser u ->
-        let submodel, subcmd = Admin.init adminApi u start
+        let submodel, subcmd = Admin.init adminApi u
         {cm with CurrentPage = AdminPage submodel; CurrentUser = Some user}, Cmd.map AdminMsg subcmd
     | TeamUser u ->
         let submodel, subcmd = Team.init teamApi u
         {cm with CurrentPage = TeamPage submodel; CurrentUser = Some user}, Cmd.map TeamMsg subcmd
 
-let saveUser token refreshToken user serverTime =
+let saveUser token refreshToken user =
     apiFactory.UpdateTokens token refreshToken |> ignore
     Infra.saveToSessionStorage "USER" user
-    Infra.saveToSessionStorage "START" serverTime
 
 let evaluateLoginReq (query : Map<string,string>) =
     let qs x = query.TryFind x
@@ -75,32 +69,32 @@ let isReqForSameUser (req:LoginReq) (user:User) =
     | _ -> false
 
 let init (): Model * Cmd<Msg> =
-    let cm =  {CurrentPage = EmptyPage "Initializing..."; CurrentUser = None; LoginTime = System.DateTime.UtcNow}
+    let cm =  {CurrentPage = EmptyPage "Initializing..."; CurrentUser = None}
 
     match getUserFromStorage(), evaluateLoginReq (Infra.currentQueryString()) with
-    | Some (user,st), Some req when isReqForSameUser req user -> {cm with LoginTime = st} |> initChildPage user st
+    | Some user, Some req when isReqForSameUser req user -> cm |> initChildPage user
     | _, Some req -> cm |> apiCmd securityApi.login req LoginResponse Exn
-    | Some (user,st), None -> {cm with LoginTime = st} |> initChildPage user st
+    | Some user, None -> cm |> initChildPage user
     | _ ->
         Infra.redirect "/"
         cm |> noCmd
 
 let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match cm.CurrentPage, cm.CurrentUser, msg with
-    | EmptyPage _, _, LoginResponse {Value = Ok res; ST = serverTime} ->
-            saveUser res.Token res.RefreshToken res.User serverTime
+    | EmptyPage _, _, LoginResponse {Value = Ok res} ->
+            saveUser res.Token res.RefreshToken res.User
 
             match res.User with
             | MainUser _ -> Infra.clearQueryString()
             | _ -> ()
 
-            {cm with LoginTime = serverTime} |> initChildPage res.User serverTime
+            cm |> initChildPage res.User
     | EmptyPage _, _, LoginResponse {Value = Error txt} -> {cm with CurrentPage = EmptyPage txt} |> noCmd
     | EmptyPage _,  _, Exn ex -> {cm with CurrentPage = EmptyPage ex.Message} |> noCmd
     | MainPage subModel, Some (MainUser user), MainMsg subMsg ->
         let user =
             match subMsg with
-            | Main.Msg.Public (MainPub.Msg.BecomeProducerResp {Value = Ok _}) ->
+            | Main.Msg.BecomeProducerResp {Value = Ok _} ->
                 let user = {user with IsProducer = true}
                 Infra.saveToSessionStorage "USER" (MainUser user)
                 user
@@ -109,10 +103,10 @@ let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
         let newModel,newCmd = Main.update mainApi user subMsg subModel
         {cm with CurrentPage = MainPage newModel; CurrentUser = Some (MainUser user)}, Cmd.map MainMsg newCmd
     | AdminPage subModel, Some (AdminUser user), AdminMsg subMsg ->
-        let newModel,newCmd = Admin.update adminApi user subMsg subModel cm.LoginTime
+        let newModel,newCmd = Admin.update adminApi user subMsg subModel
         {cm with CurrentPage = AdminPage newModel}, Cmd.map AdminMsg newCmd
     | TeamPage subModel, Some (TeamUser user), TeamMsg subMsg ->
-        let newModel,newCmd = Team.update teamApi user subMsg subModel cm.LoginTime
+        let newModel,newCmd = Team.update teamApi user subMsg subModel
         {cm with CurrentPage = TeamPage newModel}, Cmd.map TeamMsg newCmd
     | _, _, _ -> cm |> noCmd
 
