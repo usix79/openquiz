@@ -9,8 +9,6 @@ open Shared
 open Common
 open Presenter
 
-let private _packagesLockObj = System.Object()
-
 let api (context:HttpContext) : IMainApi =
     let logger : ILogger = context.Logger()
     let cfg = context.GetService<IConfiguration>()
@@ -50,10 +48,10 @@ let api (context:HttpContext) : IMainApi =
     api
 
 let becomeProducer expertId username _ =
-    defaultArg (Data.Experts.get expertId) (Domain.Experts.createNew expertId username)
-    |> Domain.Experts.becomeProducer
-    |> Data.Experts.update
-    |> ignore
+    let creator _ = Domain.Experts.createNew expertId username |> Ok
+    let logic expert = expert |> Domain.Experts.becomeProducer |> Ok
+
+    CommonService.updateOrCreateExpert expertId creator logic |> ignore
 
     Ok ()
 
@@ -61,13 +59,12 @@ let createQuiz expert _ =
     let creator quizId =
         Ok <| Domain.Quizzes.createNew quizId expert.Id
 
+
     result{
         let! quiz = CommonService.createQuiz creator
 
-        expert
-        |> Domain.Experts.addQuiz quiz.Dsc.QuizId
-        |> Data.Experts.update
-        |> ignore
+        let logic expert = expert |> Domain.Experts.addQuiz quiz.Dsc.QuizId |> Ok
+        CommonService.updateExpert expert.Id logic |> ignore
 
         return {|Record = quiz.Dsc |> Main.quizProdRecord; Card = Main.quizProdCard quiz; |}
     }
@@ -129,10 +126,12 @@ let getPubModel expId username _ =
     Ok {|Profile = {Competitions = competitions}; Quizzes = quizzes|}
 
 let registerTeam expId username req =
-    result {
-        let! quiz = ((Data.Quizzes.getDescriptor req.QuizId), "Quiz not found")
+    let expCreator _ = Domain.Experts.createNew expId username |> Ok
 
-        let exp = defaultArg (Data.Experts.get expId) (Domain.Experts.createNew expId username)
+    result {
+        let! exp = CommonService.updateOrCreateExpert expId expCreator Ok
+
+        let! quiz = ((Data.Quizzes.getDescriptor req.QuizId), "Quiz not found")
 
         let teamName = req.TeamName.Trim()
         let! team =
@@ -147,7 +146,6 @@ let registerTeam expId username req =
     }
 
 let private createTeam exp quiz teamName : Result<Domain.Team,string> =
-    let teamName = teamName.Trim()
 
     let creator (key : Domain.TeamKey) =
         let teamsInQuiz = Data.Teams.getDescriptors quiz.QuizId
@@ -158,10 +156,8 @@ let private createTeam exp quiz teamName : Result<Domain.Team,string> =
     result {
         let! team = CommonService.createTeam quiz.QuizId creator
 
-        exp
-        |> Domain.Experts.addComp team.Dsc.QuizId team.Dsc.TeamId
-        |> Data.Experts.update
-        |> ignore
+        let logic expert = expert |> Domain.Experts.addComp team.Dsc.QuizId team.Dsc.TeamId |> Ok
+        CommonService.updateExpert exp.Id logic |> ignore
 
         return team
     }
@@ -195,30 +191,28 @@ let getProdPackageCard expert (req : {|PackageId : int|}) =
     | Some package -> Ok <| packageCard package
 
 let createPackage expert _ =
-    let transaction = fun () ->
-        let packageId = Data.Packages.getMaxId() + 1
-        let package = Domain.Packages.createNew packageId expert.Id
-        Data.Packages.update package
+    let creator = fun id ->
+        Domain.Packages.createNew id expert.Id |> Ok
 
-    let package = lock _packagesLockObj transaction
+    let logic = fun (package:Domain.Package) expert ->
+        expert |> Domain.Experts.addPackage package.Dsc.PackageId |> Ok
 
-    expert
-    |> Domain.Experts.addPackage package.Dsc.PackageId
-    |> Data.Experts.update
-    |> ignore
+    result {
+        let! package = CommonService.createPackage creator
 
-    Ok {|Record = package.Dsc |> packageRecord; Card = packageCard package; |}
+        CommonService.updateExpertNoReply expert.Id (logic package)
 
-let updateProdPackageCard expert card =
-    match Data.Packages.get card.PackageId with
-    | Some pkg when pkg.Dsc.Producer <> expert.Id -> Error "Package is produced by someone else"
-    | None -> Error "Package not found"
-    | Some pkg ->
-        let updatedPkg =
-            { pkg with
-                Dsc = { pkg.Dsc with Name = card.Name}
-                Questions = card.Questions |> List.map packageQwToDomain
-            }
-            |> Data.Packages.update
+        return {|Record = package.Dsc |> packageRecord; Card = packageCard package; |}
+    }
 
-        updatedPkg.Dsc |> packageRecord |> Ok
+let updateProdPackageCard _ card =
+    let logic (pkg:Domain.Package) =
+        { pkg with
+            Dsc = { pkg.Dsc with Name = card.Name}
+            Questions = card.Questions |> List.map packageQwToDomain
+        } |> Ok
+
+    result {
+        let! package = CommonService.updatePackage card.PackageId logic
+        return package.Dsc |> packageRecord
+    }

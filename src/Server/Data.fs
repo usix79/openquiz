@@ -463,10 +463,7 @@ module Packages =
 
     let update (pkg : Package) =
         printfn "%A" pkg
-        let pkg =
-            match get pkg.Dsc.PackageId  with
-            | Some oldPkg -> {pkg with Version = oldPkg.Version + 1}
-            | None -> pkg
+        let pkg =  {pkg with Version = pkg.Version + 1}
 
         printfn "%A" pkg
         let teamItem = documentOfPackage pkg
@@ -511,6 +508,7 @@ module Packages =
         packageItem.["Id"] <- v2.ConvertToEntry  package.Dsc.PackageId
         packageItem.["Name"] <- v2.ConvertToEntry package.Dsc.Name
         packageItem.["Producer"] <- v2.ConvertToEntry package.Dsc.Producer
+        packageItem.["TransferToken"] <- v2.ConvertToEntry package.TransferToken
 
         let questionsEntry = DynamoDBList()
         for qw in package.Questions do
@@ -536,6 +534,7 @@ module Packages =
 
     let packageOfDocument (doc:Document) =
         let dsc = descriptorOfDocument doc
+        let transferToken = stringOfDoc doc "TransferToken"
         let version = doc.["Version"].AsInt()
 
         let qwList = doc.["Questions"].AsListOfDocument()
@@ -544,7 +543,7 @@ module Packages =
             |> Seq.map packageQuestionOfDocument
             |> List.ofSeq
 
-        {Dsc = dsc; Version = version; Questions = questions}
+        {Dsc = dsc; Version = version; Questions = questions; TransferToken = transferToken}
 
     let packageQuestionOfDocument  (qwDoc:Document) =
         let qwText = stringOfDoc qwDoc "Text"

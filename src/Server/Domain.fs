@@ -51,6 +51,7 @@ type PackageDescriptor = {
 
 type Package = {
     Dsc : PackageDescriptor
+    TransferToken : string
     Questions : PackageQuestion list
     Version : int
 } with
@@ -86,7 +87,12 @@ module Packages =
 
     let createNew packageId producerId : Package =
         {
-            Dsc = {PackageId = packageId; Producer = producerId; Name = (sprintf "PKG #%i" packageId)}
+            Dsc = {
+                PackageId = packageId
+                Producer = producerId
+                Name = (sprintf "PKG #%i" packageId)
+            }
+            TransferToken = generateRandomToken()
             Questions = []
             Version = 0
         }
