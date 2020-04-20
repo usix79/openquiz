@@ -355,6 +355,7 @@ module Infra =
                 getProdPackageCard = x.Wrap mainApi.getProdPackageCard
                 createPackage = x.Wrap mainApi.createPackage
                 updateProdPackageCard = x.Wrap mainApi.updateProdPackageCard
+                aquirePackage = x.Wrap mainApi.aquirePackage
             }
 
         member x.CreateAdminApi () =

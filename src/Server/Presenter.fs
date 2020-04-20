@@ -47,6 +47,7 @@ let packageCard (package: Package) : PackageCard =
     {
         PackageId = package.Dsc.PackageId
         Name = package.Dsc.Name
+        TransferToken = package.TransferToken
         Questions =
             package.Questions
             |> List.map packageQw

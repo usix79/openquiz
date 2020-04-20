@@ -33,7 +33,10 @@ module Experts =
         {expert with Quizes = quizId :: expert.Quizes}
 
     let addPackage packageId (expert:Expert)  =
-        {expert with Packages = packageId :: expert.Packages}
+        {expert with Packages = packageId :: expert.Packages} |> Ok
+
+    let removePackage packageId (expert:Expert)  =
+        {expert with Packages = expert.Packages |> List.filter (fun id -> id <> packageId)} |> Ok
 
     let getComp quizId (expert:Expert) =
         match expert.Competitions.TryGetValue quizId with
@@ -96,6 +99,16 @@ module Packages =
             Questions = []
             Version = 0
         }
+
+    let transfer  expertId (token:string) (package:Package) =
+        match token.Trim() with
+        | "" -> Error "Transfer Token Is Empty"
+        | token when token <> package.TransferToken.Trim() -> Error "Invalid Transfer Token"
+        | _ -> {package with
+                    Dsc = {package.Dsc with Producer = expertId}
+                    TransferToken = generateRandomToken()
+               }|> Ok
+
 
 type QuizStatus =
     | Draft

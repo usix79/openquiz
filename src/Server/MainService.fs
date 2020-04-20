@@ -43,6 +43,8 @@ let api (context:HttpContext) : IMainApi =
         getProdPackageCard = exPublisher  "getProdPackageCard" getProdPackageCard
         createPackage = exPublisher  "createPackage" createPackage
         updateProdPackageCard = exPublisher  "updateProdPackageCard" updateProdPackageCard
+        aquirePackage = exPublisher "aquirePackage" aquirePackage
+
     }
 
     api
@@ -186,7 +188,7 @@ let getProdPackages expert _ =
 
 let getProdPackageCard expert (req : {|PackageId : int|}) =
     match Data.Packages.get req.PackageId with
-    | Some package when package.Dsc.Producer <> expert.Id -> Error "Package is produced by someone else"
+    | Some package when package.Dsc.Producer <> expert.Id -> Error "Package belongs to another producer"
     | None -> Error "Package not found"
     | Some package -> Ok <| packageCard package
 
@@ -194,25 +196,35 @@ let createPackage expert _ =
     let creator = fun id ->
         Domain.Packages.createNew id expert.Id |> Ok
 
-    let logic = fun (package:Domain.Package) expert ->
-        expert |> Domain.Experts.addPackage package.Dsc.PackageId |> Ok
-
     result {
         let! package = CommonService.createPackage creator
 
-        CommonService.updateExpertNoReply expert.Id (logic package)
+        CommonService.updateExpertNoReply expert.Id (Domain.Experts.addPackage package.Dsc.PackageId)
 
         return {|Record = package.Dsc |> packageRecord; Card = packageCard package; |}
     }
 
-let updateProdPackageCard _ card =
+let updateProdPackageCard expert card =
     let logic (pkg:Domain.Package) =
         { pkg with
             Dsc = { pkg.Dsc with Name = card.Name}
+            TransferToken = card.TransferToken
             Questions = card.Questions |> List.map packageQwToDomain
         } |> Ok
 
     result {
+        let! _ = (expert.Packages |> List.tryFind ((=) card.PackageId), "Package belongs to another producer")
         let! package = CommonService.updatePackage card.PackageId logic
         return package.Dsc |> packageRecord
+    }
+
+let aquirePackage expert res =
+    result{
+        let! origPackageDsc = (Data.Packages.getDescriptor res.PackageId, "Invalid Transfer Token")
+        let! updatedPackage = CommonService.updatePackage res.PackageId (Domain.Packages.transfer expert.Id res.TransferToken)
+
+        CommonService.updateExpertNoReply origPackageDsc.Producer (Domain.Experts.removePackage origPackageDsc.PackageId)
+        CommonService.updateExpertNoReply expert.Id (Domain.Experts.addPackage updatedPackage.Dsc.PackageId)
+
+        return updatedPackage.Dsc |> packageRecord
     }

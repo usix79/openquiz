@@ -24,6 +24,7 @@ type Msg =
     | GetPackageResp of RESP<PackageCard>
     | CreatePackageResp of RESP<{|Record : PackageRecord; Card:PackageCard|}>
     | UpdateName of string
+    | UpdateTransferToken of string
     | CancelCard
     | SubmitCard
     | SubmitCardResp of RESP<PackageRecord>
@@ -38,13 +39,25 @@ type Msg =
     | CommentImgChanged of {|Type:string; Body:byte[]; Tag:QwKey|}
     | CommentImgClear of QwKey
     | UploadCommentImgResponse of TRESP<QwKey, {|BucketKey:string|}>
+    | ToggleAquiringForm
+    | AquiringFormUpdatePackageId of string
+    | AquiringFormUpdateTransferToken of string
+    | AquiringFormSend
+    | AquiringFormCancel
+    | AquiringResp of RESP<PackageRecord>
 
+type AquiringForm = {
+    PackageId : int
+    TransferToken : string
+    IsSending : bool
+}
 
 type Model = {
     Packages : PackageRecord list
     Errors : Map<string, string>
     CardIsLoading : int option // packageId
     Card : PackageCard option
+    AquiringForm : AquiringForm option
 }
 
 let addError txt model =
@@ -102,9 +115,24 @@ let uploadFile packageId (api:IMainApi) respMsg fileType body model =
     else
         model |> loading packageId |> apiCmd api.uploadFile {|Cat = Question; FileType=fileType; FileBody=body|} respMsg Exn
 
-let init api user : Model*Cmd<Msg> =
-    {Errors = Map.empty; Packages = []; CardIsLoading = None; Card = None} |> apiCmd api.getProdPackages () GetPackagesResp Exn
+let toggleAquiringForm model =
+    {model with AquiringForm = (match model.AquiringForm with Some _ -> None | None -> Some {PackageId = 0; TransferToken = ""; IsSending = false})}
 
+let updateAquiringForm (f : AquiringForm -> AquiringForm) (model:Model) =
+    match model.AquiringForm with
+    | Some form -> {model with AquiringForm = Some (f form)}
+    | None -> model
+
+let sendAquiringForm (api:IMainApi) model =
+    match model.AquiringForm with
+    | Some form when form.PackageId > 0 && not <| System.String.IsNullOrWhiteSpace(form.TransferToken) ->
+        model
+        |> updateAquiringForm (fun form -> {form with IsSending = true})
+        |> apiCmd api.aquirePackage {|PackageId = form.PackageId; TransferToken = form.TransferToken.Trim()|} AquiringResp Exn
+    | _ -> model |> noCmd
+
+let init api user : Model*Cmd<Msg> =
+    {Errors = Map.empty; Packages = []; CardIsLoading = None; Card = None; AquiringForm = None} |> apiCmd api.getProdPackages () GetPackagesResp Exn
 
 let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
 
@@ -116,6 +144,7 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | CreatePackage -> cm |> apiCmd api.createPackage () CreatePackageResp Exn
     | CreatePackageResp {Value = Ok res} -> {cm with Packages = res.Record :: cm.Packages; Card = Some res.Card} |> noCmd
     | UpdateName txt -> cm |> updateCard (fun c -> {c with Name = txt}) |> noCmd
+    | UpdateTransferToken txt -> cm |> updateCard (fun c -> {c with TransferToken = txt}) |> noCmd
     | CancelCard -> {cm with Card = None} |> noCmd
     | SubmitCard -> cm |> submitCard api
     | SubmitCardResp {Value = Ok res } -> {cm with Card = None} |> editing |> replaceRecord res |> noCmd
@@ -130,6 +159,13 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | CommentImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadCommentImgResponse res.Tag) res.Type res.Body
     | CommentImgClear qwKey -> cm |> updateQw qwKey.Idx (fun qw -> {qw with CommentImgKey = ""}) |> noCmd
     | UploadCommentImgResponse {Tag = qwKey; Rsp = {Value = Ok res}} -> cm |> editing |> updateQw qwKey.Idx (fun qw -> {qw with CommentImgKey = res.BucketKey}) |> noCmd
+    | ToggleAquiringForm -> cm |> toggleAquiringForm |> noCmd
+    | AquiringFormUpdatePackageId txt-> cm |> updateAquiringForm (fun form -> {form with PackageId = System.Int32.Parse(txt)}) |> noCmd
+    | AquiringFormUpdateTransferToken txt-> cm |> updateAquiringForm (fun form -> {form with TransferToken = txt.Trim()}) |> noCmd
+    | AquiringFormCancel -> {cm with AquiringForm = None} |> noCmd
+    | AquiringFormSend -> cm |> sendAquiringForm api
+    | AquiringResp {Value = Ok record} -> {cm with Packages = record :: cm.Packages; AquiringForm = None} |> noCmd
+    | AquiringResp {Value = Error txt} -> cm |> addError txt |> updateAquiringForm (fun form -> {form with IsSending = false}) |> noCmd
     | Exn ex -> cm |> addError ex.Message |> editing |> noCmd
     | Err txt -> cm |> addError txt |> editing |> noCmd
     | _ -> cm |> noCmd
@@ -141,6 +177,11 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
 
             ]
             div [Class "level-right"][
+                if model.AquiringForm.IsNone then
+                    p [Class "level-item"][
+                        button [Class "button is-dark"; OnClick (fun _ -> dispatch ToggleAquiringForm)][str "Acquire Package"]
+                    ]
+
                 p [Class "level-item"][
                     button [Class "button is-dark"; OnClick (fun _ -> dispatch CreatePackage)][str "Create New Package"]
                 ]
@@ -153,10 +194,17 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                 str error.Value
             ]
 
+        div[][
+            match model.AquiringForm with
+            | Some form -> yield aquiringForm dispatch form
+            | None -> ()
+        ]
+
         table [Class "table is-fullwidth is-hoverable"][
             thead[][
                 tr[][
                     th [Style[Width "30px"]][str ""]
+                    th [Style[Width "30px"]][str "Id"]
                     th [][str "Name"]
                 ]
             ]
@@ -171,14 +219,37 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                                 str <| if hasCard then "-" else "+"
                             ]
                         ]
+                        td [] [str <| package.PackageId.ToString()]
                         td [] [str package.Name]
                     ]
                     if hasCard then
                         tr [][
                             th [][]
-                            td [] [ card dispatch model.Card.Value isLoading]
+                            td [ColSpan 2] [ card dispatch model.Card.Value isLoading]
                         ]
             ]
+        ]
+    ]
+
+let aquiringForm (dispatch : Msg -> unit) (form : AquiringForm) =
+    div [Class "field has-addons"; Style[PaddingBottom "5px"]][
+        p [Class "control"][
+            input [Class "input"; Disabled form.IsSending; Type "number"; Placeholder "Package Id"; MaxLength 8.0;
+                valueOrDefault (if form.PackageId > 0 then form.PackageId.ToString() else "");
+                OnChange (fun ev -> dispatch <| AquiringFormUpdatePackageId ev.Value)]
+        ]
+        p [Class "control is-expanded"][
+            input [Class "input"; Disabled form.IsSending; Type "text"; Placeholder "Transfer Token"; MaxLength 128.0;
+                valueOrDefault form.TransferToken;
+                OnChange (fun ev -> dispatch <| AquiringFormUpdateTransferToken ev.Value)]
+        ]
+        p [Class "control"][
+            button [classList ["button", true; "has-text-danger", true; "has-text-weight-semibold", true; "is-loading", form.IsSending];
+              Disabled (form.PackageId <= 0 || (System.String.IsNullOrWhiteSpace form.TransferToken));
+              OnClick (fun _ -> dispatch AquiringFormSend)][str "Acquire"]
+        ]
+        p [Class "control"][
+            button [classList ["button", true]; OnClick (fun _ -> dispatch AquiringFormCancel)][str "Cancel"]
         ]
     ]
 
@@ -196,6 +267,13 @@ let card (dispatch : Msg -> unit) (card : PackageCard) isLoading =
                                 OnChange (fun ev -> dispatch <| UpdateName ev.Value)]
                         ]
                         p [Class "help is-danger"][str error]
+                        label [Class "label"][str "Transfer token"]
+                        div [Class "control"][
+                            input [Class "input"; Disabled isLoading; Type "text"; MaxLength 128.0;
+                                valueOrDefault card.TransferToken;
+                                OnChange (fun ev -> dispatch <| UpdateTransferToken ev.Value)]
+                        ]
+                        br[]
                         div [Class "field"][
                             div [Class "control"][
                                 button [Class "button "; Disabled isLoading; OnClick (fun _ -> dispatch AppendQuiestion)] [str "Append Question"]

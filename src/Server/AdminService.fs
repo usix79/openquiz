@@ -354,3 +354,4 @@ let getResults quiz _ =
 
         return {|Teams = teams |> teamResults true; Questions = questionResults quiz|}
     }
+

@@ -122,6 +122,7 @@ type PackageRecord = {
 type PackageCard = {
     PackageId : int
     Name : string
+    TransferToken : string
     Questions : PackageQuestion list
 }
  with
@@ -376,6 +377,7 @@ type IMainApi = {
     getProdPackageCard : REQ<{|PackageId : int|}> -> ARESP<PackageCard>
     createPackage : REQ<unit> -> ARESP<{|Record : PackageRecord; Card: PackageCard|}>
     updateProdPackageCard : REQ<PackageCard> -> ARESP<PackageRecord>
+    aquirePackage : REQ<{|PackageId:int; TransferToken:string|}> -> ARESP<PackageRecord>
 }
 
 type IAdminApi = {
