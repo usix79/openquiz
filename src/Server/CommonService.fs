@@ -136,3 +136,27 @@ let updateQuizNoReply (quizId : int) (logic : Logic<Quiz>) =
 
 let  packageLoader (id : int) = Data.Packages.get id
 
+let private _expertsLockObj = System.Object()
+let mutable private _expertAgents : Map<string, MailboxProcessor<UpdateCommand<string,Expert>>> = Map.empty
+
+let expertLoader (sub:string) = Data.Experts.get sub
+let private expertSaver expert = Data.Experts.update expert
+
+let private getOrCreateExpertAgent key =
+    let trans () =
+        match Map.tryFind key _expertAgents with
+        | Some agent -> agent
+        | None ->
+            let agent = createAgent expertLoader expertSaver ignore
+            _expertAgents <- _expertAgents.Add (key, agent)
+            agent
+
+    lock _teamsLockObj trans
+
+let updateExpert (sub : string) (logic : Logic<Expert>) : Result<Domain.Expert,string> =
+    let agent = getOrCreateExpertAgent sub
+    agent.PostAndReply (fun rch -> UpdateAndReply (sub, logic, rch))
+
+let updateExpertNoReply (sub : string) (logic : Logic<Expert>) =
+    let agent = getOrCreateExpertAgent sub
+    agent.Post (Update (sub, logic))

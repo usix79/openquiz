@@ -39,6 +39,7 @@ type User =
 
 type MainUser = {
     Sub : string
+    Username : string
     Name : string
     PictureUrl : string
     IsProducer : bool

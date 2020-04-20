@@ -120,19 +120,20 @@ module Aws =
                 printfn "RESP: %s" respStr
                 let json = JObject.Parse respStr
 
-                let userName = json.GetValue("username").ToString()
+                let username = json.GetValue("username").ToString()
 
                 let picture = json.GetValue("picture").ToString();
 
                 let picture =
-                    match userName with
-                    | _ when not (String.IsNullOrEmpty picture) && userName.Contains ("facebook") ->
+                    match username with
+                    | _ when not (String.IsNullOrEmpty picture) && username.Contains ("facebook") ->
                         let picJson = JObject.Parse picture
                         picJson.["data"].["url"].ToString()
                     | _ -> picture
 
                 let res = {|
                     Sub = json.GetValue("sub").ToString()
+                    Username = username
                     Name = json.GetValue("name").ToString()
                     Picture = picture
                 |}

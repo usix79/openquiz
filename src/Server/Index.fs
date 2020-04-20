@@ -84,6 +84,32 @@ let layout (quizes : QuizDescriptor list) =
                 ]
             ]
         ]
+        script [][rawText
+"""
+    var list = document.getElementsByClassName("convertToLocalTime");
+    for (var i=0; i < list.length; i++){
+        var utcDate = new Date(list[i].innerHTML + "Z");
+        var month = new String(utcDate.getMonth() + 1)
+        if (month.length == 1){
+            month = '0' + month;
+        }
+        var hours = new String(utcDate.getHours())
+        if (hours.length == 1){
+            hours = '0' + hours;
+        }
+        var date = new String(utcDate.getDate())
+        if (date.length == 1){
+            date = '0' + date;
+        }
+        var minutes = new String(utcDate.getMinutes())
+        if (minutes.length == 1){
+            minutes = '0' + minutes;
+        }
+
+        list[i].innerHTML = utcDate.getFullYear() + "-" +  month + "-" + date + " " + hours + ":" + minutes
+    }
+"""
+        ]
     ]
 
 let quizzesRow quizzes =
@@ -108,7 +134,9 @@ let quizBox quiz =
                     p[][
                         strong [][str quiz.Brand]
                         str "   "
-                        match quiz.StartTime with Some dt -> str (dt.ToString("yyyy-MM-dd HH:mm")) | None -> str "???"
+                        match quiz.StartTime with
+                            | Some dt -> span [_class "convertToLocalTime"][ str (dt.ToString("yyyy-MM-dd HH:mm"))]
+                            | None -> str "???"
                         if quiz.Status = Domain.Live then
                             str " "
                             span [_class "tag is-danger is-light"][str "live"]

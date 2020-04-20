@@ -20,6 +20,7 @@ module CustomClaims =
     let TeamId = "teamId"
     let QuizId = "quizId"
     let SessionId = "sessionId"
+    let Username = "username"
 
 module CustomRoles =
     let Admin = "admin"
@@ -119,10 +120,11 @@ let authorize secret role (f : ClaimsPrincipal -> 'Arg -> Result<'Value, string>
 
         {Status = status; Value = res; ST = DateTime.UtcNow}
 
-let authorizeExpert secret (f: string -> 'arg -> Result<'res, string>) =
+let authorizeExpert secret (f: string -> string -> 'arg -> Result<'res, string>) =
     authorize secret CustomRoles.Expert <| fun principal req ->
-        let subStr = principal.FindFirstValue CustomClaims.Name
-        f subStr req
+        let sub = principal.FindFirstValue CustomClaims.Name
+        let username = principal.FindFirstValue CustomClaims.Username
+        f sub username req
 
 let authorizeAdmin secret (f: string -> 'arg -> Result<'res, string>) =
     authorize secret CustomRoles.Admin <| fun principal req ->
@@ -175,10 +177,14 @@ let loginMainUser secret clientId clientName redirectUrl code =
         | Ok tokens ->
             let! userInfoResult = Aws.getUserInfo clientName tokens.AccessToken
             match userInfoResult with
-            | Ok userInfo ->
-                let isProducer = match Data.Experts.get userInfo.Sub with Some exp -> exp.IsProducer | None -> false
-                let user = MainUser {Sub = userInfo.Sub; Name = userInfo.Name; PictureUrl = userInfo.Picture; IsProducer = isProducer}
-                let claims = [Claim(CustomClaims.Name, userInfo.Sub); Claim(CustomClaims.Role, CustomRoles.Expert)]
+            | Ok info ->
+                let isProducer = match Data.Experts.get info.Sub with Some exp -> exp.IsProducer | None -> false
+                let user = MainUser {Sub = info.Sub; Username = info.Username; Name = info.Name; PictureUrl = info.Picture; IsProducer = isProducer}
+                let claims = [
+                    Claim(CustomClaims.Name, info.Sub)
+                    Claim(CustomClaims.Username, info.Username)
+                    Claim(CustomClaims.Role, CustomRoles.Expert)
+                ]
                 return loginResp secret claims user
             | Error txt ->
                 return Error txt

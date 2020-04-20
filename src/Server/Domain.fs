@@ -14,15 +14,17 @@ type RefreshToken = {
 
 type Expert = {
     Id : string
+    Username : string
     IsProducer : bool
     Competitions : Map<int,int>    // quizId => teamId
     Quizes : int list   // quizId
     Packages : int list   // packageId
+    Version : int
 }
 
 module Experts =
-    let createNew id =
-        {Id = id; IsProducer = false; Competitions = Map.empty; Quizes = []; Packages = []}
+    let createNew id username =
+        {Id = id; Username = username; IsProducer = false; Competitions = Map.empty; Quizes = []; Packages = []; Version = 0}
 
     let becomeProducer (expert:Expert) =
         {expert with IsProducer = true}

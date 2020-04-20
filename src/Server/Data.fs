@@ -49,6 +49,10 @@ let boolOfDoc (doc : Document) attr =
     | true, en -> en.AsBoolean()
     | _ -> false
 
+let intOfDoc (doc : Document) attr =
+    match doc.TryGetValue attr with
+    | true, en -> en.AsInt()
+    | _ -> 0
 
 let listOfDoc (doc : Document) attr  =
     match doc.TryGetValue attr with
@@ -90,6 +94,7 @@ module RefreshTokens =
 module Experts =
     let private expertOfDocument (doc:Document) : Expert option =
         let id = doc.["Id"].AsString()
+        let username = stringOfDoc doc "Username"
         let isProducer = boolOfDoc doc "IsProducer"
         let competitions =
             doc.["Competitions"].AsDocument()
@@ -106,13 +111,17 @@ module Experts =
             |> Seq.map (fun p -> p.AsInt())
             |> List.ofSeq
 
-        Some {Id = id; IsProducer = isProducer; Competitions = competitions; Quizes = quizes; Packages = packages}
+        let version = intOfDoc doc "Version"
+
+        Some {Id = id; Username = username; IsProducer = isProducer; Competitions = competitions;
+            Quizes = quizes; Packages = packages; Version = version}
 
     let private documentOfExpert (exp:Expert) =
         let expItem = Document()
 
         expItem.["Id"] <- v2.ConvertToEntry  (exp.Id.ToString())
-        expItem.["IsProducer"] <- v2.ConvertToEntry  exp.IsProducer
+        expItem.["Username"] <- v2.ConvertToEntry exp.Username
+        expItem.["IsProducer"] <- v2.ConvertToEntry exp.IsProducer
 
         let regsEntry = Document()
         for quizId, competitorId in exp.Competitions |> Seq.map (fun pair -> pair.Key,pair.Value) do
@@ -126,9 +135,11 @@ module Experts =
         expItem.["Quizzes"] <- quizzesEntry
 
         let packagesEntry = PrimitiveList()
-        for packageId in exp.Quizes do
+        for packageId in exp.Packages do
             packagesEntry.Add(Primitive.op_Implicit packageId)
         expItem.["Packages"] <- packagesEntry
+
+        expItem.["Version"] <- v2.ConvertToEntry exp.Version
 
         expItem
 
@@ -145,6 +156,9 @@ module Experts =
 
     let update (exp:Expert) =
         async{
+
+            let exp = {exp with Version = exp.Version + 1}
+
             let doc = documentOfExpert exp
             let table = loadTable "Experts"
             let! _ = table.UpdateItemAsync (doc) |> Async.AwaitTask
@@ -161,10 +175,7 @@ module Quizzes =
         else (List.maxBy (fun (quiz : QuizDescriptor) -> quiz.QuizId) quizzes).QuizId
 
     let update (quiz:Quiz) =
-        let quiz =
-            match get quiz.Dsc.QuizId with
-            | Some oldQuiz -> {quiz with Version = oldQuiz.Version + 1}
-            | None -> quiz
+        let quiz = {quiz with Version = quiz.Version + 1}
 
         let quizItem = documentOfQuiz quiz
         let table = loadTable "Quizzes"
@@ -303,10 +314,7 @@ module Teams =
         if descriptors.Length > 0 then (descriptors |> List.maxBy (fun t -> t.TeamId)).TeamId else 0
 
     let update (team : Team) =
-        let team =
-            match get team.Dsc.QuizId team.Dsc.TeamId with
-            | Some oldTeam -> {team with Version = oldTeam.Version + 1}
-            | None -> team
+        let team = {team with Version = team.Version + 1}
 
         let teamItem = documentOfTeam team
         let table = loadTable "Teams"

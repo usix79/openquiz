@@ -21,7 +21,7 @@ let api (context:HttpContext) : IMainApi =
 
     let exPublisher proc f =
 
-        let ff f = (fun expertId req ->
+        let ff f = (fun expertId username req ->
             match Data.Experts.get expertId with
             | Some expert ->
                 f expert req
@@ -49,8 +49,8 @@ let api (context:HttpContext) : IMainApi =
 
     api
 
-let becomeProducer expertId _ =
-    defaultArg (Data.Experts.get expertId) (Domain.Experts.createNew expertId)
+let becomeProducer expertId username _ =
+    defaultArg (Data.Experts.get expertId) (Domain.Experts.createNew expertId username)
     |> Domain.Experts.becomeProducer
     |> Data.Experts.update
     |> ignore
@@ -106,7 +106,7 @@ let updateProdQuizCard expert card =
 let uploadFile bucketName _ req =
     Bucket.uploadFile  bucketName req.Cat req.FileType req.FileBody
 
-let getPubModel expId _ =
+let getPubModel expId username _ =
     let comps =
         match Data.Experts.get expId with
         | Some exp -> exp.Competitions
@@ -128,11 +128,11 @@ let getPubModel expId _ =
 
     Ok {|Profile = {Competitions = competitions}; Quizzes = quizzes|}
 
-let registerTeam expId req =
+let registerTeam expId username req =
     result {
         let! quiz = ((Data.Quizzes.getDescriptor req.QuizId), "Quiz not found")
 
-        let exp = defaultArg (Data.Experts.get expId) (Domain.Experts.createNew expId)
+        let exp = defaultArg (Data.Experts.get expId) (Domain.Experts.createNew expId username)
 
         let teamName = req.TeamName.Trim()
         let! team =
