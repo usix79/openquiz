@@ -12,11 +12,25 @@ let layout (quizes : QuizDescriptor list) =
             meta [_name "description"; _content "Free service for producing online quizzes."]
             meta [_name "keywords"; _content "quiz, quizzes, www, online quizzes, free quizzes, quizzes service, quizzes platform, квиз, чгк, что где когда, программа для чгк, онлайн-чгк, вопросы чгк, платформа для квизов, обработка ответов чгк"]
             meta [_name "author"; _content "Serhii Sabirov"]
+            rawText"""
+<meta property="og:type" content="website">
+<meta property="og:title" content="Open Quiz">
+<meta property="og:description" content="Free service for producing online quizzes.">
+<meta property="og:image" content="https://www.open-quiz.com/logo-card.png">
+<meta property="og:url" content="https://www.open-quiz.com">
+<meta property="og:site_name" content="Open Quiz">
+<meta name="twitter:image:alt" content="Open Quiz Logo">
+<meta property="fb:app_id" content="538011207113822" />
+"""
             title [] [encodedText "Open Quiz"]
             link [_rel "stylesheet"; _href "https://cdnjs.cloudflare.com/ajax/libs/bulma/0.8.0/css/bulma.min.css" ]
             link [_rel "icon"; _href "favicon.png"; _sizes "32x32"; _type "image/png" ]
         ]
         body [] [
+            rawText"""
+<div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_GB/sdk.js#xfbml=1&autoLogAppEvents=1&version=v6.0&appId=538011207113822"></script>
+"""
             section [_class "hero is-shadowless is-fullheight"] [
                 div [_class "hero-head"] [
                     div [_class "container"][
@@ -35,6 +49,11 @@ let layout (quizes : QuizDescriptor list) =
                                         a [_href "/login"; _class "button thickbox is-uppercase"; _target "_self"] [rawText "Login"]
                                     ]
                                 ]
+                            ]
+                            div [_class "navber-item"; _style "display: flex; align-items: center; margin-left: 5px;"][
+                                rawText"""
+<div class="fb-like" data-href="https://www.open-quiz.com" data-width="" data-layout="button_count" data-action="like" data-size="large" data-share="true" data-colorscheme="light"></div>
+"""
                             ]
                         ]
                     ]
