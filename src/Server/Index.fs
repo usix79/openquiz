@@ -154,7 +154,7 @@ let quizBox quiz =
                         strong [][str quiz.Brand]
                         str "   "
                         match quiz.StartTime with
-                            | Some dt -> span [_class "convertToLocalTime"][ str (dt.ToString("yyyy-MM-dd HH:mm"))]
+                            | Some dt -> span [_class "convertToLocalTime"][ str (dt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm"))]
                             | None -> str "???"
                         if quiz.Status = Domain.Live then
                             str " "

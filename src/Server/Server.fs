@@ -52,7 +52,6 @@ let loginHandler _next (ctx: HttpContext)  =
         let clientId = Config.getCognitoClientId cfg
         let clientName = Config.getCognitoClientName cfg
         let redirectUrl = Config.getRedirectUrl cfg
-
         let url = sprintf "%s/login?client_id=%s&response_type=code&redirect_uri=%s" (Aws.getCognitoUri clientName) clientId redirectUrl
         return! redirectTo false url _next ctx
     }
@@ -142,6 +141,7 @@ let appRouter =
         apiHandler MainService.api
         apiHandler AdminService.api
         apiHandler TeamService.api
+        apiHandler RegService.api
     ]
 
 let serilogConfig = {

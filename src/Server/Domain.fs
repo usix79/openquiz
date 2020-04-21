@@ -347,13 +347,12 @@ module Teams =
             return {team with Dsc = dsc}
         }
 
-    let validatePublicTeamUpdate isNewTeam (teamName: string) (teamsInQuiz : TeamDescriptor list) (quiz : QuizDescriptor) =
+    let validateTeamUpdate isNewTeam (teamName: string) (teamsInQuiz : TeamDescriptor list) (quiz : QuizDescriptor) =
         let teamName = teamName.Trim()
         match isNewTeam with
         | _ when String.IsNullOrWhiteSpace (teamName) -> Some "Empty name is not allowed"
         | true when quiz.Status <> Published && quiz.Status <> Live -> Some  "Registration is not allowed"
         | false when quiz.Status <> Published -> Some  "Changing name is not allowed"
-        | _ when quiz.IsPrivate -> Some  "Public registration is not allowed"
         | _ when teamsInQuiz |> List.exists (fun t -> t.Name.Equals(teamName, StringComparison.InvariantCultureIgnoreCase)) -> Some "Team with such name is alreay registered"
         | _ -> None
 

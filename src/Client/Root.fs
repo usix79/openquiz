@@ -11,6 +11,8 @@ type CurrentPage =
     | MainPage of Main.Model
     | AdminPage of Admin.Model
     | TeamPage of Team.Model
+    | RegPage of Reg.Model
+    | PrivatePage
 
 type Msg =
     | LoginResponse of RESP<{|Token: string; RefreshToken: string; User: User|}>
@@ -18,6 +20,7 @@ type Msg =
     | MainMsg of Main.Msg
     | AdminMsg of Admin.Msg
     | TeamMsg of Team.Msg
+    | RegMsg of Reg.Msg
 
 type Model = {
     CurrentUser : User option
@@ -29,16 +32,20 @@ let securityApi = apiFactory.CreateSecurityApi()
 let mainApi = apiFactory.CreateMainApi()
 let adminApi = apiFactory.CreateAdminApi()
 let teamApi = apiFactory.CreateTeamApi()
+let regApi = apiFactory.CreateRegApi()
 
 let getUserFromStorage() =
     Infra.loadFromSessionStorage<User> "USER"
 
 let initChildPage user cm =
     match user with
+    | RegUser _ ->
+        let submodel, subcmd = Reg.init regApi
+        {cm with CurrentPage = RegPage submodel; CurrentUser = Some user}, Cmd.map RegMsg subcmd
     | MainUser u ->
         let submodel, subCmd = Main.init mainApi u
         {cm with CurrentPage = MainPage submodel; CurrentUser = Some user}, Cmd.map MainMsg subCmd
-    | AdminUser u ->
+    | AdminUser u->
         let submodel, subcmd = Admin.init adminApi u
         {cm with CurrentPage = AdminPage submodel; CurrentUser = Some user}, Cmd.map AdminMsg subcmd
     | TeamUser u ->
@@ -58,6 +65,7 @@ let evaluateLoginReq (query : Map<string,string>) =
     | _ ->
         match qs "who", qi "quiz", qs "token", qi "team" with
         | Some "admin", Some quizId, Some token, _  -> LoginReq.AdminUser {|QuizId = quizId; Token = token|} |> Some
+        | Some "reg", Some quizId, Some token, _  -> LoginReq.RegUser {|QuizId = quizId; Token = token|} |> Some
         | Some "team", Some quizId, Some token, Some teamId  -> LoginReq.TeamUser {|QuizId = quizId; TeamId = teamId; Token = token|} |> Some
         | _ -> None
 
@@ -71,7 +79,9 @@ let isReqForSameUser (req:LoginReq) (user:User) =
 let init (): Model * Cmd<Msg> =
     let cm =  {CurrentPage = EmptyPage "Initializing..."; CurrentUser = None}
 
-    match getUserFromStorage(), evaluateLoginReq (Infra.currentQueryString()) with
+    let u = getUserFromStorage()
+    printfn "USER: %A" u
+    match u, evaluateLoginReq (Infra.currentQueryString()) with
     | Some user, Some req when isReqForSameUser req user -> cm |> initChildPage user
     | _, Some req -> cm |> apiCmd securityApi.login req LoginResponse Exn
     | Some user, None -> cm |> initChildPage user
@@ -108,6 +118,9 @@ let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | TeamPage subModel, Some (TeamUser user), TeamMsg subMsg ->
         let newModel,newCmd = Team.update teamApi user subMsg subModel
         {cm with CurrentPage = TeamPage newModel}, Cmd.map TeamMsg newCmd
+    | RegPage subModel, Some (RegUser _), RegMsg subMsg ->
+        let newModel,newCmd = Reg.update regApi subMsg subModel
+        {cm with CurrentPage = RegPage newModel}, Cmd.map RegMsg newCmd
     | _, _, _ -> cm |> noCmd
 
 let view (model : Model) (dispatch : Msg -> unit) =
@@ -117,6 +130,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
         | MainPage subModel, Some (MainUser user) -> Main.view (MainMsg >> dispatch) user subModel
         | AdminPage subModel, Some (AdminUser user) -> Admin.view (AdminMsg >> dispatch) user subModel
         | TeamPage subModel, Some (TeamUser user) -> Team.view (TeamMsg >> dispatch) user subModel
+        | RegPage subModel, Some (RegUser user) -> Reg.view (RegMsg >> dispatch) subModel
         | _ -> str "Oops"
 
     div [] [pageHtml]

@@ -160,7 +160,7 @@ let quizBox (dispatch : Msg -> unit) (profile:ExpertProfile option) (quiz : Quiz
                     p[][
                         strong [][str quiz.Brand]
                         str "   "
-                        match quiz.StartTime with Some dt -> str (dt.ToString("yyyy-MM-dd HH:mm")) | None -> str "???"
+                        match quiz.StartTime with Some dt -> str (dt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm")) | None -> str "???"
                         if quiz.Status = Live then
                             str " "
                             span [Class "tag is-danger is-light"][str "live"]

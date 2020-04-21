@@ -272,6 +272,12 @@ module Infra =
             |> Remoting.withRouteBuilder (Infra.routeBuilder "")
             |> Remoting.buildProxy<ITeamApi>
 
+        let regApi =
+            Remoting.createApi()
+            |> Remoting.withBaseUrl "/"
+            |> Remoting.withRouteBuilder (Infra.routeBuilder "")
+            |> Remoting.buildProxy<IRegApi>
+
         member x.RefreshTokenAndProceed<'Req, 'Resp> failedToken =
             async{
                 if failedToken <> token then  // token has been already refreshed
@@ -387,4 +393,9 @@ module Infra =
                 answer = x.Wrap teamApi.answer
                 getHistory = x.Wrap teamApi.getHistory
                 getResults = x.Wrap teamApi.getResults
+            }
+
+        member x.CreateRegApi () =
+            {
+                getRecord = x.Wrap regApi.getRecord
             }

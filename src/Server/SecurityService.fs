@@ -26,6 +26,7 @@ module CustomRoles =
     let Admin = "admin"
     let Expert = "expert"
     let Team = "team"
+    let Reg = "reg"
 
 let rand = Random(DateTime.UtcNow.Millisecond)
 
@@ -126,6 +127,14 @@ let authorizeExpert secret (f: string -> string -> 'arg -> Result<'res, string>)
         let username = principal.FindFirstValue CustomClaims.Username
         f sub username req
 
+let authorizeExpertCheckPrivateQuiz secret (f: string -> string -> string -> 'arg -> Result<'res, string>) =
+    authorize secret CustomRoles.Expert <| fun principal req ->
+        let sub = principal.FindFirstValue CustomClaims.Name
+        let username = principal.FindFirstValue CustomClaims.Username
+        let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
+
+        f sub username quizIdStr req
+
 let authorizeAdmin secret (f: string -> 'arg -> Result<'res, string>) =
     authorize secret CustomRoles.Admin <| fun principal req ->
         let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
@@ -154,6 +163,11 @@ let authorizeTeam secret (f: int -> TeamKey -> 'arg -> Result<'res, string>) =
             return! f sessionId teamKey req
         }
 
+let authorizePrivateReg secret (f: string -> 'arg -> Result<'res, string>) =
+    authorize secret CustomRoles.Reg <| fun principal req ->
+        let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
+        f quizIdStr req
+
 let execute (logger : ILogger) (proc:string) (f: REQ<'Req> -> RESP<'Resp>) : REQ<'Req> -> ARESP<'Resp> =
     fun req ->
         async {
@@ -170,7 +184,18 @@ let loginResp secret claims user =
     Data.RefreshTokens.add refreshToken
     Ok {|Token = token; RefreshToken = refreshToken.Value; User = user|}
 
-let loginMainUser secret clientId clientName redirectUrl code =
+let private tryExtractPrivateQuizId secret token =
+    if token <> "" then
+        match validateJwt secret token true with
+        | Ok principal when principal.FindFirstValue CustomClaims.Role = CustomRoles.Reg ->
+            let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
+            match Int32.TryParse quizIdStr with
+            | true, quizId -> Some quizId
+            | _ -> None
+        | _ -> None
+    else None
+
+let loginMainUser secret token clientId clientName redirectUrl code =
     async {
         let! tokensResult = Aws.getUserToken clientName clientId redirectUrl code
         match tokensResult with
@@ -178,12 +203,21 @@ let loginMainUser secret clientId clientName redirectUrl code =
             let! userInfoResult = Aws.getUserInfo clientName tokens.AccessToken
             match userInfoResult with
             | Ok info ->
+                let privateQuizId = tryExtractPrivateQuizId secret token
                 let isProducer = match Data.Experts.get info.Sub with Some exp -> exp.IsProducer | None -> false
-                let user = MainUser {Sub = info.Sub; Username = info.Username; Name = info.Name; PictureUrl = info.Picture; IsProducer = isProducer}
+                let user = MainUser {
+                        Sub = info.Sub;
+                        Username = info.Username;
+                        Name = info.Name;
+                        PictureUrl = info.Picture;
+                        IsProducer = isProducer;
+                        IsPrivate = privateQuizId.IsSome
+                }
                 let claims = [
                     Claim(CustomClaims.Name, info.Sub)
                     Claim(CustomClaims.Username, info.Username)
                     Claim(CustomClaims.Role, CustomRoles.Expert)
+                    if (privateQuizId.IsSome) then Claim(CustomClaims.QuizId, privateQuizId.Value.ToString())
                 ]
                 return loginResp secret claims user
             | Error txt ->
@@ -202,8 +236,6 @@ let loginAdminUser secret quizId token =
                 let user = AdminUser {QuizId = quiz.QuizId; QuizName = quiz.Name; QuizImg = quiz.ImgKey}
                 loginResp secret claims user
             else
-                printfn "%s" quiz.AdminToken
-                printfn "%s" token
                 Error "Wrong entry token"
     }
 
@@ -237,6 +269,21 @@ let loginTeamUser secret quizId teamId token =
         }
     | _ -> Error "Authenticaton Error"
 
+let loginRegUser secret quizId token =
+    result{
+        let! quiz = ((Data.Quizzes.getDescriptor quizId), "Quiz not found")
+
+        return!
+            if quiz.RegToken = token then
+                let claims = [Claim(CustomClaims.Role, CustomRoles.Reg); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
+                let user = RegUser {QuizId = quiz.QuizId}
+                loginResp secret claims user
+            else
+                printfn "%s" quiz.RegToken
+                printfn "%s" token
+                Error "Wrong entry token"
+    }
+
 let api (context:HttpContext) : ISecurityApi =
     let logger : ILogger = context.Logger()
     let cfg = context.GetService<IConfiguration>()
@@ -249,14 +296,16 @@ let api (context:HttpContext) : ISecurityApi =
 
     api
 
-let login secret (cfg:IConfiguration) (req : LoginReq) =
+let login secret (cfg:IConfiguration) (token:string) (req : LoginReq) =
     match req with
     | LoginReq.MainUser data ->
         let clientId = Config.getCognitoClientId cfg
         let clientName = Config.getCognitoClientName cfg
         let redirectUri = Config.getRedirectUrl cfg
-        loginMainUser secret clientId clientName redirectUri data.Code
+        loginMainUser secret token clientId clientName redirectUri data.Code
     | LoginReq.AdminUser data ->
         loginAdminUser secret data.QuizId data.Token
     | LoginReq.TeamUser data ->
         loginTeamUser secret data.QuizId data.TeamId data.Token
+    | LoginReq.RegUser data ->
+        loginRegUser secret data.QuizId data.Token

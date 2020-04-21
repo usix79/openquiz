@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.3.0 - 2020-04-21
+
+* Implemented private registration link
+* Fixed bug with creation teams in the private quizes
+
 ## 0.2.0 - 2020-04-20
 
 * Added ability to transfer question packages between producers

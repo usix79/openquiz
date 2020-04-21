@@ -17,7 +17,7 @@ open Shared
 let NYI = Error "Not Yet Implemented"
 
 let executedResponse f req =
-    {Status = Executed; Value = f req.Arg; ST = DateTime.UtcNow}
+    {Status = Executed; Value = f req.Token req.Arg; ST = DateTime.UtcNow}
 
 let generateRandomToken () =
     let randomNumber =  Array.zeroCreate 32

@@ -15,7 +15,12 @@ let api (context:HttpContext) : IMainApi =
     let secret = Config.getJwtSecret cfg
 
     let ex proc f =
-        SecurityService.execute logger proc <| SecurityService.authorizeExpert secret f
+        let ff f = (fun expertId username (quizIdStr:string) req ->
+            let quizId = match System.Int32.TryParse quizIdStr with true, id -> Some id | _ -> None
+            f expertId username quizId req
+        )
+
+        SecurityService.execute logger proc <| SecurityService.authorizeExpertCheckPrivateQuiz secret (ff f)
 
     let exPublisher proc f =
 
@@ -49,7 +54,7 @@ let api (context:HttpContext) : IMainApi =
 
     api
 
-let becomeProducer expertId username _ =
+let becomeProducer expertId username _ _ =
     let creator _ = Domain.Experts.createNew expertId username |> Ok
     let logic expert = expert |> Domain.Experts.becomeProducer |> Ok
 
@@ -105,15 +110,21 @@ let updateProdQuizCard expert card =
 let uploadFile bucketName _ req =
     Bucket.uploadFile  bucketName req.Cat req.FileType req.FileBody
 
-let getPubModel expId username _ =
+let getPubModel expId username quizId _ =
     let comps =
         match Data.Experts.get expId with
         | Some exp -> exp.Competitions
         | None -> Map.empty
 
     let quizzes =
-        Data.Quizzes.getDescriptors()
-        |> List.filter Domain.Quizzes.isPubQuiz
+        match quizId with
+        | Some id ->
+            match Data.Quizzes.getDescriptor id with
+            | Some quiz -> [quiz]
+            | None -> []
+        | None ->
+            Data.Quizzes.getDescriptors()
+            |> List.filter Domain.Quizzes.isPubQuiz
         |> List.map Presenter.Main.quizPubRecord
 
     let competitions =
@@ -127,13 +138,19 @@ let getPubModel expId username _ =
 
     Ok {|Profile = {Competitions = competitions}; Quizzes = quizzes|}
 
-let registerTeam expId username req =
+let registerTeam expId username quizId req =
     let expCreator _ = Domain.Experts.createNew expId username |> Ok
 
     result {
+
         let! exp = CommonService.updateOrCreateExpert expId expCreator Ok
 
         let! quiz = ((Data.Quizzes.getDescriptor req.QuizId), "Quiz not found")
+
+        do! match quizId with
+            | Some id when id <> quiz.QuizId -> Error "Wrong quiz id"
+            | None when quiz.IsPrivate -> Error "Public registration is now allowed"
+            | _ -> Ok ()
 
         let teamName = req.TeamName.Trim()
         let! team =
@@ -151,7 +168,7 @@ let private createTeam exp quiz teamName : Result<Domain.Team,string> =
 
     let creator (key : Domain.TeamKey) =
         let teamsInQuiz = Data.Teams.getDescriptors quiz.QuizId
-        match Domain.Teams.validatePublicTeamUpdate true teamName teamsInQuiz quiz with
+        match Domain.Teams.validateTeamUpdate true teamName teamsInQuiz quiz with
         | Some txt -> Error txt
         | None -> Domain.Teams.createNew key.TeamId teamName quiz |> Ok
 
@@ -172,7 +189,7 @@ let private updateTeam quiz team teamName : Result<Domain.Team,string> =
             result {
                 let teamsInQuiz = Data.Teams.getDescriptors quiz.QuizId
 
-                do! match Domain.Teams.validatePublicTeamUpdate false teamName teamsInQuiz quiz with Some txt -> Error txt | _ -> Ok()
+                do! match Domain.Teams.validateTeamUpdate false teamName teamsInQuiz quiz with Some txt -> Error txt | _ -> Ok()
 
                 return team |> Domain.Teams.changeName teamName
             }

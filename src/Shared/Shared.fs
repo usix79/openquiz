@@ -31,11 +31,13 @@ type LoginReq =
     | MainUser of {|Code: string|}
     | AdminUser of {|QuizId:int; Token: string|}
     | TeamUser of {|QuizId: int; TeamId: int; Token: string|}
+    | RegUser of {|QuizId:int; Token: string|}
 
 type User =
     | MainUser of MainUser
     | AdminUser of AdminUser
     | TeamUser of TeamUser
+    | RegUser of RegUser
 
 type MainUser = {
     Sub : string
@@ -43,6 +45,7 @@ type MainUser = {
     Name : string
     PictureUrl : string
     IsProducer : bool
+    IsPrivate : bool
 }
 
 type TeamUser = {
@@ -56,6 +59,10 @@ type AdminUser = {
     QuizId : int
     QuizName : string
     QuizImg : string
+}
+
+type RegUser = {
+    QuizId : int
 }
 
 type ImgCategory =
@@ -167,6 +174,17 @@ type QuestionResult = {
     Idx : int
     Name : string
 }
+
+module RegModels =
+    type QuizRecord = {
+        QuizId : int
+        StartTime : System.DateTime option
+        Brand : string
+        Name : string
+        Status : QuizStatus
+        Description : string
+        ImgKey : string
+    }
 
 module MainModels =
 
@@ -407,4 +425,8 @@ type ITeamApi = {
     answer : REQ<{|QwIndex:int; Answer:string|}> -> ARESP<unit>
     getHistory : REQ<unit> -> ARESP<TeamModels.TeamHistoryRecord list>
     getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
+}
+
+type IRegApi = {
+    getRecord : REQ<unit> -> ARESP<RegModels.QuizRecord>
 }

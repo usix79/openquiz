@@ -1,7 +1,6 @@
 module rec TeamService
 
 open System
-open System.Text.RegularExpressions
 open Giraffe.SerilogExtensions
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Configuration

@@ -16,6 +16,7 @@
     <Compile Include="MainService.fs" />
     <Compile Include="AdminService.fs" />
     <Compile Include="TeamService.fs" />
+    <Compile Include="RegService.fs" />
     <Compile Include="Index.fs" />
     <Compile Include="Server.fs" />
   </ItemGroup>

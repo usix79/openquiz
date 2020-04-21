@@ -268,8 +268,10 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
                             ]
                             li[][
                                 str "Private registration "
-                                a [urlForReg card.QuizId card.RegToken |> Href][str "link"]
-                                str " (not implemented)"
+                                a [urlForReg card.QuizId card.RegToken |> Href; Target "_blank"][
+                                    str "link"
+                                    span [Class "icon"][Fa.i [Fa.Solid.ExternalLinkAlt][]]
+                                ]
                             ]
                             li[][
                                 str "Public read-only "
@@ -291,7 +293,7 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
                     div [Class "control"][
                         label [Class "checkbox"][
                             input [Type "checkbox"; Checked card.WithPremoderation; OnChange (fun ev -> dispatch <| UpdateIsPremoderated ev.Checked)]
-                            str " registration is premoderated"
+                            str " registration is pre moderated"
                         ]
                     ]
                 ]

@@ -167,7 +167,7 @@ let createTeam quiz req =
 
     let creator (key : Domain.TeamKey) =
         let teamsInQuiz = Data.Teams.getDescriptors quiz.QuizId
-        match Domain.Teams.validatePublicTeamUpdate true teamName teamsInQuiz quiz with
+        match Domain.Teams.validateTeamUpdate true teamName teamsInQuiz quiz with
         | Some txt -> Error txt
         | None -> Domain.Teams.createNew key.TeamId teamName quiz |> Ok
 

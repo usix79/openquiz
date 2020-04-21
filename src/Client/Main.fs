@@ -112,20 +112,21 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                             ]
                         ]
                     ]
-                    match user.IsProducer, model.Area with
-                    | true, Public _ ->
-                        a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch SwithToProd)][
-                            Fa.i [Fa.Regular.HandPointer][str " to production area"]
-                        ]
-                    | true, Prod _ ->
-                        a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch SwithToPublic)][
-                            Fa.i [Fa.Solid.HandPointer][str " to public area"]
-                        ]
-                    | false, Public _ ->
-                        a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch BecomeProducer)][
-                            Fa.i [Fa.Regular.HandPointer][str " become a quiz maker!"]
-                        ]
-                    | _ -> ()
+                    if not user.IsPrivate then
+                        match user.IsProducer, model.Area with
+                        | true, Public _ ->
+                            a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch SwithToProd)][
+                                Fa.i [Fa.Regular.HandPointer][str " to production area"]
+                            ]
+                        | true, Prod _ ->
+                            a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch SwithToPublic)][
+                                Fa.i [Fa.Solid.HandPointer][str " to public area"]
+                            ]
+                        | false, Public _ ->
+                            a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch BecomeProducer)][
+                                Fa.i [Fa.Regular.HandPointer][str " become a quiz maker!"]
+                            ]
+                        | _ -> ()
                 ]
             ]
         ]
@@ -143,21 +144,8 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                 | Prod subModel -> MainProd.view (Msg.Prod >> dispatch) user subModel
             ]
         ]
-        div [Class "hero-foot has-background-dark has-text-grey-light"] [
-            div [Class "container"; Style [TextAlign TextAlignOptions.Center]][
-                str "\u00a9"
-                span[Class "is-hidden-touch"][str " Serhii Sabirov"]
-                str " 2020"
-                str " - "
-                a [Href "/terms.html"; Class "has-text-grey-light"] [str "Terms"]
-                str " - "
-                a [Href "/disclaimer.html"; Class "has-text-grey-light"] [str "Disclaimer"]
-                str " - "
-                a [Href "/privacy-policy-en.html"; Class "has-text-grey-light"] [str "Privacy"]
-                str " - "
-                a [Href "https://t.me/open_quiz"; Class "has-text-grey-light" ] [str "Contact"]
-            ]
-        ]
+
+        MainTemplates.footer
 
         if model.IsTermsOfUseOpen then
             MainTemplates.termsOfUse dispatch AcceptTermsOfUse CancelTermsOfUse

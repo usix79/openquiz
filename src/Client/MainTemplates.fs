@@ -69,4 +69,19 @@ let imgEl imgKey =
             figure [Class "image"; Style[MaxWidth "320px"; Display DisplayOptions.InlineBlock]][ img [Shared.Infra.urlForImg imgKey |> Src]]
     }
 
-
+let footer =
+    div [Class "hero-foot has-background-dark has-text-grey-light"] [
+        div [Class "container"; Style [TextAlign TextAlignOptions.Center]][
+            str "\u00a9"
+            span[Class "is-hidden-touch"][str " Serhii Sabirov"]
+            str " 2020"
+            str " - "
+            a [Href "/terms.html"; Class "has-text-grey-light"] [str "Terms"]
+            str " - "
+            a [Href "/disclaimer.html"; Class "has-text-grey-light"] [str "Disclaimer"]
+            str " - "
+            a [Href "/privacy-policy-en.html"; Class "has-text-grey-light"] [str "Privacy"]
+            str " - "
+            a [Href "https://t.me/open_quiz"; Class "has-text-grey-light" ] [str "Contact"]
+        ]
+    ]

@@ -303,3 +303,18 @@ module Teams =
             | Some aw -> {r with AwTxt = Some aw.Text; Result = aw.Result}
             | None -> r
         )
+
+module Reg =
+    let quizRecord (quiz:QuizDescriptor) : RegModels.QuizRecord =
+        {
+            QuizId = quiz.QuizId
+            StartTime = quiz.StartTime
+            Brand = quiz.Brand
+            Name = quiz.Name
+            Status = quizStatus quiz.Status
+            Description =
+                match quiz.Status with
+                | Draft | Published | Live -> quiz.WelcomeText
+                | Finished | Archived -> quiz.FarewellText
+            ImgKey = quiz.ImgKey
+        }
