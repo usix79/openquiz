@@ -208,36 +208,46 @@ let quizView (dispatch : Msg -> unit) (user:AdminUser) (model : Model) (quiz : Q
         div [Class "field is-grouped"][
             div [Class "control"][
                 label [Class "label"][str "Questions Package"]
-                div [Class "select"][
-                    let value = match model.Package with Some pkg -> pkg.PackageId | None -> -1
-                    select[Disabled isReadOnly; Value value; OnClick (fun _ -> dispatch PackagesClick); OnChange (fun ev -> SelectPackage ev.Value |> dispatch)][
-                        option[Value -1][str "Not Selected"]
-                        match model.AvailablePackages with
-                        | Some pkgs ->
+                match model.AvailablePackages with
+                | Some pkgs ->
+                    div [Class "select"][
+                        let value = match model.Package with Some pkg -> pkg.PackageId | None -> -1
+                        select[Disabled isReadOnly; Value value; OnChange (fun ev -> SelectPackage ev.Value |> dispatch)][
+                            option[Value -1][str "Not Selected"]
                             for pkg in pkgs |> List.sortBy (fun p -> p.PackageId) |> List.rev do
                                 option[Value pkg.PackageId][str <| trimMiddle 32 "..." pkg.Name]
-                        | None ->
-                            match model.Package with
-                            | Some pkg -> option[Value pkg.PackageId][str <| trimMiddle 32 "..." pkg.Name]
-                            | None -> ()
+                        ]
                     ]
-                ]
+                | None ->
+                    div [Class "field has-addons"][
+                        div [Class "control"][
+                            let txt = match model.Package with | Some pkg -> str pkg.Name | None -> str "Not Selected"
+                            input [Class "input"; Type "text"; Value txt; ReadOnly true; MaxLength 32.0]
+
+                        ]
+                        div [Class "control"][
+                            button [Class "button"; OnClick (fun _ -> dispatch PackagesClick)][Fa.i [Fa.Solid.EllipsisH][]]
+                        ]
+                    ]
             ]
 
-            div [Class "control"][
-                label [Class "label"][str "Question"]
-                div [Class "select"][
-                    let value = match quiz.PackageQwIdx with Some idx -> idx | None -> -1
-                    select[Disabled isReadOnly; Value value; OnChange (fun ev -> SelectQwIdx ev.Value |> dispatch)][
-                        option[Value -1][str "Not Selected"]
-                        match model.Package with
-                        | Some pkg ->
-                            for (idx,qw) in pkg.Questions |> List.mapi (fun idx qw -> idx,qw) do
-                                option[Value idx][str <| sprintf "%i %s" (idx + 1) (trimEnd 32 "..." qw.Text)]
-                        | None -> ()
+            match quiz.CurrentQw with
+            | Some _ ->
+                div [Class "control"][
+                    label [Class "label"][str "Question"]
+                    div [Class "select"][
+                        let value = match quiz.PackageQwIdx with Some idx -> idx | None -> -1
+                        select[Disabled isReadOnly; Value value; OnChange (fun ev -> SelectQwIdx ev.Value |> dispatch)][
+                            option[Value -1][str "Not Selected"]
+                            match model.Package with
+                            | Some pkg ->
+                                for (idx,qw) in pkg.Questions |> List.mapi (fun idx qw -> idx,qw) do
+                                    option[Value idx][str <| sprintf "%i %s" (idx + 1) (trimEnd 32 "..." qw.Text)]
+                            | None -> ()
+                        ]
                     ]
                 ]
-            ]
+            | None -> ()
         ]
         div[][
             match quiz.CurrentQw with

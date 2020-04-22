@@ -206,6 +206,11 @@ module Quizzes =
         if (quiz.Dsc.PkgId <> packageId) then {quiz with Dsc = {quiz.Dsc with PkgId = packageId; PkgQwIdx = None}}
         else quiz
 
+    let setQwIndex qwIdx (quiz:Quiz) =
+        match quiz.Dsc.PkgId with
+        | Some pkgId -> {quiz with Dsc = {quiz.Dsc with PkgQwIdx = Some qwIdx}}
+        | None -> quiz
+
     let addQuestion (qw:PackageQuestion option) (quiz:Quiz) =
         let name, seconds =
             match quiz.CurrentQuestion with
@@ -231,10 +236,15 @@ module Quizzes =
 
     let changeStatus status  (pkgProvider : Provider<int,Package>) (quiz:Quiz) =
         match {quiz with Dsc = {quiz.Dsc with Status = status}} with
-        | quiz when status = Live && quiz.Questions.Length = 0 && quiz.Dsc.PkgId.IsSome ->
-            match pkgProvider quiz.Dsc.PkgId.Value with
-            | Some pkg -> addQuestion (pkg.GetQuestion (defaultArg quiz.Dsc.PkgQwIdx 0)) quiz
-            | None -> quiz
+        | quiz when status = Live && quiz.Questions.Length = 0 ->
+            match quiz.Dsc.PkgId with
+            | Some pkgId ->
+                match pkgProvider pkgId with
+                | Some pkg ->
+                    let qwIdx = defaultArg quiz.Dsc.PkgQwIdx 0
+                    quiz |> setQwIndex qwIdx |> addQuestion (pkg.GetQuestion qwIdx)
+                | None ->  quiz |> addQuestion None
+            | None -> quiz |> addQuestion None
         | quiz -> quiz
 
     let private updateCurrentQuestion (f : QuizQuestion -> QuizQuestion) (quiz:Quiz) =
@@ -280,7 +290,7 @@ module Quizzes =
                 match pkgProvider pkgId with
                 | Some pkg -> pkg.GetQuestion qwIdx
                 | None -> None
-            {quiz with Dsc = {quiz.Dsc with PkgQwIdx = Some qwIdx}} |> addQuestion qw
+            quiz |> setQwIndex qwIdx |> addQuestion qw
         | None -> quiz |> addQuestion None
 
 type TeamStatus =

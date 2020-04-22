@@ -153,11 +153,14 @@ let view (dispatch : Msg -> unit) (user:AdminUser) (model : Model) =
                         td [] [str team.TeamName]
                         td [] [str <| urlForTeam user.QuizId team.TeamId team.EntryToken]
                         td [] [
-                            str <| team.TeamStatus.ToString()
+                            div [Style [Display DisplayOptions.Flex]][
+                                str <| team.TeamStatus.ToString()
 
-                            if (team.TeamStatus = New) then
-                                button [Class "button is-small"; Title "Admit"; OnClick (fun _ -> ChangeStatus (team.TeamId, Admitted) |> dispatch)][span [Class "icon has-text-info"][Fa.i [Fa.Regular.ThumbsUp][]]]
-                                button [Class "button is-small"; Title "Reject"; OnClick (fun _ -> ChangeStatus (team.TeamId, Rejected) |> dispatch)][span [Class "icon has-text-danger"][Fa.i [Fa.Regular.ThumbsDown][]]]
+                                if (team.TeamStatus = New) then
+                                    str " "
+                                    button [Class "button is-small is-white"; Title "Admit"; OnClick (fun _ -> ChangeStatus (team.TeamId, Admitted) |> dispatch)][span [Class "icon has-text-info"][Fa.i [Fa.Regular.ThumbsUp][]]]
+                                    button [Class "button is-small is-white"; Title "Reject"; OnClick (fun _ -> ChangeStatus (team.TeamId, Rejected) |> dispatch)][span [Class "icon has-text-danger"][Fa.i [Fa.Regular.ThumbsDown][]]]
+                            ]
                         ]
                     ]
                     if hasCard then
