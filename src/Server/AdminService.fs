@@ -169,11 +169,10 @@ let createTeam quiz req =
         let teamsInQuiz = Data.Teams.getDescriptors quiz.QuizId
         match Domain.Teams.validateTeamUpdate true teamName teamsInQuiz quiz with
         | Some txt -> Error txt
-        | None -> Domain.Teams.createNew key.TeamId teamName quiz |> Ok
+        | None -> Domain.Teams.createNewAdmin key.TeamId teamName quiz Domain.Admitted  |> Ok
 
     result {
         let! team = CommonService.createTeam quiz.QuizId creator
-
         return! Ok {|Record = Admin.teamRecord team.Dsc|}
     }
 

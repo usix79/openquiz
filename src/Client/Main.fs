@@ -71,7 +71,13 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | Exn ex, _ -> cm |> addError ex.Message |> noCmd
     | _ -> cm |> noCmd
 
+
 let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
+    match model.Area with
+    | Public subModel when user.IsPrivate -> MainPub.view (Msg.Public >> dispatch) user subModel
+    | _ -> viewAsUsual dispatch user model
+
+let viewAsUsual (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
 
     let isProd = match model.Area with Public _  -> false | Prod _ -> true
 
@@ -112,21 +118,20 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                             ]
                         ]
                     ]
-                    if not user.IsPrivate then
-                        match user.IsProducer, model.Area with
-                        | true, Public _ ->
-                            a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch SwithToProd)][
-                                Fa.i [Fa.Regular.HandPointer][str " to production area"]
-                            ]
-                        | true, Prod _ ->
-                            a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch SwithToPublic)][
-                                Fa.i [Fa.Solid.HandPointer][str " to public area"]
-                            ]
-                        | false, Public _ ->
-                            a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch BecomeProducer)][
-                                Fa.i [Fa.Regular.HandPointer][str " become a quiz maker!"]
-                            ]
-                        | _ -> ()
+                    match user.IsProducer, model.Area with
+                    | true, Public _ ->
+                        a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch SwithToProd)][
+                            Fa.i [Fa.Regular.HandPointer][str " to production area"]
+                        ]
+                    | true, Prod _ ->
+                        a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch SwithToPublic)][
+                            Fa.i [Fa.Solid.HandPointer][str " to public area"]
+                        ]
+                    | false, Public _ ->
+                        a [Class "navbar-item has-text-danger"; OnClick (fun _ -> dispatch BecomeProducer)][
+                            Fa.i [Fa.Regular.HandPointer][str " become a quiz maker!"]
+                        ]
+                    | _ -> ()
                 ]
             ]
         ]

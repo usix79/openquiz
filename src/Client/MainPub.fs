@@ -101,6 +101,11 @@ let update (api:IMainApi)(user:MainUser) (msg : Msg) (cm : Model) : Model * Cmd<
 
 
 let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
+    match user.IsPrivate with
+    | true -> viewAsPrivate dispatch user model (model.Quizzes |> List.tryHead)
+    | false -> viewAsUsual dispatch user model
+
+let viewAsUsual (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
     div [] [
         div [Class "title"] [str "Welcome to the Open Quiz!"]
         div [Class "subtitle"] [
@@ -160,7 +165,7 @@ let quizBox (dispatch : Msg -> unit) (profile:ExpertProfile option) (quiz : Quiz
                     p[][
                         strong [][str quiz.Brand]
                         str "   "
-                        match quiz.StartTime with Some dt -> str (dt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm")) | None -> str "???"
+                        match quiz.StartTime with Some dt -> str (dt.ToString("yyyy-MM-dd HH:mm")) | None -> str "???"
                         if quiz.Status = Live then
                             str " "
                             span [Class "tag is-danger is-light"][str "live"]
@@ -234,4 +239,78 @@ let levelWithEditForm dispatch (profile:ExpertProfile) (quiz : QuizPubRecord) (r
         ]
     ]
     p [Class "help is-danger"][str regForm.Error]
+]
+
+
+let viewAsPrivate (dispatch : Msg -> unit) (user:MainUser) (model : Model) (quiz:QuizPubRecord option) =
+    section [Class "hero is-shadowless is-fullheight"] [
+        div [Class "hero-head"] [
+            div [Class "container"][
+                nav [Class "navbar is-transparent is-spaced"; Role "navigation"; AriaLabel "dropdown navigation"] [
+                    div [Class "navbar-brand"] [
+                        div [Class "navbar-item is-paddingleft is-hidden-desktop"][str user.Name]
+                    ]
+                    div [Class "navbar-menu"][
+                        div [Class "navbar-end"][
+                            div [Class "navbar-item"] [
+                                figure [Class "image"][
+                                    img [Class "is-rounded"; Style [Height "50px"; Width "50px"; MaxHeight "50px"]; Src user.PictureUrl]
+                                ]
+                                span [Style [MarginLeft "5px"]][str user.Name]
+                            ]
+                        ]
+                    ]
+                ]
+
+                div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
+                    div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
+                        match quiz with
+                        | Some quiz -> yield! privateQuizView dispatch model.Profile quiz model.RegForm
+                        | None -> ()
+                    ]
+                ]
+            ]
+        ]
+        div [Class "hero-body"] [
+            div [Class "container"][
+                for error in model.Errors do
+                    div [Class "notification is-danger"][
+                        button [Class "delete"; OnClick (fun _ -> dispatch (DeleteError error.Key))][]
+                        str error.Value
+                    ]
+            ]
+        ]
+        MainTemplates.footer
+    ]
+
+
+let privateQuizView (dispatch : Msg -> unit) (profile:ExpertProfile option) (quiz : QuizPubRecord) (regForm : RegForm option) = [
+    br []
+    figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Infra.urlForImgSafe quiz.ImgKey ] ]
+    br []
+    h3 [Class "title is-3"] [str quiz.Name]
+
+    div [Class "notification is-white"][
+        p [Class "subtitle is-5"][
+            match quiz.StartTime with
+            | Some dt -> str (dt.ToString("yyyy-MM-dd HH:mm"))
+            | None -> str "???"
+
+            if quiz.Status = Live then
+                str " "
+                span [Class "tag is-danger is-light"][str "live"]
+            br[]
+        ]
+
+        p [] (splitByLines quiz.Description)
+    ]
+
+    div [Style [Width "320px"; Display DisplayOptions.InlineBlock]] [
+        match quiz.Status <> Finished, profile, regForm with
+        | true, Some p, Some form when form.QuizId = quiz.QuizId -> yield! levelWithEditForm dispatch p quiz form
+        | _, Some p, _ when p.Competitions.ContainsKey quiz.QuizId -> yield! levelWithRegistrationInfo dispatch p quiz
+        | true, Some p, _ -> yield! levelWithRegisterBtn dispatch quiz
+        | _ -> ()
+    ]
+
 ]

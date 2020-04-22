@@ -83,7 +83,7 @@ let quizView (dispatch : Msg -> unit) (quiz:QuizRecord) = [
     div [Class "notification is-white"][
         p [Class "subtitle is-5"][
             match quiz.StartTime with
-            | Some dt -> str (dt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm"))
+            | Some dt -> str (dt.ToString("yyyy-MM-dd HH:mm"))
             | None -> str "???"
 
             if quiz.Status = Live then

@@ -328,18 +328,22 @@ type Team = {
 
 module Teams =
 
-    let createNew teamId (teamName:string) (quiz:QuizDescriptor) : Team =
+    let createNewAdmin teamId (teamName:string) (quiz:QuizDescriptor) status : Team =
         let dsc = {
             QuizId = quiz.QuizId
             TeamId = teamId
             Name = teamName.Trim()
-            Status = if quiz.WithPremoderation then New else Admitted
+            Status = status
             EntryToken = generateRandomToken()
             RegistrationDate = DateTime.UtcNow
             ActiveSessionId = 0
         }
 
         {Dsc = dsc; Answers = Map.empty; Version = 0}
+
+    let createNew teamId (teamName:string) (quiz:QuizDescriptor) : Team =
+        if quiz.WithPremoderation then New else Admitted
+        |>createNewAdmin teamId teamName quiz
 
     let dsc (f : TeamDescriptor -> Result<TeamDescriptor,string>) (team:Team) =
         result {
