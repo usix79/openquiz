@@ -231,7 +231,7 @@ let loginAdminUser secret quizId token =
         let! quiz = ((Data.Quizzes.getDescriptor quizId), "Quiz not found")
 
         return!
-            if quiz.AdminToken = token then
+            if quiz.AdminToken = System.Web.HttpUtility.UrlDecode token then
                 let claims = [Claim(CustomClaims.Role, CustomRoles.Admin); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
                 let user = AdminUser {QuizId = quiz.QuizId; QuizName = quiz.Name; QuizImg = quiz.ImgKey}
                 loginResp secret claims user
@@ -274,7 +274,7 @@ let loginRegUser secret quizId token =
         let! quiz = ((Data.Quizzes.getDescriptor quizId), "Quiz not found")
 
         return!
-            if quiz.RegToken = token then
+            if quiz.RegToken = System.Web.HttpUtility.UrlDecode token then
                 let claims = [Claim(CustomClaims.Role, CustomRoles.Reg); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
                 let user = RegUser {QuizId = quiz.QuizId}
                 loginResp secret claims user
