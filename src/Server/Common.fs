@@ -218,8 +218,14 @@ module Sse =
                     try
                         let! cmd = inbox.Receive()
                         match cmd with
-                        | Subscribe sub -> return! loop (subs.Add (sub.SubscriptionId, sub))
-                        | Unsubcribe subId -> return! loop (subs.Remove subId)
+                        | Subscribe sub ->
+                            let subs = (subs.Add (sub.SubscriptionId, sub))
+                            Log.Information ("{@Op} {@Proc} {@Count}", "Subscribe", "SSE", subs.Count)
+                            return! loop subs
+                        | Unsubcribe subId ->
+                            let subs = (subs.Remove subId)
+                            Log.Information ("{@Op} {@Proc} {@Count}", "Unsubscribe", "SSE", subs.Count)
+                            return! loop subs
                         | Heartbeat ->
                             let! _ = subs |> Map.toSeq |> Seq.map (fun (_,sub) -> writeMessage sub.Response heartbeatTxt)
                                         |> Async.Parallel
@@ -233,7 +239,7 @@ module Sse =
                                 |> Async.Parallel
                             ()
                     with
-                    | ex -> Log.Error ("{@Pp} {@Exn}", "SSE", ex)
+                    | ex -> Log.Error ("{@Proc} {@Exn}", "SSE", ex)
 
                     return! loop subs
                 }
