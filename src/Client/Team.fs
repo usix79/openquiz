@@ -215,15 +215,8 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
 
     div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
-            if model.IsConnectionOk then
-                Fa.i [Fa.Solid.Wifi; Fa.Props [Style[Position PositionOptions.Absolute; Top "5px"; Left "5px"]]][str " connected"]
-            else
-                span [Class "has-text-danger"][Fa.i [Fa.Solid.Wifi; Fa.Props [Style[Position PositionOptions.Absolute; Top "5px"; Left "5px"]]][ str " disconnected"]]
+            MainTemplates.playTitle user.QuizName quiz.Img model.IsConnectionOk
 
-            br []
-            figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Infra.urlForImgSafe quiz.Img ] ]
-            br []
-            h3 [Class "title is-3"] [ str user.QuizName ]
             h4 [Class "subtitle is-4" ] [ str user.TeamName ]
 
             div [Class "container"] [
@@ -236,17 +229,7 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
                         | Question ->
                             match quiz.QS with
                             | Live -> yield quiestionView dispatch quiz model.Answer isCountdownActive
-                            | _ ->
-                                yield
-                                    div [Class "notification is-white"][
-                                        p [Class "subtitle is-5"][
-                                            match quiz.QS with
-                                            | Draft | Published -> str "Coming soon ..."
-                                            | Finished | Archived -> str "Finished"
-                                            | _ -> ()
-                                        ]
-                                        p [] (splitByLines quiz.Msg)
-                                     ]
+                            | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg
                         | Results -> yield resultsView dispatch user model
                     ]
                 | Rejected -> div [Class "notification is-white"][span[Class "has-text-danger has-text-weight-bold"][str "Registration has been rejected ("]]
@@ -255,40 +238,12 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
             div [ Style [Height "66px"]] []
         ]
         if quiz.TS = Admitted then
-            div [Style [Position PositionOptions.Fixed; Bottom "0"; Height "62px"; Width "100%"; BackgroundColor "#FFFFFF"; OverflowX OverflowOptions.Hidden]]  [
-                div [Class "tabs is-white is-large is-toggle is-fullwidth"] [
-                    ul[][
-                        li [classList ["has-text-weight-bold", model.ActiveTab = History] ] [
-                            a [OnClick (fun _ -> dispatch (ChangeTab History))] [ str "History" ]
-                        ]
-                        li [classList ["has-text-weight-bold", model.ActiveTab = Question; "has-background-danger", isCountdownActive && secondsLeft < 10]] [
-                            a [OnClick (fun _ -> dispatch (ChangeTab Question))] [
-                                if isCountdownActive then str (secondsLeft.ToString()) else str "Question"
-                            ]
-                        ]
-                        li [classList ["has-text-weight-bold", model.ActiveTab = Results] ] [
-                            a [OnClick (fun _ -> dispatch (ChangeTab Results))] [ str "Results" ]
-                        ]
-                    ]
-                ]
-           ]
+            MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
     ]
 
 let quiestionView (dispatch : Msg -> unit) quiz answer isCountdownActive =
     div [] [
-        h5 [Class "title is-5"] [ str <| "Question: " + match quiz.Qw with Some qw -> qw.Cap | None -> "???" ]
-
-        match quiz.Qw with
-        | Some q ->
-            yield! MainTemplates.imgEl q.Img
-            if q.QQS = Settled then
-                p [ Class "has-text-weight-bold" ] [ str "Answer" ]
-            p [ Class "has-text-weight-semibold" ] (splitByLines q.Txt)
-            if (q.Com <> "") then
-                p [ Class "has-text-weight-bold" ] [ str "Comment" ]
-                p [ ] (splitByLines q.Com)
-            br[]
-        | _ -> ()
+        MainTemplates.playQuestion quiz.Qw
 
         match answer with
         | Some aw ->
@@ -308,7 +263,6 @@ let quiestionView (dispatch : Msg -> unit) quiz answer isCountdownActive =
             ]
         | _ -> ()
     ]
-
 
 let historyView dispatch model =
     table [Class "table is-hoverable is-fullwidth"][
@@ -355,38 +309,9 @@ let historyView dispatch model =
     ]
 
 let resultsView dispatch (user:TeamUser) model =
-    table [Class "table is-hoverable is-fullwidth"] [
-        thead [ ] [
-            yield tr [ ] [
-                th [ ] [ str "#" ]
-                th [ ] [ str "Team" ]
-                th [ ] [ str "Points" ]
-                th [ ] [ str "Place" ]
-            ]
+    let currentRes =
+        model.TeamResults
+        |> List.tryFind (fun r -> r.TeamId = user.TeamId)
 
-            match model.TeamResults |> List.tryFind (fun r -> r.TeamId = user.TeamId) with
-            | Some res ->
-                 yield resultsRow res [FontWeight "bold"]
-                 yield tr[][td[][];td[][];td[][];td[][]]
-            | None -> ()
+    MainTemplates.resultsView currentRes model.TeamResults
 
-        ]
-        tbody [] [
-            for res in model.TeamResults |> List.sortByDescending (fun r -> r.Points, -r.TeamId) do
-                let style = if res.TeamId = user.TeamId then [FontWeight "bold"] else []
-                yield resultsRow res style
-        ]
-    ]
-
-let resultsRow res style =
-    tr [Style style] [
-        td [ ][ str <| res.TeamId.ToString()]
-        td [ ][ str res.TeamName]
-        td [ ][ str <| res.Points.ToString()]
-        td [] [
-            if res.PlaceFrom = res.PlaceTo
-            then res.PlaceFrom.ToString()
-            else sprintf "%i-%i" res.PlaceFrom res.PlaceTo
-            |> str
-        ]
-    ]

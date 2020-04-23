@@ -142,6 +142,7 @@ let appRouter =
         apiHandler AdminService.api
         apiHandler TeamService.api
         apiHandler RegService.api
+        apiHandler AudService.api
     ]
 
 let serilogConfig = {

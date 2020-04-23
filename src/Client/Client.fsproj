@@ -23,6 +23,7 @@
     <Compile Include="Admin.fs" />
     <Compile Include="Team.fs" />
     <Compile Include="Reg.fs" />
+    <Compile Include="Audience.fs" />
     <Compile Include="Root.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>

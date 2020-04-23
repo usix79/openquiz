@@ -27,6 +27,7 @@ module CustomRoles =
     let Expert = "expert"
     let Team = "team"
     let Reg = "reg"
+    let Aud = "aud"
 
 let rand = Random(DateTime.UtcNow.Millisecond)
 
@@ -168,6 +169,11 @@ let authorizePrivateReg secret (f: string -> 'arg -> Result<'res, string>) =
         let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
         f quizIdStr req
 
+let authorizeAudience secret (f: string -> 'arg -> Result<'res, string>) =
+    authorize secret CustomRoles.Aud <| fun principal req ->
+        let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
+        f quizIdStr req
+
 let execute (logger : ILogger) (proc:string) (f: REQ<'Req> -> RESP<'Resp>) : REQ<'Req> -> ARESP<'Resp> =
     fun req ->
         async {
@@ -279,8 +285,19 @@ let loginRegUser secret quizId token =
                 let user = RegUser {QuizId = quiz.QuizId}
                 loginResp secret claims user
             else
-                printfn "%s" quiz.RegToken
-                printfn "%s" token
+                Error "Wrong entry token"
+    }
+
+let loginAudUser secret quizId token =
+    result{
+        let! quiz = ((Data.Quizzes.getDescriptor quizId), "Quiz not found")
+
+        return!
+            if quiz.ListenToken = System.Web.HttpUtility.UrlDecode token then
+                let claims = [Claim(CustomClaims.Role, CustomRoles.Aud); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
+                let user = AudUser {QuizId = quiz.QuizId}
+                loginResp secret claims user
+            else
                 Error "Wrong entry token"
     }
 
@@ -309,3 +326,5 @@ let login secret (cfg:IConfiguration) (token:string) (req : LoginReq) =
         loginTeamUser secret data.QuizId data.TeamId data.Token
     | LoginReq.RegUser data ->
         loginRegUser secret data.QuizId data.Token
+    | LoginReq.AudUser data ->
+        loginAudUser secret data.QuizId data.Token

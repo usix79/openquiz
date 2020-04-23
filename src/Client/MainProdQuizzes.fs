@@ -258,26 +258,14 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
                 div [Class "field"][
                     label [Class "label"][str "Application links"]
                     div [Class "content"][
+                        let link caption href =
+                            li[][str caption; str " "; a [Href href; Target "_blank"][
+                                    str "link"; span [Class "icon"][Fa.i [Fa.Solid.ExternalLinkAlt][]]]]
+
                         ul[][
-                            li[][
-                                str "Admin "
-                                a [urlForAdmin card.QuizId card.AdminToken |> Href; Target "_blank"][
-                                    str "link"
-                                    span [Class "icon"][Fa.i [Fa.Solid.ExternalLinkAlt][]]
-                                ]
-                            ]
-                            li[][
-                                str "Registration "
-                                a [urlForReg card.QuizId card.RegToken |> Href; Target "_blank"][
-                                    str "link"
-                                    span [Class "icon"][Fa.i [Fa.Solid.ExternalLinkAlt][]]
-                                ]
-                            ]
-                            li[][
-                                str "Public read-only "
-                                a [urlForPub card.QuizId card.ListenToken |> Href][str "link"]
-                                str " (not implemented)"
-                            ]
+                            urlForAdmin card.QuizId card.AdminToken |> link "Admin"
+                            urlForReg card.QuizId card.RegToken |> link "Registration"
+                            urlForAud card.QuizId card.ListenToken |> link "Audience"
                         ]
                     ]
                 ]
@@ -293,7 +281,7 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
                     div [Class "control"][
                         label [Class "checkbox"][
                             input [Type "checkbox"; Checked card.WithPremoderation; OnChange (fun ev -> dispatch <| UpdateIsPremoderated ev.Checked)]
-                            str " registration is pre moderated"
+                            str " registration is moderated"
                         ]
                     ]
                 ]

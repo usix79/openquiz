@@ -32,12 +32,14 @@ type LoginReq =
     | AdminUser of {|QuizId:int; Token: string|}
     | TeamUser of {|QuizId: int; TeamId: int; Token: string|}
     | RegUser of {|QuizId:int; Token: string|}
+    | AudUser of {|QuizId:int; Token: string|}
 
 type User =
     | MainUser of MainUser
     | AdminUser of AdminUser
     | TeamUser of TeamUser
     | RegUser of RegUser
+    | AudUser of AudUser
 
 type MainUser = {
     Sub : string
@@ -59,6 +61,10 @@ type AdminUser = {
     QuizId : int
     QuizName : string
     QuizImg : string
+}
+
+type AudUser = {
+    QuizId : int
 }
 
 type RegUser = {
@@ -361,6 +367,28 @@ module TeamModels =
         Result : decimal option
     }
 
+module AudModels =
+    type QuizCard = {
+        QS : QuizStatus
+        QN : string
+        Img : string
+        Wcm : string
+        Fwl : string
+        Qw : QuestionCard option
+        LT : string
+        V : int
+    } with
+        member x.Msg =
+            match x.QS with
+            | Draft | Published | Live -> x.Wcm
+            | Finished | Archived -> x.Fwl
+
+    type HistoryRecord = {
+        QwIdx : int
+        QwName : string
+        QwAw : string
+    }
+
 
 module Infra =
     let routeBuilder clientPath (typeName: string) (methodName: string) =
@@ -429,4 +457,10 @@ type ITeamApi = {
 
 type IRegApi = {
     getRecord : REQ<unit> -> ARESP<RegModels.QuizRecord>
+}
+
+type IAudApi = {
+    getQuiz : REQ<unit> -> ARESP<AudModels.QuizCard>
+    getHistory : REQ<unit> -> ARESP<AudModels.HistoryRecord list>
+    getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
 }

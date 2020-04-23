@@ -57,8 +57,8 @@ let urlForAdmin quizId token =
 let urlForReg quizId token =
      sprintf "%s?who=reg&quiz=%d&token=%s" (Infra.locationFullPath ()) quizId token
 
-let urlForPub quizId token =
-     sprintf "%s?who=pub&quiz=%d&token=%s" (Infra.locationFullPath ()) quizId token
+let urlForAud quizId token =
+     sprintf "%s?who=aud&quiz=%d&token=%s" (Infra.locationFullPath ()) quizId token
 
 let splitByLines (txt:string) =
     [for l in txt.Split ([|'\n'|]) do
@@ -240,6 +240,12 @@ module Infra =
         member x.Close () =
             sse.close()
 
+    let inline createApi<'I> () : 'I =
+        Remoting.createApi()
+        |> Remoting.withBaseUrl "/"
+        |> Remoting.withRouteBuilder (Infra.routeBuilder "")
+        |> Remoting.buildProxy<'I>
+
     type ApiFactory (switchToLoginAction: unit -> unit) =
 
         let o = sessionStorage.getItem "TOKEN"
@@ -248,35 +254,12 @@ module Infra =
         let o = sessionStorage.getItem "REFRESH_TOKEN"
         let mutable refreshToken = if isNull o then "" else o
 
-        let securityApi =
-            Remoting.createApi()
-            |> Remoting.withBaseUrl "/"
-            |> Remoting.withRouteBuilder (Infra.routeBuilder "")
-            |> Remoting.buildProxy<ISecurityApi>
-
-        let mainApi =
-            Remoting.createApi()
-            |> Remoting.withBaseUrl "/"
-            |> Remoting.withRouteBuilder (Infra.routeBuilder "")
-            |> Remoting.buildProxy<IMainApi>
-
-        let adminApi =
-            Remoting.createApi()
-            |> Remoting.withBaseUrl "/"
-            |> Remoting.withRouteBuilder (Infra.routeBuilder "")
-            |> Remoting.buildProxy<IAdminApi>
-
-        let teamApi =
-            Remoting.createApi()
-            |> Remoting.withBaseUrl "/"
-            |> Remoting.withRouteBuilder (Infra.routeBuilder "")
-            |> Remoting.buildProxy<ITeamApi>
-
-        let regApi =
-            Remoting.createApi()
-            |> Remoting.withBaseUrl "/"
-            |> Remoting.withRouteBuilder (Infra.routeBuilder "")
-            |> Remoting.buildProxy<IRegApi>
+        let securityApi = createApi<ISecurityApi>()
+        let mainApi = createApi<IMainApi>()
+        let adminApi = createApi<IAdminApi>()
+        let teamApi = createApi<ITeamApi>()
+        let regApi = createApi<IRegApi>()
+        let audApi = createApi<IAudApi>()
 
         member x.RefreshTokenAndProceed<'Req, 'Resp> failedToken =
             async{
@@ -398,4 +381,11 @@ module Infra =
         member x.CreateRegApi () =
             {
                 getRecord = x.Wrap regApi.getRecord
+            }
+
+        member x.CreateAudApi () =
+            {
+                getQuiz = x.Wrap audApi.getQuiz
+                getHistory = x.Wrap audApi.getHistory
+                getResults = x.Wrap audApi.getResults
             }

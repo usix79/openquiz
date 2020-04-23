@@ -12,6 +12,7 @@ type CurrentPage =
     | AdminPage of Admin.Model
     | TeamPage of Team.Model
     | RegPage of Reg.Model
+    | AudPage of Aud.Model
     | PrivatePage
 
 type Msg =
@@ -21,6 +22,7 @@ type Msg =
     | AdminMsg of Admin.Msg
     | TeamMsg of Team.Msg
     | RegMsg of Reg.Msg
+    | AudMsg of Aud.Msg
 
 type Model = {
     CurrentUser : User option
@@ -33,6 +35,7 @@ let mainApi = apiFactory.CreateMainApi()
 let adminApi = apiFactory.CreateAdminApi()
 let teamApi = apiFactory.CreateTeamApi()
 let regApi = apiFactory.CreateRegApi()
+let audApi = apiFactory.CreateAudApi()
 
 let getUserFromStorage() =
     Infra.loadFromSessionStorage<User> "USER"
@@ -51,6 +54,9 @@ let initChildPage user cm =
     | TeamUser u ->
         let submodel, subcmd = Team.init teamApi u
         {cm with CurrentPage = TeamPage submodel; CurrentUser = Some user}, Cmd.map TeamMsg subcmd
+    | AudUser u->
+        let submodel, subcmd = Aud.init audApi
+        {cm with CurrentPage = AudPage submodel; CurrentUser = Some user}, Cmd.map AudMsg subcmd
 
 let saveUser token refreshToken user =
     apiFactory.UpdateTokens token refreshToken |> ignore
@@ -66,6 +72,7 @@ let evaluateLoginReq (query : Map<string,string>) =
         match qs "who", qi "quiz", qs "token", qi "team" with
         | Some "admin", Some quizId, Some token, _  -> LoginReq.AdminUser {|QuizId = quizId; Token = token|} |> Some
         | Some "reg", Some quizId, Some token, _  -> LoginReq.RegUser {|QuizId = quizId; Token = token|} |> Some
+        | Some "aud", Some quizId, Some token, _  -> LoginReq.AudUser {|QuizId = quizId; Token = token|} |> Some
         | Some "team", Some quizId, Some token, Some teamId  -> LoginReq.TeamUser {|QuizId = quizId; TeamId = teamId; Token = token|} |> Some
         | _ -> None
 
@@ -73,6 +80,7 @@ let isReqForSameUser (req:LoginReq) (user:User) =
     match req, user with
     | LoginReq.MainUser _, MainUser _ -> true
     | LoginReq.AdminUser data, AdminUser usr -> data.QuizId = usr.QuizId
+    | LoginReq.AudUser data, AudUser usr -> data.QuizId = usr.QuizId
     | LoginReq.TeamUser data, TeamUser usr -> data.QuizId = usr.QuizId && data.TeamId = usr.TeamId
     | _ -> false
 
@@ -80,7 +88,6 @@ let init (): Model * Cmd<Msg> =
     let cm =  {CurrentPage = EmptyPage "Initializing..."; CurrentUser = None}
 
     let u = getUserFromStorage()
-    printfn "USER: %A" u
     match u, evaluateLoginReq (Infra.currentQueryString()) with
     | Some user, Some req when isReqForSameUser req user -> cm |> initChildPage user
     | _, Some req -> cm |> apiCmd securityApi.login req LoginResponse Exn
@@ -109,7 +116,6 @@ let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
                 Infra.saveToSessionStorage "USER" (MainUser user)
                 user
             | _ -> user
-
         let newModel,newCmd = Main.update mainApi user subMsg subModel
         {cm with CurrentPage = MainPage newModel; CurrentUser = Some (MainUser user)}, Cmd.map MainMsg newCmd
     | AdminPage subModel, Some (AdminUser user), AdminMsg subMsg ->
@@ -121,6 +127,9 @@ let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | RegPage subModel, Some (RegUser _), RegMsg subMsg ->
         let newModel,newCmd = Reg.update regApi subMsg subModel
         {cm with CurrentPage = RegPage newModel}, Cmd.map RegMsg newCmd
+    | AudPage subModel, Some (AudUser u), AudMsg subMsg ->
+        let newModel,newCmd = Aud.update audApi u subMsg subModel
+        {cm with CurrentPage = AudPage newModel}, Cmd.map AudMsg newCmd
     | _, _, _ -> cm |> noCmd
 
 let view (model : Model) (dispatch : Msg -> unit) =
@@ -131,6 +140,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
         | AdminPage subModel, Some (AdminUser user) -> Admin.view (AdminMsg >> dispatch) user subModel
         | TeamPage subModel, Some (TeamUser user) -> Team.view (TeamMsg >> dispatch) user subModel
         | RegPage subModel, Some (RegUser user) -> Reg.view (RegMsg >> dispatch) subModel
+        | AudPage subModel, Some (AudUser user) -> Aud.view (AudMsg >> dispatch) subModel
         | _ -> str "Oops"
 
     div [] [pageHtml]

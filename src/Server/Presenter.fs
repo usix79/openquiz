@@ -318,3 +318,39 @@ module Reg =
                 | Finished | Archived -> quiz.FarewellText
             ImgKey = quiz.ImgKey
         }
+
+
+module Audience =
+
+    let quizCard (quiz:Quiz) : AudModels.QuizCard =
+        {
+            QS = quizStatus quiz.Dsc.Status
+            QN = quiz.Dsc.Name
+            Img = quiz.Dsc.ImgKey
+            Wcm = quiz.Dsc.WelcomeText
+            Fwl = quiz.Dsc.FarewellText
+            Qw =
+                match quiz.CurrentQuestion with
+                | Some qw when quiz.Dsc.Status = Live -> Some <| questionCard quiz.CurrentQuestionIndex qw
+                | _ -> None
+            LT = quiz.Dsc.ListenToken
+            V = quiz.Version
+        }
+
+    let quizHistory (quiz:Quiz) : AudModels.HistoryRecord list =
+        quiz.Questions
+        |> List.rev
+        |> List.mapi (fun idx qw ->
+            let idx = idx + 1
+            {
+                QwIdx = idx
+                QwName = qw.Name
+                QwAw =
+                    if idx = quiz.CurrentQuestionIndex then
+                        match qw.Status with
+                        | Announcing | Countdown -> ""
+                        | Settled -> qw.Answer
+                    else
+                        qw.Answer
+            }
+        )
