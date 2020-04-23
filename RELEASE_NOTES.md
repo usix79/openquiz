@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.4.0 - 2020-04-23
+
+* Implemented link for audience
+
 ## 0.3.0 - 2020-04-21
 
 * Implemented private registration link
