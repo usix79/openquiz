@@ -267,7 +267,7 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
                                 ]
                             ]
                             li[][
-                                str "Private registration "
+                                str "Registration "
                                 a [urlForReg card.QuizId card.RegToken |> Href; Target "_blank"][
                                     str "link"
                                     span [Class "icon"][Fa.i [Fa.Solid.ExternalLinkAlt][]]
