@@ -190,7 +190,7 @@ module Quizzes =
         config.AttributesToGet <- new Collections.Generic.List<string> ([
              "Id"; "Producer"; "StartTime"; "Brand"; "Name"; "Status"; "WelcomeText"; "FarewellText";
                     "IsPrivate"; "ImgKey";  "WithPremoderation"; "AdminToken"; "RegToken"; "ListenToken";
-                    "PkgId"; "PkgQwIdx"; "EventPage"])
+                    "PkgId"; "PkgQwIdx"; "EventPage"; "MixlrCode"])
         config.Select <- SelectValues.SpecificAttributes
 
         table.Scan(config)
@@ -203,7 +203,7 @@ module Quizzes =
         config.AttributesToGet <- new Collections.Generic.List<string> ([
              "Id"; "Producer"; "StartTime"; "Brand"; "Name"; "Status"; "WelcomeText"; "FarewellText";
                     "IsPrivate"; "ImgKey";  "WithPremoderation"; "AdminToken"; "RegToken"; "ListenToken";
-                    "PkgId"; "PkgQwIdx"; "EventPage"])
+                    "PkgId"; "PkgQwIdx"; "EventPage"; "MixlrCode"])
 
         let table = loadTable "Quizzes"
         let task = table.GetItemAsync((Primitive.op_Implicit quizId), config)
@@ -242,6 +242,7 @@ module Quizzes =
         gameItem.["PkgId"] <- entryOfOption quiz.Dsc.PkgId
         gameItem.["PkgQwIdx"] <- entryOfOption quiz.Dsc.PkgQwIdx
         gameItem.["EventPage"] <- v2.ConvertToEntry quiz.Dsc.EventPage
+        gameItem.["MixlrCode"] <- entryOfOption quiz.Dsc.MixlrCode
 
         let questionsEntry = DynamoDBList()
         for qw in quiz.Questions do
@@ -281,6 +282,7 @@ module Quizzes =
             PkgId = optionOfEntry doc "PkgId"
             PkgQwIdx = optionOfEntry doc "PkgQwIdx"
             EventPage = stringOfDoc doc "EventPage"
+            MixlrCode = optionOfEntry doc "MixlrCode"
         }
 
     let quizOfDocument (doc:Document) : Quiz =

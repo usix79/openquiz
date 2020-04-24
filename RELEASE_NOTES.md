@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.5.0 - 2020-04-24
+
+* Added link to external event's page
+* Added support of embeded Mxlr player
+
 ## 0.4.0 - 2020-04-23
 
 * Implemented audience link

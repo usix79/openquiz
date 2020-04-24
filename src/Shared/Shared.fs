@@ -244,6 +244,7 @@ module MainModels =
         IsPrivate :  bool
         WithPremoderation : bool
         EventPage : string
+        MixlrCode : int option
     }
 
 module AdminModels =
@@ -354,6 +355,7 @@ module TeamModels =
         Qw : QuestionCard option
         Aw : string option
         LT : string
+        Mxlr : int option
         V : int
     } with
         member x.Msg =
@@ -378,6 +380,7 @@ module AudModels =
         Fwl : string
         Qw : QuestionCard option
         LT : string
+        Mxlr : int option
         V : int
     } with
         member x.Msg =

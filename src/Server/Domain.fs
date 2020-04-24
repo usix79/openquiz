@@ -152,6 +152,7 @@ type QuizDescriptor = {
     PkgId : int option
     PkgQwIdx : int option
     EventPage : string
+    MixlrCode : int option
 }
 
 type Quiz = {
@@ -189,6 +190,7 @@ module Quizzes =
                 PkgId = None
                 PkgQwIdx = None
                 EventPage = ""
+                MixlrCode = None
             }
             Questions = []
             Version = 0

@@ -24,6 +24,7 @@ type Msg =
     | UpdateBrand of string
     | UpdateStartTime of System.DateTime
     | UpdateName of string
+    | UpdateMixlrCode of string
     | UpdateEventPage of string
     | UpdateStatus of string
     | UpdateWelcomeTxt of string
@@ -99,6 +100,15 @@ let uploadFile quizId (api:IMainApi) respMsg fileType body model =
     else
         model |> loading quizId |> apiCmd api.uploadFile {|Cat = Quiz; FileType=fileType; FileBody=body|} respMsg Exn
 
+let updateMixlrCode txt model =
+    model |> updateCard (fun c ->
+    { c with
+        MixlrCode =
+            match System.Int32.TryParse txt with
+            | true, id when id > 0 -> Some id
+            | _ -> None
+    })
+
 let init (api:IMainApi) user : Model*Cmd<Msg> =
     {Quizzes = []; Card = None; CardIsLoading = None; Errors = Map.empty} |> apiCmd api.getProdQuizzes () GetQuizzesResp Exn
 
@@ -114,6 +124,7 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | UpdateName txt -> cm |> updateCard (fun c -> {c with Name = txt}) |> noCmd
     | UpdateStatus txt -> cm |> updateCard (fun c -> {c with Status = defaultArg (fromString txt) Draft}) |> noCmd
     | UpdateEventPage txt -> cm |> updateCard (fun c -> {c with EventPage = txt}) |> noCmd
+    | UpdateMixlrCode txt -> cm |> updateMixlrCode txt |> noCmd
     | UpdateWelcomeTxt txt -> cm |> updateCard (fun c -> {c with WelcomeText = txt}) |> noCmd
     | UpdateFarewellTxt txt -> cm |> updateCard (fun c -> {c with FarewellText = txt}) |> noCmd
     | UpdateIsPrivat b -> cm |> updateCard (fun c -> {c with IsPrivate = b}) |> noCmd
@@ -238,15 +249,6 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
                         ]
                     ]
                 ]
-                div [Class "field"][
-                    label [Class "label"][str "Event Page"]
-                    div [Class "control"][
-                        input [Class "input"; Type "text"; Placeholder "Link to facebook event or telegram message"; MaxLength 128.0;
-                            valueOrDefault card.EventPage;
-                            OnChange (fun ev -> dispatch <| UpdateEventPage ev.Value)]
-
-                    ]
-                ]
 
                 div [Class "field"][
                     label [Class "label"][str "Welcome Message"]
@@ -266,6 +268,38 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
                 ]
             ]
             div [Class "column"][
+
+                div [Class "field"][
+                    label [Class "label"][str "Event Page"]
+                    div [Class "control"][
+                        input [Class "input"; Type "text"; Placeholder "Link to facebook event or telegram"; MaxLength 128.0;
+                            valueOrDefault card.EventPage;
+                            OnChange (fun ev -> dispatch <| UpdateEventPage ev.Value)]
+
+                    ]
+                ]
+
+                div [Class "field"][
+                    label [Class "label"][str "Mixler User Id"]
+                    div [Class "control"][
+                        input [Class "input"; Type "number"; Placeholder ""; MaxLength 128.0;
+                            valueOrDefault card.MixlrCode;
+                            OnChange (fun ev -> dispatch <| UpdateMixlrCode ev.Value)]
+
+                    ]
+                    small[][
+                        str "https://mixlr.com/users/"
+                        span [Class "has-text-danger"][str "THISID"]
+                        str "/embed from "
+                        a[Href "https://mixlr.com/settings/embed/"][str "https://mixlr.com/settings/embed/"]
+                    ]
+                ]
+
+                div [Class "field"][
+                    label [Class "label"][str "Quiz picture (128x128)"]
+
+                    yield! MainTemplates.imgArea card.QuizId isLoading (QuizImgChanged>>dispatch) (QuizImgClear>>dispatch) card.ImgKey "/logo256.png" "Reset to default"
+                ]
 
                 div [Class "field"][
                     label [Class "label"][str "Application links"]
@@ -297,12 +331,6 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
                         ]
                     ]
                 ]
-                div [Class "field"][
-                    label [Class "label"][str "Quiz picture (128x128)"]
-
-                    yield! MainTemplates.imgArea card.QuizId isLoading (QuizImgChanged>>dispatch) (QuizImgClear>>dispatch) card.ImgKey "/logo256.png" "Reset to default"
-                ]
-
             ]
         ]
         div [Class "field is-grouped"][

@@ -118,7 +118,9 @@ let quizView (dispatch : Msg -> unit) (model:Model) (quiz:QuizCard) =
 
     div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
-            MainTemplates.playTitle quiz.QN quiz.Img model.IsConnectionOk
+
+            MainTemplates.mixlrFrame quiz.Mxlr
+            MainTemplates.playTitle quiz.QN quiz.Img model.IsConnectionOk quiz.Mxlr.IsNone
 
             h4 [Class "subtitle is-4" ] [Fa.i [Fa.Solid.Users] [ str " audience"] ]
 
@@ -138,7 +140,6 @@ let quizView (dispatch : Msg -> unit) (model:Model) (quiz:QuizCard) =
 
         MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
     ]
-
 
 let historyView dispatch model =
     table [Class "table is-hoverable is-fullwidth"][

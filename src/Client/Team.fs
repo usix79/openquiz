@@ -215,7 +215,8 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
 
     div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
-            MainTemplates.playTitle user.QuizName quiz.Img model.IsConnectionOk
+            MainTemplates.mixlrFrame quiz.Mxlr
+            MainTemplates.playTitle user.QuizName quiz.Img model.IsConnectionOk quiz.Mxlr.IsNone
 
             h4 [Class "subtitle is-4" ] [ str user.TeamName ]
 

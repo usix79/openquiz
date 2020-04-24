@@ -174,6 +174,7 @@ module Main =
             IsPrivate = quiz.Dsc.IsPrivate
             WithPremoderation = quiz.Dsc.WithPremoderation
             EventPage = quiz.Dsc.EventPage
+            MixlrCode = quiz.Dsc.MixlrCode
         }
 
     let expertCompetition (team:TeamDescriptor) : MainModels.ExpertCompetition=
@@ -278,6 +279,7 @@ module Teams =
                 | Some aw when quiz.Dsc.Status = Live -> Some aw.Text
                 | _ -> None
             LT = quiz.Dsc.ListenToken
+            Mxlr = quiz.Dsc.MixlrCode
             V = quiz.Version
         }
 
@@ -337,6 +339,7 @@ module Audience =
                 | Some qw when quiz.Dsc.Status = Live -> Some <| questionCard quiz.CurrentQuestionIndex qw
                 | _ -> None
             LT = quiz.Dsc.ListenToken
+            Mxlr = quiz.Dsc.MixlrCode
             V = quiz.Version
         }
 

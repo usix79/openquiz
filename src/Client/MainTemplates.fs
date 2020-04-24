@@ -104,7 +104,7 @@ let playFooter dispatch history questions results current isCountdownActive seco
                 ]
             ]
        ]
-let playTitle quizName quizImg isConnectionOk =
+let playTitle quizName quizImg isConnectionOk showImg =
     div [][
         if isConnectionOk then
             Fa.i [Fa.Solid.Wifi; Fa.Props [Style[Position PositionOptions.Absolute; Top "5px"; Left "5px"]]][str " connected"]
@@ -112,8 +112,9 @@ let playTitle quizName quizImg isConnectionOk =
             span [Class "has-text-danger"][Fa.i [Fa.Solid.Wifi; Fa.Props [Style[Position PositionOptions.Absolute; Top "5px"; Left "5px"]]][ str " disconnected"]]
 
         br []
-        figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Shared.Infra.urlForImgSafe quizImg ] ]
-        br []
+        if showImg then
+            figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Shared.Infra.urlForImgSafe quizImg ] ]
+            br []
         h3 [Class "title is-3"] [ str quizName ]
     ]
 
@@ -185,3 +186,9 @@ let resultsView (currentRes:Shared.TeamResult option) (teamResults:Shared.TeamRe
         ]
     ]
 
+let mixlrFrame (userId : int option) =
+    match userId with
+    | Some id ->
+        let src = sprintf "https://mixlr.com/users/%i/embed" id
+        iframe[Src src; Style[Width "100%"; Height "180px"]; Scrolling "no"; FrameBorder "no"; MarginHeight 0.0; MarginWidth 0.0][]
+    | None -> div [][]
