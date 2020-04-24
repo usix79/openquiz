@@ -166,6 +166,8 @@ let quizBox quiz =
                             for l in (Quizzes.getDescription quiz).Split ("\n") do
                                 str l
                                 br[]
+                            if quiz.EventPage <> "" then
+                                a[_href quiz.EventPage][str "details"]
                         ]
                     ]
                 ]

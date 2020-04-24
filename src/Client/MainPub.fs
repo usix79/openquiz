@@ -173,6 +173,9 @@ let quizBox (dispatch : Msg -> unit) (profile:ExpertProfile option) (quiz : Quiz
                         strong [][str quiz.Name]
                         br[]
                         small [] (splitByLines quiz.Description)
+                        if quiz.EventPage <> "" then
+                            a[Href quiz.EventPage][str "details"]
+
                     ]
                 ]
                 match quiz.Status <> Finished, profile, regForm with

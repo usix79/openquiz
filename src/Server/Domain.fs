@@ -151,6 +151,7 @@ type QuizDescriptor = {
     RegToken : string
     PkgId : int option
     PkgQwIdx : int option
+    EventPage : string
 }
 
 type Quiz = {
@@ -187,6 +188,7 @@ module Quizzes =
                 RegToken = Common.generateRandomToken()
                 PkgId = None
                 PkgQwIdx = None
+                EventPage = ""
             }
             Questions = []
             Version = 0

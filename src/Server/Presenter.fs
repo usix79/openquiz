@@ -145,6 +145,7 @@ module Main =
                 | Draft | Published | Live -> quiz.WelcomeText
                 | Finished | Archived -> quiz.FarewellText
             ImgKey = quiz.ImgKey
+            EventPage = quiz.EventPage
         }
 
     let quizProdRecord (quiz:QuizDescriptor) : MainModels.QuizProdRecord =
@@ -172,6 +173,7 @@ module Main =
             FarewellText = quiz.Dsc.FarewellText
             IsPrivate = quiz.Dsc.IsPrivate
             WithPremoderation = quiz.Dsc.WithPremoderation
+            EventPage = quiz.Dsc.EventPage
         }
 
     let expertCompetition (team:TeamDescriptor) : MainModels.ExpertCompetition=
@@ -317,6 +319,7 @@ module Reg =
                 | Draft | Published | Live -> quiz.WelcomeText
                 | Finished | Archived -> quiz.FarewellText
             ImgKey = quiz.ImgKey
+            EventPage = quiz.EventPage
         }
 
 

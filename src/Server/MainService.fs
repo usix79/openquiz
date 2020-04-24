@@ -96,7 +96,7 @@ let updateProdQuizCard expert card =
         | _ ->
             let dsc = { quiz.Dsc with Brand = card.Brand; Name = card.Name; StartTime = card.StartTime; Status = quizStatusToDomain card.Status;
                                     ImgKey = card.ImgKey; WelcomeText = card.WelcomeText; FarewellText = card.FarewellText; IsPrivate = card.IsPrivate;
-                                    WithPremoderation = card.WithPremoderation}
+                                    WithPremoderation = card.WithPremoderation; EventPage = card.EventPage}
 
             Ok { quiz with Dsc = dsc}
 

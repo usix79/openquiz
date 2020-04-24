@@ -93,5 +93,8 @@ let quizView (dispatch : Msg -> unit) (quiz:QuizRecord) = [
         ]
 
         p [] (splitByLines quiz.Description)
+
+        if quiz.EventPage <> "" then
+            a[Href quiz.EventPage][str "details"]
      ]
 ]

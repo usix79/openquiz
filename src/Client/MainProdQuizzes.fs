@@ -24,6 +24,7 @@ type Msg =
     | UpdateBrand of string
     | UpdateStartTime of System.DateTime
     | UpdateName of string
+    | UpdateEventPage of string
     | UpdateStatus of string
     | UpdateWelcomeTxt of string
     | UpdateFarewellTxt of string
@@ -112,6 +113,7 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | UpdateStartTime dt -> cm |> updateCard (fun c -> {c with StartTime = Some dt}) |> noCmd
     | UpdateName txt -> cm |> updateCard (fun c -> {c with Name = txt}) |> noCmd
     | UpdateStatus txt -> cm |> updateCard (fun c -> {c with Status = defaultArg (fromString txt) Draft}) |> noCmd
+    | UpdateEventPage txt -> cm |> updateCard (fun c -> {c with EventPage = txt}) |> noCmd
     | UpdateWelcomeTxt txt -> cm |> updateCard (fun c -> {c with WelcomeText = txt}) |> noCmd
     | UpdateFarewellTxt txt -> cm |> updateCard (fun c -> {c with FarewellText = txt}) |> noCmd
     | UpdateIsPrivat b -> cm |> updateCard (fun c -> {c with IsPrivate = b}) |> noCmd
@@ -236,6 +238,16 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) isLoading =
                         ]
                     ]
                 ]
+                div [Class "field"][
+                    label [Class "label"][str "Event Page"]
+                    div [Class "control"][
+                        input [Class "input"; Type "text"; Placeholder "Link to facebook event or telegram message"; MaxLength 128.0;
+                            valueOrDefault card.EventPage;
+                            OnChange (fun ev -> dispatch <| UpdateEventPage ev.Value)]
+
+                    ]
+                ]
+
                 div [Class "field"][
                     label [Class "label"][str "Welcome Message"]
                     div [Class "control"][

@@ -80,7 +80,6 @@ with
         | Quiz -> "qz"
         | Question -> "qw"
 
-
 type QuizStatus =
     | Draft
     | Published
@@ -190,6 +189,7 @@ module RegModels =
         Status : QuizStatus
         Description : string
         ImgKey : string
+        EventPage : string
     }
 
 module MainModels =
@@ -217,6 +217,7 @@ module MainModels =
         Status : QuizStatus
         Description : string
         ImgKey : string
+        EventPage : string
     }
 
     type QuizProdRecord = {
@@ -242,6 +243,7 @@ module MainModels =
         FarewellText : string
         IsPrivate :  bool
         WithPremoderation : bool
+        EventPage : string
     }
 
 module AdminModels =

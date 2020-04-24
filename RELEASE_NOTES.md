@@ -2,7 +2,7 @@
 
 ## 0.4.0 - 2020-04-23
 
-* Implemented link for audience
+* Implemented audience link
 
 ## 0.3.0 - 2020-04-21
 

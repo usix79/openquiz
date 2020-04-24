@@ -45,7 +45,15 @@ type Model = {
     AvailablePackages : PackageRecord list option
     IsLoading : bool
     TimeDiff: TimeSpan
-}
+} with
+    member x.IsLastQuestion =
+        match x.Quiz, x.Package with
+        | Some quiz, Some pkg ->
+            match quiz.PackageId, quiz.PackageQwIdx with
+            | Some pkgId, Some qwIdx when pkgId = pkg.PackageId -> qwIdx = pkg.Questions.Length - 1
+            | _ -> false
+        | _ -> false
+
 
 let addError txt model =
     {model with Errors = model.Errors.Add(System.Guid.NewGuid().ToString(),txt)}
@@ -207,12 +215,13 @@ let quizView (dispatch : Msg -> unit) (user:AdminUser) (model : Model) (quiz : Q
         ]
         div [Class "field is-grouped"][
             div [Class "control"][
+                let isControlReadOnly = changesNotAllowed && (not model.IsLastQuestion) || model.IsLoading
                 label [Class "label"][str "Questions Package"]
                 match model.AvailablePackages with
                 | Some pkgs ->
                     div [Class "select"][
                         let value = match model.Package with Some pkg -> pkg.PackageId | None -> -1
-                        select[Disabled isReadOnly; Value value; OnChange (fun ev -> SelectPackage ev.Value |> dispatch)][
+                        select[Disabled isControlReadOnly; Value value; OnChange (fun ev -> SelectPackage ev.Value |> dispatch)][
                             option[Value -1][str "Not Selected"]
                             for pkg in pkgs |> List.sortBy (fun p -> p.PackageId) |> List.rev do
                                 option[Value pkg.PackageId][str <| trimMiddle 32 "..." pkg.Name]
@@ -253,13 +262,13 @@ let quizView (dispatch : Msg -> unit) (user:AdminUser) (model : Model) (quiz : Q
             match quiz.CurrentQw with
             | Some qw ->
                 yield hr[Class "has-background-grey"]
-                yield qwView dispatch user qw model.TimeDiff isReadOnly model.IsLoading
+                yield qwView dispatch user qw model.TimeDiff isReadOnly model.IsLoading model.IsLastQuestion
             | None -> ()
         ]
 
     ]
 
-let qwView (dispatch : Msg -> unit) (user:AdminUser) (qw : QuizQuestion) timeDiff isReadOnly isLoading =
+let qwView (dispatch : Msg -> unit) (user:AdminUser) (qw : QuizQuestion) timeDiff isReadOnly isLoading isLastQw =
 
     div[][
         div [Class "field is-grouped"][
@@ -288,7 +297,8 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (qw : QuizQuestion) timeDif
         | Announcing, _ -> ctrlBtn Start "Start"
         | Countdown, sec when sec > 0 -> ctrlBtn Pause "Reset countdown"
         | Countdown, _ -> ctrlBtn Finish "Show answer"
-        | Settled, _ -> ctrlBtn Next "Next"
+        | Settled, _ when isLastQw -> ctrlBtn (ChangeStatus (Finished.ToString())) "Finish"
+        | Settled, _-> ctrlBtn Next "Next"
 
         hr[Class "has-background-grey"]
 
