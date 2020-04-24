@@ -76,14 +76,12 @@ let layout (quizes : QuizDescriptor list) =
                         let featureQuizzes = quizes |> List.filter (fun q -> q.Status <> Domain.Finished) |> List.sortBy (fun q -> q.StartTime)
                         if not (List.isEmpty featureQuizzes) then
                             yield h3 [_class "title"] [rawText "Featured quizzes"]
-                            for quizzes in featureQuizzes |> List.chunkBySize 3 do
-                                yield quizzesRow quizzes
+                            yield quizzesList 2 "featuredqz" "more quizzes" featureQuizzes
 
                         let finishedQuizzes = quizes |> List.filter (fun q -> q.Status = Domain.Finished) |> List.sortByDescending (fun q -> q.StartTime)
                         if not (List.isEmpty finishedQuizzes) then
                             yield h3 [_class "title"] [rawText "Finished quizzes"]
-                            for quizzes in finishedQuizzes |> List.chunkBySize 3 do
-                                yield quizzesRow quizzes
+                            yield quizzesList 1 "finishedqz" "rest quizzes" finishedQuizzes
                     ]
                 ]
                 div [_class "hero-foot has-background-dark has-text-grey-light"] [
@@ -129,6 +127,27 @@ let layout (quizes : QuizDescriptor list) =
     }
 """
         ]
+    ]
+
+let quizzesList n id txt list =
+    div[][
+        let list = list |> List.chunkBySize 3
+        let (part1, part2) = if list.Length > n then list |> List.splitAt n else (list, [])
+
+        for row in part1 do
+            yield quizzesRow row
+
+        if part2.Length > 0 then
+            yield div [_id id; _style "display: none"][
+                for row in part2 do
+                    yield quizzesRow row
+            ]
+            let script = sprintf "getElementById('%s').style.display = 'block';getElementById('%slnk').style.display = 'none'; " id id
+            yield div[_id (id+"lnk")][
+                a[_onclick script][str txt]
+                br[]
+                br[]
+            ]
     ]
 
 let quizzesRow quizzes =

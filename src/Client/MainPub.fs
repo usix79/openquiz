@@ -20,12 +20,16 @@ type Msg =
     | CancelRegFrom
     | RegFromTeamName of string
     | RegisterTeamResp of RESP<MainModels.ExpertCompetition>
+    | ExpandFeaturedQuizzes
+    | ExpandFinishedQuizzes
 
 type Model = {
     Errors : Map<string, string>
     Profile : MainModels.ExpertProfile option
     Quizzes : MainModels.QuizPubRecord list
     RegForm : RegForm option
+    FeaturedQuizzesExpanded : bool
+    FinishedQuizzesExpanded : bool
 }
 
 type RegForm = {
@@ -84,26 +88,55 @@ let registerResp comp cm =
     | None -> cm
 
 let init (api:IMainApi) user : Model*Cmd<Msg> =
-    {Errors = Map.empty; Quizzes = []; RegForm = None; Profile = None} |> apiCmd api.getPubModel () GetPubModelResp Exn
+    {Errors = Map.empty; Quizzes = []; RegForm = None; Profile = None;
+        FeaturedQuizzesExpanded = false; FinishedQuizzesExpanded = false} |> apiCmd api.getPubModel () GetPubModelResp Exn
 
 let update (api:IMainApi)(user:MainUser) (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
-    | Exn ex -> cm |> addError ex.Message |> noCmd
-    | DeleteError id -> cm |> delError id |> noCmd
     | GetPubModelResp {Value = Ok res} -> {cm with Profile = Some res.Profile; Quizzes = res.Quizzes}|>  noCmd
-    | GetPubModelResp {Value = Error txt} -> cm |> addError txt |> noCmd
+    | ExpandFeaturedQuizzes -> {cm with FeaturedQuizzesExpanded = true} |> noCmd
+    | ExpandFinishedQuizzes -> {cm with FinishedQuizzesExpanded = true} |> noCmd
     | OpenEditForm quizId -> cm |> openRegForm quizId |> noCmd
     | CancelRegFrom  -> cm |> cancelRegForm |> noCmd
     | SubmitRegFrom  -> cm |> submitRegForm api
     | RegFromTeamName txt -> cm |> formTeamName txt |> noCmd
     | RegisterTeamResp {Value = Ok comp} -> cm |> registerResp comp |> noCmd
     | RegisterTeamResp {Value = Error txt} -> cm |> formError txt |> noCmd
-
+    | DeleteError id -> cm |> delError id |> noCmd
+    | Err txt -> cm |> addError txt  |> noCmd
+    | Exn ex -> cm |> addError ex.Message |> noCmd
+    | _ -> cm |> noCmd
 
 let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
     match user.IsPrivate with
     | true -> viewAsPrivate dispatch user model (model.Quizzes |> List.tryHead)
     | false -> viewAsUsual dispatch user model
+
+
+let quizListRow dispatch model (list:QuizPubRecord list list) =
+    div[][
+        for quizzes in list  do
+            div [Class "columns"][
+                for quiz in quizzes do
+                    div [Class "column is-one-third"][
+                        yield quizBox dispatch model.Profile quiz model.RegForm
+                    ]
+            ]
+    ]
+
+let quizList (dispatch : Msg -> unit) (model : Model) n isExpanded expandMsg txt (list :QuizPubRecord list list) =
+    div[][
+        let (part1, part2) = if list.Length > n then list |> List.splitAt n else (list, [])
+
+        quizListRow dispatch model part1
+
+        if part2.Length > 0 then
+            if isExpanded then
+                quizListRow dispatch model part2
+            else
+                a[OnClick (fun _ -> dispatch expandMsg)][str txt]
+                br[]
+    ]
 
 let viewAsUsual (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
     div [] [
@@ -129,26 +162,19 @@ let viewAsUsual (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
         if not (List.isEmpty featureQuizzes) then
             h3 [Class "title"] [str "Featured quizzes"]
 
-            for quizzes in featureQuizzes |> List.chunkBySize 3 do
-                div [Class "columns"][
-                    for quiz in quizzes do
-                        div [Class "column is-one-third"][
-                            yield quizBox dispatch model.Profile quiz model.RegForm
-                        ]
-                ]
+            featureQuizzes
+            |> List.chunkBySize 3
+            |> quizList dispatch model 2 model.FeaturedQuizzesExpanded ExpandFeaturedQuizzes "more quizzes"
+
         br[]
 
         let finishedQuizzes = model.Quizzes |> List.filter (fun q -> q.Status = Finished) |> List.sortByDescending (fun q -> q.StartTime)
         if not (List.isEmpty finishedQuizzes) then
             h3 [Class "title"] [str "Finished quizzes"]
 
-            for quizzes in finishedQuizzes |> List.chunkBySize 3 do
-                div [Class "columns"][
-                    for quiz in quizzes do
-                        div [Class "column is-one-third"][
-                            yield quizBox dispatch model.Profile quiz model.RegForm
-                        ]
-                ]
+            finishedQuizzes
+            |> List.chunkBySize 3
+            |> quizList dispatch model 1 model.FeaturedQuizzesExpanded ExpandFeaturedQuizzes "rest quizzes"
     ]
 
 let quizBox (dispatch : Msg -> unit) (profile:ExpertProfile option) (quiz : QuizPubRecord)  (regForm : RegForm option) =
