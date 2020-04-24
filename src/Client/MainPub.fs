@@ -138,7 +138,7 @@ let viewAsUsual (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                 ]
         br[]
 
-        let finishedQuizzes = model.Quizzes |> List.filter (fun q -> q.Status = Finished) |> List.sortBy (fun q -> q.StartTime)
+        let finishedQuizzes = model.Quizzes |> List.filter (fun q -> q.Status = Finished) |> List.sortByDescending (fun q -> q.StartTime)
         if not (List.isEmpty finishedQuizzes) then
             h3 [Class "title"] [str "Finished quizzes"]
 

@@ -79,7 +79,7 @@ let layout (quizes : QuizDescriptor list) =
                             for quizzes in featureQuizzes |> List.chunkBySize 3 do
                                 yield quizzesRow quizzes
 
-                        let finishedQuizzes = quizes |> List.filter (fun q -> q.Status = Domain.Finished) |> List.sortBy (fun q -> q.StartTime)
+                        let finishedQuizzes = quizes |> List.filter (fun q -> q.Status = Domain.Finished) |> List.sortByDescending (fun q -> q.StartTime)
                         if not (List.isEmpty finishedQuizzes) then
                             yield h3 [_class "title"] [rawText "Finished quizzes"]
                             for quizzes in finishedQuizzes |> List.chunkBySize 3 do
