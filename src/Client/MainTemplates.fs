@@ -70,20 +70,28 @@ let imgEl imgKey =
     }
 
 let footer =
+    div [Class "container"; Style [TextAlign TextAlignOptions.Center]][
+        str "\u00a9"
+        span[Class "is-hidden-touch"][str " Serhii Sabirov"]
+        str " 2020"
+        str " - "
+        a [Href "/terms.html"; Class "has-text-grey-light"] [str "Terms"]
+        str " - "
+        a [Href "/disclaimer.html"; Class "has-text-grey-light"] [str "Disclaimer"]
+        str " - "
+        a [Href "/privacy-policy-en.html"; Class "has-text-grey-light"] [str "Privacy"]
+        str " - "
+        a [Href "https://t.me/open_quiz"; Class "has-text-grey-light" ] [str "Contact"]
+    ]
+
+let footerHero =
     div [Class "hero-foot has-background-dark has-text-grey-light"] [
-        div [Class "container"; Style [TextAlign TextAlignOptions.Center]][
-            str "\u00a9"
-            span[Class "is-hidden-touch"][str " Serhii Sabirov"]
-            str " 2020"
-            str " - "
-            a [Href "/terms.html"; Class "has-text-grey-light"] [str "Terms"]
-            str " - "
-            a [Href "/disclaimer.html"; Class "has-text-grey-light"] [str "Disclaimer"]
-            str " - "
-            a [Href "/privacy-policy-en.html"; Class "has-text-grey-light"] [str "Privacy"]
-            str " - "
-            a [Href "https://t.me/open_quiz"; Class "has-text-grey-light" ] [str "Contact"]
-        ]
+        footer
+    ]
+
+let footerFixed =
+    div [Class "has-background-dark has-text-grey-light"; Style [Position PositionOptions.Fixed; Bottom "0"; Height "22px"; Width "100%"; OverflowX OverflowOptions.Hidden]]  [
+        footer
     ]
 
 let playFooter dispatch history questions results current isCountdownActive secondsLeft =

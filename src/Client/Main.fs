@@ -150,7 +150,7 @@ let viewAsUsual (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
             ]
         ]
 
-        MainTemplates.footer
+        MainTemplates.footerHero
 
         if model.IsTermsOfUseOpen then
             MainTemplates.termsOfUse dispatch AcceptTermsOfUse CancelTermsOfUse

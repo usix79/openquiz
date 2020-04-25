@@ -41,24 +41,20 @@ let update (api:IRegApi) (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
 let view (dispatch : Msg -> unit) (model : Model) =
     section [Class "hero is-shadowless is-fullheight"] [
         div [Class "hero-head"] [
-            div [Class "container"][
+            div [Class "container has-text-centered"][
                 nav [Class "navbar is-transparent is-spaced"; Role "navigation"; AriaLabel "dropdown navigation"] [
                     div [Class "navbar-brand"] [
                     ]
                 ]
 
-                div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
-                    div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
-                        div[][
-                            match model.Quiz with
-                            | Some quiz -> yield! quizView dispatch quiz
-                            | None -> ()
-                        ]
+                div[][
+                    match model.Quiz with
+                    | Some quiz -> yield! quizView dispatch quiz
+                    | None -> ()
+                ]
 
-                        a [Href "/login"; Class "button thickbox"; Style [Margin "5px"]; Target "_self"] [
-                            str "Please login to succeed registration"
-                        ]
-                    ]
+                a [Href "/login"; Class "button thickbox"; Style [Margin "5px"]; Target "_self"] [
+                    str "Please login to succeed registration"
                 ]
             ]
         ]
@@ -71,7 +67,7 @@ let view (dispatch : Msg -> unit) (model : Model) =
                     ]
             ]
         ]
-        MainTemplates.footer
+        MainTemplates.footerHero
     ]
 
 let quizView (dispatch : Msg -> unit) (quiz:QuizRecord) = [

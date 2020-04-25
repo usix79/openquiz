@@ -274,7 +274,7 @@ let levelWithEditForm dispatch (profile:ExpertProfile) (quiz : QuizPubRecord) (r
 let viewAsPrivate (dispatch : Msg -> unit) (user:MainUser) (model : Model) (quiz:QuizPubRecord option) =
     section [Class "hero is-shadowless is-fullheight"] [
         div [Class "hero-head"] [
-            div [Class "container"][
+            div [Class "container has-text-centered"][
                 nav [Class "navbar is-transparent is-spaced"; Role "navigation"; AriaLabel "dropdown navigation"] [
                     div [Class "navbar-brand"] [
                         div [Class "navbar-item is-paddingleft is-hidden-desktop"][str user.Name]
@@ -291,13 +291,9 @@ let viewAsPrivate (dispatch : Msg -> unit) (user:MainUser) (model : Model) (quiz
                     ]
                 ]
 
-                div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
-                    div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
-                        match quiz with
-                        | Some quiz -> yield! privateQuizView dispatch model.Profile quiz model.RegForm
-                        | None -> ()
-                    ]
-                ]
+                match quiz with
+                | Some quiz -> yield! privateQuizView dispatch model.Profile quiz model.RegForm
+                | None -> ()
             ]
         ]
         div [Class "hero-body"] [
@@ -309,7 +305,7 @@ let viewAsPrivate (dispatch : Msg -> unit) (user:MainUser) (model : Model) (quiz
                     ]
             ]
         ]
-        MainTemplates.footer
+        MainTemplates.footerHero
     ]
 
 
