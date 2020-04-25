@@ -157,9 +157,7 @@ let historyView dispatch model =
                 tr [ ][
                     td [] [p [][str aw.QwName]]
                     td [] [
-                        p [Class "is-italic"][
-                            yield! splitByLines aw.QwAw
-                        ]
+                        p [Class "is-italic"][ str (aw.QwAw.Split('\n').[0])]
                     ]
                     td [] [ ]
                 ]

@@ -302,7 +302,7 @@ let historyView dispatch model =
                         td [ColSpan 2] [
                             span [Class "is-italic has-text-weight-light is-family-secondary is-size-7"][
                                 str "correct answer: "
-                                str (aw.QwAw.Replace('\n', '/'))
+                                str (aw.QwAw.Split('\n').[0])
                             ]
                         ]
                     ]
