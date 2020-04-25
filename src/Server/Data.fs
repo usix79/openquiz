@@ -182,6 +182,10 @@ module Quizzes =
         (table.UpdateItemAsync (quizItem)).Wait()
         quiz
 
+    let delete (quizId:int) =
+        let table = loadTable "Quizzes"
+        table.DeleteItemAsync(Primitive.op_Implicit quizId).Wait()
+
     let getDescriptors () =
 
         let table = loadTable "Quizzes"
@@ -326,6 +330,10 @@ module Teams =
         let table = loadTable "Teams"
         (table.UpdateItemAsync (teamItem)).Wait()
         team
+
+    let delete (quizId:int) (teamId: int) =
+        let table = loadTable "Teams"
+        table.DeleteItemAsync(Primitive.op_Implicit quizId, Primitive.op_Implicit teamId).Wait()
 
     let getIds (quizId: int) : int list=
         let table = loadTable "Teams"
@@ -476,6 +484,10 @@ module Packages =
         let table = loadTable "Packages"
         (table.UpdateItemAsync (teamItem)).Wait()
         pkg
+
+    let delete (packageId:int) =
+        let table = loadTable "Packages"
+        table.DeleteItemAsync(Primitive.op_Implicit packageId).Wait()
 
     let getDescriptors () : PackageDescriptor list =
         let config = ScanOperationConfig()

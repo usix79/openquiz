@@ -49,7 +49,8 @@ let api (context:HttpContext) : IMainApi =
         createPackage = exPublisher  "createPackage" createPackage
         updateProdPackageCard = exPublisher  "updateProdPackageCard" updateProdPackageCard
         aquirePackage = exPublisher "aquirePackage" aquirePackage
-
+        deleteQuiz = exPublisher "deleteQuiz" deleteQuiz
+        deletePackage = exPublisher "deletePackage" deletePackage
     }
 
     api
@@ -244,4 +245,25 @@ let aquirePackage expert res =
         CommonService.updateExpertNoReply expert.Id (Domain.Experts.addPackage updatedPackage.Dsc.PackageId)
 
         return updatedPackage.Dsc |> packageRecord
+    }
+
+let deleteQuiz expert req =
+    result {
+        let! _ = (expert.Quizes |> List.tryFind ((=) req.QuizId), "Quiz belongs to another producer")
+
+        Data.Teams.getIds req.QuizId
+        |> List.iter (fun teamId -> Data.Teams.delete req.QuizId teamId)
+
+        Data.Quizzes.delete req.QuizId
+
+        return ()
+    }
+
+let deletePackage expert req =
+    result {
+        let! _ = (expert.Packages |> List.tryFind ((=) req.PackageId), "Package belongs to another producer")
+
+        Data.Packages.delete req.PackageId
+
+        return ()
     }

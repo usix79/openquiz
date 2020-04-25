@@ -421,6 +421,7 @@ type IMainApi = {
     getProdQuizzes : REQ<unit> -> ARESP<MainModels.QuizProdRecord list>
     getProdQuizCard : REQ<{|QuizId:int|}> -> ARESP<MainModels.QuizProdCard>
     updateProdQuizCard : REQ<MainModels.QuizProdCard> -> ARESP<MainModels.QuizProdRecord>
+    deleteQuiz : REQ<{|QuizId : int|}> -> ARESP<unit>
     uploadFile : REQ<{|Cat:ImgCategory; FileType : string; FileBody : byte[]|}> -> ARESP<{|BucketKey: string|}>
     getPubModel : REQ<unit> -> ARESP<{|Profile : MainModels.ExpertProfile; Quizzes : MainModels.QuizPubRecord list|}>
     registerTeam : REQ<{|QuizId: int; TeamName: string|}> -> ARESP<MainModels.ExpertCompetition>
@@ -429,6 +430,7 @@ type IMainApi = {
     createPackage : REQ<unit> -> ARESP<{|Record : PackageRecord; Card: PackageCard|}>
     updateProdPackageCard : REQ<PackageCard> -> ARESP<PackageRecord>
     aquirePackage : REQ<{|PackageId:int; TransferToken:string|}> -> ARESP<PackageRecord>
+    deletePackage: REQ<{|PackageId : int|}> -> ARESP<unit>
 }
 
 type IAdminApi = {

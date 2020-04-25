@@ -345,6 +345,8 @@ module Infra =
                 createPackage = x.Wrap mainApi.createPackage
                 updateProdPackageCard = x.Wrap mainApi.updateProdPackageCard
                 aquirePackage = x.Wrap mainApi.aquirePackage
+                deleteQuiz = x.Wrap mainApi.deleteQuiz
+                deletePackage = x.Wrap mainApi.deletePackage
             }
 
         member x.CreateAdminApi () =

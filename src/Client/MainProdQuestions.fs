@@ -45,10 +45,20 @@ type Msg =
     | AquiringFormSend
     | AquiringFormCancel
     | AquiringResp of RESP<PackageRecord>
+    | ToggleDeleteForm
+    | DeleteFormUpdateText of string
+    | DeletePackage of int
+    | DeletePackageResp of TRESP<int,unit>
 
 type AquiringForm = {
     PackageId : int
     TransferToken : string
+    IsSending : bool
+}
+
+type DeleteForm = {
+    ConfirmText : string
+    Error : string
     IsSending : bool
 }
 
@@ -58,6 +68,7 @@ type Model = {
     CardIsLoading : int option // packageId
     Card : PackageCard option
     AquiringForm : AquiringForm option
+    DeleteForm : DeleteForm option
 }
 
 let addError txt model =
@@ -131,8 +142,24 @@ let sendAquiringForm (api:IMainApi) model =
         |> apiCmd api.aquirePackage {|PackageId = form.PackageId; TransferToken = form.TransferToken.Trim()|} AquiringResp Exn
     | _ -> model |> noCmd
 
+let toggleDeleteForm model =
+    { model with
+        DeleteForm =
+            match model.DeleteForm with
+            | Some _ -> None
+            | None -> Some {ConfirmText = ""; Error = ""; IsSending = false}
+    }
+
+let updateDeleteForm (f : DeleteForm -> DeleteForm) model =
+    match model.DeleteForm with
+    | Some form -> {model with DeleteForm = Some (f form)}
+    | None -> model
+
+let afterPackageDeletion (packageId:int) model =
+    {model with Card = None; DeleteForm = None; Packages = model.Packages |> List.filter (fun p -> p.PackageId <> packageId)}
+
 let init api user : Model*Cmd<Msg> =
-    {Errors = Map.empty; Packages = []; CardIsLoading = None; Card = None; AquiringForm = None} |> apiCmd api.getProdPackages () GetPackagesResp Exn
+    {Errors = Map.empty; Packages = []; CardIsLoading = None; Card = None; AquiringForm = None; DeleteForm = None} |> apiCmd api.getProdPackages () GetPackagesResp Exn
 
 let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
 
@@ -166,6 +193,11 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | AquiringFormSend -> cm |> sendAquiringForm api
     | AquiringResp {Value = Ok record} -> {cm with Packages = record :: cm.Packages; AquiringForm = None} |> noCmd
     | AquiringResp {Value = Error txt} -> cm |> addError txt |> updateAquiringForm (fun form -> {form with IsSending = false}) |> noCmd
+    | ToggleDeleteForm -> cm |> toggleDeleteForm |> noCmd
+    | DeleteFormUpdateText txt -> cm |> updateDeleteForm (fun form -> {form with ConfirmText = txt; Error = ""}) |> noCmd
+    | DeletePackage packageId -> cm |> updateDeleteForm (fun form -> {form with IsSending = true}) |> apiCmd api.deletePackage {|PackageId = packageId|} (taggedMsg DeletePackageResp packageId) Exn
+    | DeletePackageResp {Tag = quizId; Rsp = {Value = Ok _}} -> cm |> afterPackageDeletion quizId |> noCmd
+    | DeletePackageResp {Tag = _; Rsp = {Value = Error txt}} -> cm |> updateDeleteForm (fun form -> {form with IsSending = false; Error = txt}) |>  noCmd
     | Exn ex -> cm |> addError ex.Message |> editing |> noCmd
     | Err txt -> cm |> addError txt |> editing |> noCmd
     | _ -> cm |> noCmd
@@ -225,7 +257,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                     if hasCard then
                         tr [][
                             th [][]
-                            td [ColSpan 2] [ card dispatch model.Card.Value isLoading]
+                            td [ColSpan 2] [ card dispatch model.Card.Value model.DeleteForm isLoading]
                         ]
             ]
         ]
@@ -253,7 +285,7 @@ let aquiringForm (dispatch : Msg -> unit) (form : AquiringForm) =
         ]
     ]
 
-let card (dispatch : Msg -> unit) (card : PackageCard) isLoading =
+let card (dispatch : Msg -> unit) (card : PackageCard) (deleteForm : DeleteForm option) isLoading =
     div[][
         nav [Class "level"][
             div [Class "level-left"][
@@ -283,15 +315,19 @@ let card (dispatch : Msg -> unit) (card : PackageCard) isLoading =
                 ]
             ]
             div [Class "level-right"][
-                div [Class "level-item"][
-                    div [Class "control"][
-                        let hasErrors = not (validate card |> List.isEmpty)
-                        button [Class "button is-dark "; Disabled hasErrors; OnClick (fun _ -> dispatch SubmitCard)] [ str "Submit"]
+                match deleteForm with
+                | Some form -> div [][deleteFormEl dispatch form card.PackageId card.Name]
+                | None ->
+                    div [Class "level-item"][
+                        div [Class "control"][
+                            let hasErrors = not (validate card |> List.isEmpty)
+                            button [Class "button is-dark "; Disabled hasErrors; OnClick (fun _ -> dispatch SubmitCard)] [ str "Submit"]
+                        ]
+                        div [Class "control"; Style [MarginLeft "5px"]][
+                            button [Class "button"; OnClick (fun _ -> dispatch CancelCard)] [ str "Cancel"]
+                        ]
                     ]
-                    div [Class "control"; Style [MarginLeft "5px"]][
-                        button [Class "button"; OnClick (fun _ -> dispatch CancelCard)] [ str "Cancel"]
-                    ]
-                ]
+                    button [Class "button is-danger"; OnClick (fun _ -> dispatch ToggleDeleteForm)] [ str "Delete Package"]
             ]
         ]
 
@@ -340,4 +376,24 @@ let qwRow dispatch isLoading pkgId idx (qw: PackageQuestion) =
             br[]
             yield! MainTemplates.imgArea qwKey isLoading (CommentImgChanged >> dispatch) (fun _ -> CommentImgClear qwKey |> dispatch) qw.CommentImgKey "" "Clear"
         ]
+    ]
+
+let deleteFormEl dispatch form quizId quizName=
+    div[][
+        div [Class "field has-addons"; Style[PaddingBottom "5px"]][
+            p [Class "control is-expanded"][
+                input [Class "input"; Disabled form.IsSending; Type "text"; Placeholder "Type name of the Package to confirm"; MaxLength 128.0;
+                    valueOrDefault form.ConfirmText;
+                    OnChange (fun ev -> dispatch <| DeleteFormUpdateText ev.Value)]
+            ]
+            p [Class "control"][
+                button [classList ["button", true; "has-text-danger", true; "has-text-weight-semibold", true; "is-loading", form.IsSending];
+                  Disabled (form.ConfirmText <> quizName);
+                  OnClick (fun _ -> dispatch <| DeletePackage quizId)][str "Delete"]
+            ]
+            p [Class "control"][
+                button [classList ["button", true]; OnClick (fun _ -> dispatch ToggleDeleteForm)][str "Cancel"]
+            ]
+        ]
+        p [Class "help is-danger"][str form.Error]
     ]
