@@ -37,9 +37,6 @@ let teamApi = apiFactory.CreateTeamApi()
 let regApi = apiFactory.CreateRegApi()
 let audApi = apiFactory.CreateAudApi()
 
-let getUserFromStorage() =
-    Infra.loadFromSessionStorage<User> "USER"
-
 let initChildPage user cm =
     match user with
     | RegUser _ ->
@@ -60,7 +57,7 @@ let initChildPage user cm =
 
 let saveUser token refreshToken user =
     apiFactory.UpdateTokens token refreshToken |> ignore
-    Infra.saveToSessionStorage "USER" user
+    Infra.saveUser user
 
 let evaluateLoginReq (query : Map<string,string>) =
     let qs x = query.TryFind x
@@ -87,7 +84,7 @@ let isReqForSameUser (req:LoginReq) (user:User) =
 let init (): Model * Cmd<Msg> =
     let cm =  {CurrentPage = EmptyPage "Initializing..."; CurrentUser = None}
 
-    let u = getUserFromStorage()
+    let u = Infra.loadUser()
     match u, evaluateLoginReq (Infra.currentQueryString()) with
     | Some user, Some req when isReqForSameUser req user -> cm |> initChildPage user
     | _, Some req -> cm |> apiCmd securityApi.login req LoginResponse Exn
@@ -113,7 +110,7 @@ let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
             match subMsg with
             | Main.Msg.BecomeProducerResp {Value = Ok _} ->
                 let user = {user with IsProducer = true}
-                Infra.saveToSessionStorage "USER" (MainUser user)
+                Infra.saveUser (MainUser user)
                 user
             | _ -> user
         let newModel,newCmd = Main.update mainApi user subMsg subModel

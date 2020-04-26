@@ -67,15 +67,18 @@ let error txt model =
 let ok model =
     {model with Error = ""}
 
-let startup quiz serverTime model =
+let startup user quiz serverTime model =
     {model with
         IsActive = true
         Quiz = Some quiz
         TimeDiff = timeDiff serverTime
         Answer =
-            match quiz.Aw with
-            | Some txt -> Some {QwIdx = (match quiz.Qw with Some qw -> qw.Idx | None -> -1); Status = Sent; Text = txt}
-            | None -> None
+            match Infra.loadFromLocalStorage<Answer> (awStorageKey user) with
+            | Some aw -> Some aw
+            | None ->
+                match quiz.Aw with
+                | Some txt -> Some {QwIdx = (match quiz.Qw with Some qw -> qw.Idx | None -> -1); Status = Sent; Text = txt}
+                | None -> None
     }
 
 let updateQuiz (f : QuizCard -> QuizCard) model  =
@@ -108,7 +111,7 @@ let setupCountdown (model : Model, cmd : Cmd<Msg>) =
     | false -> model |> noCmd
     |> batchCmd cmd
 
-let subscribe quizId (model:Model) =
+let subscribe quizId (model:Model, cmd : Cmd<Msg>) =
     match model.Quiz with
     | Some quiz ->
         let url = Infra.sseUrl quizId quiz.V quiz.LT
@@ -117,8 +120,8 @@ let subscribe quizId (model:Model) =
         let subUpdate dispatch = source.OnMessage (QuizChanged >> dispatch)
         let subError dispatch = source.OnError (SourceError >> dispatch)
         let heartbeat dispatch = source.OnHeartbeat (fun _ ->  dispatch Heartbeat)
-        {model with SseSource = Some source}, Cmd.batch[Cmd.ofSub subUpdate; Cmd.ofSub subError; Cmd.ofSub heartbeat]
-    | None -> model |> noCmd
+        {model with SseSource = Some source}, Cmd.batch[cmd; Cmd.ofSub subUpdate; Cmd.ofSub subError; Cmd.ofSub heartbeat]
+    | None -> model, cmd
 
 let unsubscribe (model:Model) =
     match model.SseSource with
@@ -158,6 +161,19 @@ let sendAnswer api (model : Model) =
 let connection isOk model =
     {model with IsConnectionOk = isOk}
 
+let awStorageKey (user:TeamUser) =
+    sprintf "aw-%i-%i" user.QuizId user.TeamId
+
+let saveAnswer (user:TeamUser) (model: Model) =
+    match model.Answer with
+    | Some aw -> Infra.saveToLocalStorage (awStorageKey user) aw
+    | _ -> ()
+    model
+
+let deleteAnswer (user:TeamUser) (model: Model) =
+    Infra.removeFromLocalStorage (awStorageKey user)
+    model
+
 let init (api:ITeamApi) user : Model*Cmd<Msg> =
     {IsActive = true; Quiz = None; Answer = None; IsConnectionOk = false;  ActiveTab = Question;
         Error = ""; TimeDiff = TimeSpan.Zero; SseSource = None; History = []; TeamResults = []; QuestionResults = []} |> apiCmd api.getState () QuizCardResp Exn
@@ -165,12 +181,12 @@ let init (api:ITeamApi) user : Model*Cmd<Msg> =
 let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
     | Reactivate -> cm |> apiCmd api.takeActiveSession () QuizCardResp Exn
-    | QuizCardResp {Value = Ok res; ST = st} -> cm |> startup res st |> ok |> subscribe user.QuizId |> initAnswer |> setupCountdown
+    | QuizCardResp {Value = Ok res; ST = st} -> cm |> startup user res st |> ok |> sendAnswer api |> subscribe user.QuizId |> initAnswer |> setupCountdown
     | CountdownTick _ -> cm |> sendAnswer api |> setupCountdown
     | QuizChanged evt -> cm |> applyEvent evt |> sendAnswer api |> initAnswer |> setupCountdown
-    | AnswerResponse {Value = Ok _} -> cm |> answerStatus Sent |> ok |> noCmd
+    | AnswerResponse {Value = Ok _} -> cm |> deleteAnswer user |> answerStatus Sent |> ok |> noCmd
     | SourceError _ -> cm |> connection false |> noCmd
-    | UpdateAnswer txt -> cm |> answerText txt |> noCmd
+    | UpdateAnswer txt -> cm |> answerText txt |> saveAnswer user |> noCmd
     | Heartbeat -> cm |> connection true |> noCmd
     | ChangeTab Question -> {cm with ActiveTab = Question} |> noCmd
     | ChangeTab History -> {cm with ActiveTab = History} |> apiCmd api.getHistory () GetHistoryResp Exn

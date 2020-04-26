@@ -179,7 +179,6 @@ module Infra =
 
         history.pushState(null, "", (window.location.href.Split([|'?'|]).[0]));
 
-
     let saveToSessionStorage key value =
         sessionStorage.setItem (key, Json.stringify value)
 
@@ -190,13 +189,27 @@ module Infra =
         | Ok data -> Some data
         | Error _ -> None
 
-    let saveUser user serverTime =
+    let saveToLocalStorage key value =
+        localStorage.setItem (key, Json.stringify value)
+
+    let inline loadFromLocalStorage<'t>  key : 't option =
+        let str = localStorage.getItem key
+
+        match Json.tryParseAs<'t> str with
+        | Ok data -> Some data
+        | Error _ -> None
+
+    let removeFromLocalStorage key =
+        localStorage.removeItem key
+
+    let saveUser user =
         saveToSessionStorage "USER" user
-        saveToSessionStorage "START" serverTime
+
+    let loadUser () =
+        Infra.loadFromSessionStorage<User> "USER"
 
     let clearUserAndRedirect url =
         sessionStorage.removeItem "USER"
-        sessionStorage.removeItem "START"
         redirect url
 
     let currentQueryString () =
