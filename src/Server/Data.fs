@@ -69,6 +69,35 @@ let entryOfOption = function
     | None -> DynamoDBNull() :> DynamoDBEntry
     | Some x -> v2.ConvertToEntry x
 
+let documentOfSlip (slip: Slip) =
+    match slip with
+    | WWWSlip s -> documentOfWWWSlip s
+
+let documentOfWWWSlip (slip : WWWSlip) =
+    let slipDoc = Document()
+    slipDoc.["Kind"] <- v2.ConvertToEntry "WWW"
+    slipDoc.["Text"] <- v2.ConvertToEntry slip.Text
+    slipDoc.["ImgKey"] <- v2.ConvertToEntry slip.ImgKey
+    slipDoc.["Answer"] <- v2.ConvertToEntry slip.Answer
+    slipDoc.["Comment"] <- v2.ConvertToEntry slip.Comment
+    slipDoc.["CommentImgKey"] <- v2.ConvertToEntry slip.CommentImgKey
+
+    slipDoc
+
+let slipOfDocument (slipDoc:Document) : Slip =
+    match stringOfDoc slipDoc "Kind" with
+    | "WWW" | _ -> wwwSlipOfDocument slipDoc |> WWWSlip
+
+let wwwSlipOfDocument (slipDoc:Document) : WWWSlip =
+    {
+        Text = stringOfDoc slipDoc "Text"
+        ImgKey = stringOfDoc slipDoc "ImgKey"
+        Answer = stringOfDoc slipDoc "Answer"
+        Comment = stringOfDoc slipDoc "Comment"
+        CommentImgKey = stringOfDoc slipDoc "CommentImgKey"
+    }
+
+
 //#endregion
 
 module RefreshTokens =
@@ -244,25 +273,22 @@ module Quizzes =
         gameItem.["AdminToken"] <- v2.ConvertToEntry quiz.Dsc.AdminToken
         gameItem.["RegToken"] <- v2.ConvertToEntry quiz.Dsc.RegToken
         gameItem.["PkgId"] <- entryOfOption quiz.Dsc.PkgId
-        gameItem.["PkgQwIdx"] <- entryOfOption quiz.Dsc.PkgQwIdx
+        gameItem.["PkgQwIdx"] <- entryOfOption quiz.Dsc.PkgSlipIdx
         gameItem.["EventPage"] <- v2.ConvertToEntry quiz.Dsc.EventPage
         gameItem.["MixlrCode"] <- entryOfOption quiz.Dsc.MixlrCode
 
-        let questionsEntry = DynamoDBList()
-        for qw in quiz.Questions do
-             let qwItem = Document()
-             qwItem.["Name"] <- v2.ConvertToEntry qw.Name
-             qwItem.["Seconds"] <- v2.ConvertToEntry qw.Seconds
-             qwItem.["Status"] <- v2.ConvertToEntry <| qw.Status.ToString()
-             qwItem.["Text"] <- v2.ConvertToEntry qw.Text
-             qwItem.["ImgKey"] <- v2.ConvertToEntry qw.ImgKey
-             qwItem.["Answer"] <- v2.ConvertToEntry qw.Answer
-             qwItem.["Comment"] <- v2.ConvertToEntry qw.Comment
-             qwItem.["CommentImgKey"] <- v2.ConvertToEntry qw.CommentImgKey
-             qwItem.["StartTime"] <- entryOfOption qw.StartTime
-             questionsEntry.Add(qwItem)
+        let toursEntry = DynamoDBList()
+        for tour in quiz.Tours do
+             let tourItem = Document()
+             tourItem.["Name"] <- v2.ConvertToEntry tour.Name
+             tourItem.["Seconds"] <- v2.ConvertToEntry tour.Seconds
+             tourItem.["Status"] <- v2.ConvertToEntry <| tour.Status.ToString()
+             tourItem.["Slip"] <- documentOfSlip tour.Slip
+             tourItem.["StartTime"] <- entryOfOption tour.StartTime
+             tourItem.["QwIdx"] <- entryOfOption tour.QwIdx
+             toursEntry.Add(tourItem)
 
-        gameItem.["Questions"] <- questionsEntry
+        gameItem.["Questions"] <- toursEntry
         gameItem.["Version"] <- v2.ConvertToEntry quiz.Version
 
         gameItem
@@ -284,37 +310,34 @@ module Quizzes =
             RegToken = stringOfDoc doc "RegToken"
             WithPremoderation = boolOfDoc doc "WithPremoderation"
             PkgId = optionOfEntry doc "PkgId"
-            PkgQwIdx = optionOfEntry doc "PkgQwIdx"
+            PkgSlipIdx = optionOfEntry doc "PkgQwIdx"
             EventPage = stringOfDoc doc "EventPage"
             MixlrCode = optionOfEntry doc "MixlrCode"
         }
 
     let quizOfDocument (doc:Document) : Quiz =
         let dsc = descriptorOfDocument doc
-
         let version = doc.["Version"].AsInt()
-
-        let qwList = doc.["Questions"].AsListOfDocument()
-        let questions =
-            qwList
-            |> Seq.map quizQuestionOfDocument
+        let toursList = doc.["Questions"].AsListOfDocument()
+        let tours =
+            toursList
+            |> Seq.map quizTourOfDocument
             |> List.ofSeq
 
-        {Dsc = dsc; Version = version; Questions = questions}
+        {Dsc = dsc; Version = version; Tours = tours}
 
-    let quizQuestionOfDocument  (qwDoc:Document) =
-        let qwName = stringOfDoc qwDoc "Name"
-        let qwSeconds = qwDoc.["Seconds"].AsInt()
-        let qwStatus = defaultArg (fromString (stringOfDoc qwDoc "Status")) Announcing
-        let qwStartTime = optionOfEntry qwDoc "StartTime"
-        let qwText = stringOfDoc qwDoc "Text"
-        let qwImgKey = stringOfDoc qwDoc "ImgKey"
-        let qwAnswer = stringOfDoc qwDoc "Answer"
-        let qwComment = stringOfDoc qwDoc "Comment"
-        let qwCommentImgKey = stringOfDoc qwDoc "CommentImgKey"
-
-        {Name = qwName; Seconds = qwSeconds; Status = qwStatus; Text = qwText; ImgKey = qwImgKey; Answer = qwAnswer; Comment = qwComment
-         CommentImgKey = qwCommentImgKey; StartTime = qwStartTime}
+    let quizTourOfDocument  (tourDoc:Document) =
+        {
+            Name = stringOfDoc tourDoc "Name"
+            Seconds = tourDoc.["Seconds"].AsInt()
+            Status = defaultArg (fromString (stringOfDoc tourDoc "Status")) Announcing
+            QwIdx = optionOfEntry tourDoc "QwIdx"
+            StartTime = optionOfEntry tourDoc "StartTime"
+            Slip =
+                match tourDoc.TryGetValue "Slip" with
+                | true, entry -> slipOfDocument (entry.AsDocument())
+                | _ -> wwwSlipOfDocument tourDoc |> WWWSlip
+        }
 
 //#endregion
 
@@ -528,17 +551,12 @@ module Packages =
         packageItem.["Producer"] <- v2.ConvertToEntry package.Dsc.Producer
         packageItem.["TransferToken"] <- v2.ConvertToEntry package.TransferToken
 
-        let questionsEntry = DynamoDBList()
-        for qw in package.Questions do
-             let qwItem = Document()
-             qwItem.["Text"] <- v2.ConvertToEntry qw.Text
-             qwItem.["ImgKey"] <- v2.ConvertToEntry qw.ImgKey
-             qwItem.["Answer"] <- v2.ConvertToEntry qw.Answer
-             qwItem.["Comment"] <- v2.ConvertToEntry qw.Comment
-             qwItem.["CommentImgKey"] <- v2.ConvertToEntry qw.CommentImgKey
-             questionsEntry.Add(qwItem)
+        let slipsEntry = DynamoDBList()
+        for slip in package.Slips do
+            documentOfSlip slip
+            |> slipsEntry.Add
 
-        packageItem.["Questions"] <- questionsEntry
+        packageItem.["Questions"] <- slipsEntry
         packageItem.["Version"] <- v2.ConvertToEntry package.Version
 
         packageItem
@@ -558,23 +576,8 @@ module Packages =
         let qwList = doc.["Questions"].AsListOfDocument()
         let questions =
             qwList
-            |> Seq.map packageQuestionOfDocument
+            |> Seq.map slipOfDocument
             |> List.ofSeq
 
-        {Dsc = dsc; Version = version; Questions = questions; TransferToken = transferToken}
-
-    let packageQuestionOfDocument  (qwDoc:Document) =
-        let qwText = stringOfDoc qwDoc "Text"
-        let qwImgKey = stringOfDoc qwDoc "ImgKey"
-        let qwAnswer = stringOfDoc qwDoc "Answer"
-        let qwComment = stringOfDoc qwDoc "Comment"
-        let qwCommentImgKey = stringOfDoc qwDoc "CommentImgKey"
-
-        {
-            Text = qwText
-            ImgKey = qwImgKey
-            Answer = qwAnswer
-            Comment = qwComment
-            CommentImgKey = qwCommentImgKey
-        }
+        {Dsc = dsc; Version = version; Slips = questions; TransferToken = transferToken}
 

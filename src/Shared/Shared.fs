@@ -92,19 +92,26 @@ type TeamStatus =
     | Admitted
     | Rejected
 
-type QuizQuestionStatus =
+type TourStatus =
     | Announcing
     | Countdown
     | Settled
 
-type QuestionCard = {
-    Idx : int
-    Cap : string
-    Sec : int
-    QQS : QuizQuestionStatus
+type WWWSlipCard = {
     Txt : string
     Img : string
     Com : string
+}
+
+type SlipCard =
+    | WWWSlipCard of WWWSlipCard
+
+type TourCard = {
+    Idx : int
+    Cap : string
+    Sec : int
+    TS : TourStatus
+    Slip : SlipCard
     ST : System.DateTime option
 } with
     member x.SecondsLeft now =
@@ -117,13 +124,13 @@ type QuestionCard = {
 
     member x.IsCountdownActive now =
         match x.ST with
-        | Some _ when x.QQS = Countdown -> x.SecondsLeft now > 0
+        | Some _ when x.TS = Countdown -> x.SecondsLeft now > 0
         | _ -> false
 
 type QuizChangedEvent = {
     Id : int
     QS : QuizStatus
-    Qw : QuestionCard option
+    T : TourCard option
 }
 
 type PackageRecord = {
@@ -135,30 +142,37 @@ type PackageCard = {
     PackageId : int
     Name : string
     TransferToken : string
-    Questions : PackageQuestion list
+    Slips : Slip list
 }
  with
-    member x.GetQuestion idx =
-        if idx >= 0 && idx <x.Questions.Length then
-            Some (x.Questions.Item(idx))
+    member x.GetSlip idx =
+        if idx >= 0 && idx <x.Slips.Length then
+            Some (x.Slips.Item(idx))
         else None
-    member x.UpdateQuestion idx qw =
+    member x.UpdateSlip idx slip =
         {x with
-            Questions = x.Questions |> List.mapi (fun i q -> if idx = i then qw else q)
+            Slips = x.Slips |> List.mapi (fun i q -> if idx = i then slip else q)
         }
-    member x.AddQuestion () =
+    member x.AddWWWSlip () =
         {x with
-            Questions = x.Questions @ [{Text="";ImgKey="";Answer="";Comment="";CommentImgKey=""}]
+            Slips = x.Slips @ [WWWSlip{Text="";ImgKey="";Answer="";Comment="";CommentImgKey=""}]
         }
     member x.DelQuestion idx =
         {x with
-            Questions = x.Questions
+            Slips = x.Slips
                 |> List.mapi (fun i q -> if idx = i then None else Some q)
                 |> List.filter (fun v -> v.IsSome)
                 |> List.map (fun v -> v.Value)
         }
 
-type PackageQuestion = {
+type Slip =
+    | WWWSlip of WWWSlip
+with
+    member x.Text =
+        match x with
+        | WWWSlip slip -> slip.Text
+
+type WWWSlip = {
     Text : string
     ImgKey : string
     Answer : string
@@ -264,17 +278,14 @@ module AdminModels =
         RegistrationDate : System.DateTime
     }
 
-    type QuizQuestion = {
+    type TourControlCard = {
         Name : string
         Seconds : int
-        Status : QuizQuestionStatus
-        Text : string
-        ImgKey : string
-        Answer : string
-        Comment : string
-        CommentImgKey : string
+        Status : TourStatus
+        Slip : Slip
         StartTime : System.DateTime option
-    } with
+    }
+    with
         member x.SecondsLeft now =
             match x.StartTime with
             | Some st ->
@@ -286,12 +297,11 @@ module AdminModels =
         member x.IsCoundownActive now =
             x.Status = Countdown && x.SecondsLeft now > 0
 
-
     type QuizControlCard = {
         QuizStatus : QuizStatus
         PackageId : int option
-        PackageQwIdx : int option
-        CurrentQw : QuizQuestion option
+        PackageSlipIdx : int option
+        CurrentTour : TourControlCard option
     }
 
     type Answer = {
@@ -306,7 +316,7 @@ module AdminModels =
         Idx : int
         Nm : string
         Sec : int
-        QQS : QuizQuestionStatus
+        QQS : TourStatus
         ST : System.DateTime option
     }
 
@@ -352,7 +362,7 @@ module TeamModels =
         Img : string
         Wcm : string
         Fwl : string
-        Qw : QuestionCard option
+        TC : TourCard option
         Aw : string option
         LT : string
         Mxlr : int option
@@ -378,7 +388,7 @@ module AudModels =
         Img : string
         Wcm : string
         Fwl : string
-        Qw : QuestionCard option
+        Qw : TourCard option
         LT : string
         Mxlr : int option
         V : int

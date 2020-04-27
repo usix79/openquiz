@@ -48,15 +48,15 @@ type Model = {
     TeamResults : TeamResult list
     QuestionResults : QuestionResult list
 } with
-    member x.CurrentQuestion =
+    member x.CurrentTour =
         match x.Quiz with
-        | Some quiz -> quiz.Qw
+        | Some quiz -> quiz.TC
         | None -> None
 
     member x.IsCountdownActive =
         match x.Quiz with
         | Some quiz ->
-            match quiz.Qw with
+            match quiz.TC with
             | Some qw -> quiz.QS = Live && qw.IsCountdownActive (serverTime x.TimeDiff)
             | None -> false
         | None -> false
@@ -77,7 +77,7 @@ let startup user quiz serverTime model =
             | Some aw -> Some aw
             | None ->
                 match quiz.Aw with
-                | Some txt -> Some {QwIdx = (match quiz.Qw with Some qw -> qw.Idx | None -> -1); Status = Sent; Text = txt}
+                | Some txt -> Some {QwIdx = (match quiz.TC with Some qw -> qw.Idx | None -> -1); Status = Sent; Text = txt}
                 | None -> None
     }
 
@@ -87,17 +87,17 @@ let updateQuiz (f : QuizCard -> QuizCard) model  =
     | None -> model
 
 let initAnswer (model : Model, cmd : Cmd<Msg>) =
-    let createAnswer (qw:QuestionCard) timeDiff =
+    let createAnswer (qw:TourCard) timeDiff =
         {QwIdx = qw.Idx; Text = ""; Status = if qw.IsCountdownActive (serverTime timeDiff) then Input else Failed}
 
-    match model.CurrentQuestion with
-    | Some qw ->
-        match qw.QQS with
+    match model.CurrentTour with
+    | Some tour ->
+        match tour.TS with
         | Announcing -> {model with Answer = None}
         | Countdown | Settled ->
             match model.Answer with
-            | Some aw when aw.QwIdx <> qw.Idx -> {model with Answer = Some (createAnswer qw model.TimeDiff)}
-            | None -> {model with Answer = Some (createAnswer qw model.TimeDiff)}
+            | Some aw when aw.QwIdx <> tour.Idx -> {model with Answer = Some (createAnswer tour model.TimeDiff)}
+            | None -> {model with Answer = Some (createAnswer tour model.TimeDiff)}
             | _ -> model
     | None -> {model with Answer = None}
     , cmd
@@ -105,7 +105,7 @@ let initAnswer (model : Model, cmd : Cmd<Msg>) =
 let setupCountdown (model : Model, cmd : Cmd<Msg>) =
     match model.IsCountdownActive with
     | true ->
-        match model.CurrentQuestion with
+        match model.CurrentTour with
         | Some qw ->  model, timeoutCmd (CountdownTick {|QwIndex = qw.Idx|}) 1000
         | None -> model |> noCmd
     | false -> model |> noCmd
@@ -129,7 +129,7 @@ let unsubscribe (model:Model) =
     | _ -> ()
 
 let applyEvent (evt:QuizChangedEvent) (model:Model) =
-    model |> updateQuiz (fun quiz -> {quiz with QS = evt.QS; Qw = evt.Qw})
+    model |> updateQuiz (fun quiz -> {quiz with QS = evt.QS; TC = evt.T})
 
 let answerStatus satus model =
     match model.Answer with
@@ -150,10 +150,10 @@ let sendAnswer api (model : Model) =
 
     match model.Answer with
     | Some aw when aw.Status = Input ->
-        match model.CurrentQuestion with
-        | Some qw when (aw.QwIdx <> qw.Idx)
-            || (qw.QQS = Countdown && not (qw.IsCountdownActive (serverTime model.TimeDiff)))
-            || (qw.QQS = Settled)
+        match model.CurrentTour with
+        | Some tour when (aw.QwIdx <> tour.Idx)
+            || (tour.TS = Countdown && not (tour.IsCountdownActive (serverTime model.TimeDiff)))
+            || (tour.TS = Settled)
             -> model |> answerCmd api
         | _ -> model |> noCmd
     | _ -> model |> noCmd
@@ -225,7 +225,7 @@ let notActiveView (dispatch : Msg -> unit) (user:TeamUser) error =
 let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
     let serverTime = serverTime model.TimeDiff
     let secondsLeft, isCountdownActive =
-        match quiz.Qw with
+        match quiz.TC with
         | Some q -> q.SecondsLeft serverTime, q.IsCountdownActive serverTime
         | None -> 0, false
 
@@ -260,7 +260,7 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
 
 let quiestionView (dispatch : Msg -> unit) quiz answer isCountdownActive =
     div [] [
-        MainTemplates.playQuestion quiz.Qw
+        MainTemplates.playTour quiz.TC
 
         match answer with
         | Some aw ->

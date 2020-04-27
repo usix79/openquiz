@@ -137,20 +137,22 @@ let playQuiz status msg =
         p [] (splitByLines msg)
      ]
 
-let playQuestion (quizQuestion:Shared.QuestionCard option) =
+let playTour (tour:Shared.TourCard option) =
     div [] [
-        h5 [Class "title is-5"] [ str <| "Question: " + match quizQuestion with Some qw -> qw.Cap | None -> "???" ]
+        h5 [Class "title is-5"] [ str <| "Question: " + match tour with Some qw -> qw.Cap | None -> "???" ]
 
-        match quizQuestion with
-        | Some q ->
-            yield! imgEl q.Img
-            if q.QQS = Shared.Settled then
-                p [ Class "has-text-weight-bold" ] [ str "Answer" ]
-            p [ Class "has-text-weight-semibold" ] (splitByLines q.Txt)
-            if (q.Com <> "") then
-                p [ Class "has-text-weight-bold" ] [ str "Comment" ]
-                p [ ] (splitByLines q.Com)
-            br[]
+        match tour with
+        | Some t ->
+            match t.Slip with
+            | Shared.WWWSlipCard slip ->
+                yield! imgEl slip.Img
+                if t.TS = Shared.Settled then
+                    p [ Class "has-text-weight-bold" ] [ str "Answer" ]
+                p [ Class "has-text-weight-semibold" ] (splitByLines slip.Txt)
+                if (slip.Com <> "") then
+                    p [ Class "has-text-weight-bold" ] [ str "Comment" ]
+                    p [ ] (splitByLines slip.Com)
+                br[]
         | _ -> ()
     ]
 

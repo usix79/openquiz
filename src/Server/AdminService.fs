@@ -150,11 +150,13 @@ module Jury =
                 knownVersions <- knownVersions.Add (version,res)
                 res
 
-    let createJury (qw:Domain.QuizQuestion) =
-        if not (String.IsNullOrWhiteSpace (qw.Answer)) then
-            Some (jury qw.Answer)
-        else
-            None
+    let createJury (tour:Domain.QuizTour) =
+        match tour.Slip with
+        | Domain.WWWSlip slip ->
+            if not (String.IsNullOrWhiteSpace (slip.Answer)) then
+                Some (jury slip.Answer)
+            else
+                None
 
 
 let getTeams quiz req =
@@ -273,10 +275,9 @@ let uploadFile bucketName _ req =
 
 let startCountDown quiz req =
     let logic quiz =
-        match req.CurrentQw with
-        | Some qw ->
-            quiz |> Domain.Quizzes.startCountdown qw.Name qw.Seconds qw.Text qw.ImgKey
-                            qw.Answer qw.Comment qw.CommentImgKey req.PackageQwIdx DateTime.UtcNow
+        match req.CurrentTour with
+        | Some tour ->
+            quiz |> Domain.Quizzes.startCountdown tour.Name tour.Seconds req.PackageSlipIdx (slipToDomain tour.Slip) DateTime.UtcNow
         | None -> Error "Question is empty"
 
     result{
@@ -307,11 +308,11 @@ let finishQuestion quiz _ =
 
 let settleAnswers (quiz : Domain.Quiz) =
     let logic jury (team : Domain.Team) =
-        team |> Domain.Teams.settleAnswer quiz.CurrentQuestionIndex jury DateTime.UtcNow |> Ok
+        team |> Domain.Teams.settleAnswer quiz.CurrentTourIndex jury DateTime.UtcNow |> Ok
 
-    match quiz.CurrentQuestion with
-    | Some qw ->
-        match Jury.createJury qw with
+    match quiz.CurrentTour with
+    | Some tour ->
+        match Jury.createJury tour with
         | Some jury ->
             async {
                 for teamId in Data.Teams.getIds quiz.Dsc.QuizId do

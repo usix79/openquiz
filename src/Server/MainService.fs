@@ -227,7 +227,7 @@ let updateProdPackageCard expert card =
         { pkg with
             Dsc = { pkg.Dsc with Name = card.Name}
             TransferToken = card.TransferToken
-            Questions = card.Questions |> List.map packageQwToDomain
+            Slips = card.Slips |> List.map slipToDomain
         } |> Ok
 
     result {

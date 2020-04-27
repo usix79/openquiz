@@ -103,11 +103,11 @@ let updateCard f model =
     | Some card -> {model with Card = Some <| f card}
     | _ -> model
 
-let updateQw idx f model =
+let updateWWWSlip idx f model =
     model
     |> updateCard (fun card ->
-        match card.GetQuestion idx with
-        | Some qw -> f qw |> card.UpdateQuestion idx
+        match card.GetSlip idx with
+        | Some (WWWSlip slip) -> f slip |> WWWSlip |> card.UpdateSlip idx
         | None -> card
     )
 
@@ -175,17 +175,17 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | CancelCard -> {cm with Card = None} |> noCmd
     | SubmitCard -> cm |> submitCard api
     | SubmitCardResp {Value = Ok res } -> {cm with Card = None} |> editing |> replaceRecord res |> noCmd
-    | AppendQuiestion -> cm |> updateCard (fun c -> c.AddQuestion()) |> noCmd
+    | AppendQuiestion -> cm |> updateCard (fun c -> c.AddWWWSlip()) |> noCmd
     | DelQuestion idx -> cm |> updateCard (fun c -> c.DelQuestion idx) |> noCmd
-    | QwTextChanged (idx,txt) -> cm |> updateQw idx (fun qw -> {qw with Text = txt}) |> noCmd
-    | QwCommentChanged (idx,txt) -> cm |> updateQw idx (fun qw -> {qw with Comment = txt}) |> noCmd
-    | QwAnswerChanged (idx,txt) -> cm |> updateQw idx (fun qw -> {qw with Answer = txt}) |> noCmd
+    | QwTextChanged (idx,txt) -> cm |> updateWWWSlip idx (fun qw -> {qw with Text = txt}) |> noCmd
+    | QwCommentChanged (idx,txt) -> cm |> updateWWWSlip idx (fun qw -> {qw with Comment = txt}) |> noCmd
+    | QwAnswerChanged (idx,txt) -> cm |> updateWWWSlip idx (fun qw -> {qw with Answer = txt}) |> noCmd
     | QwImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadQwImgResponse res.Tag) res.Type res.Body
-    | QwImgClear qwKey -> cm |> updateQw qwKey.Idx (fun qw -> {qw with ImgKey = ""}) |> noCmd
-    | UploadQwImgResponse {Tag = qwKey; Rsp = {Value = Ok res}} -> cm |> editing |> updateQw qwKey.Idx (fun qw -> {qw with ImgKey = res.BucketKey}) |> noCmd
+    | QwImgClear qwKey -> cm |> updateWWWSlip qwKey.Idx (fun qw -> {qw with ImgKey = ""}) |> noCmd
+    | UploadQwImgResponse {Tag = qwKey; Rsp = {Value = Ok res}} -> cm |> editing |> updateWWWSlip qwKey.Idx (fun qw -> {qw with ImgKey = res.BucketKey}) |> noCmd
     | CommentImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadCommentImgResponse res.Tag) res.Type res.Body
-    | CommentImgClear qwKey -> cm |> updateQw qwKey.Idx (fun qw -> {qw with CommentImgKey = ""}) |> noCmd
-    | UploadCommentImgResponse {Tag = qwKey; Rsp = {Value = Ok res}} -> cm |> editing |> updateQw qwKey.Idx (fun qw -> {qw with CommentImgKey = res.BucketKey}) |> noCmd
+    | CommentImgClear qwKey -> cm |> updateWWWSlip qwKey.Idx (fun qw -> {qw with CommentImgKey = ""}) |> noCmd
+    | UploadCommentImgResponse {Tag = qwKey; Rsp = {Value = Ok res}} -> cm |> editing |> updateWWWSlip qwKey.Idx (fun qw -> {qw with CommentImgKey = res.BucketKey}) |> noCmd
     | ToggleAquiringForm -> cm |> toggleAquiringForm |> noCmd
     | AquiringFormUpdatePackageId txt-> cm |> updateAquiringForm (fun form -> {form with PackageId = System.Int32.Parse(txt)}) |> noCmd
     | AquiringFormUpdateTransferToken txt-> cm |> updateAquiringForm (fun form -> {form with TransferToken = txt.Trim()}) |> noCmd
@@ -342,16 +342,19 @@ let card (dispatch : Msg -> unit) (card : PackageCard) (deleteForm : DeleteForm 
             ]
 
             let rows =
-                card.Questions
-                |> List.mapi (qwRow dispatch isLoading card.PackageId)
+                card.Slips
+                |> List.mapi (slipRow dispatch isLoading card.PackageId)
                 |> List.rev
 
             tbody [] rows
         ]
-
     ]
 
-let qwRow dispatch isLoading pkgId idx (qw: PackageQuestion) =
+let slipRow dispatch isLoading pkgId idx (slip: Slip) =
+    match slip with
+    | WWWSlip s -> wwwSlipRow dispatch isLoading pkgId idx s
+
+let wwwSlipRow dispatch isLoading pkgId idx (slip: WWWSlip) =
 
     let qwKey = {PackageId = pkgId; Idx=idx}
 
@@ -364,17 +367,17 @@ let qwRow dispatch isLoading pkgId idx (qw: PackageQuestion) =
             button [Class "button is-small"; OnClick(fun _ -> dispatch <| DelQuestion (idx))][Fa.i [ Fa.Regular.TrashAlt ] [ ]]
         ]
         td[] [
-            textarea [Class "textarea"; valueOrDefault qw.Text; MaxLength 512.0; OnChange (fun ev -> QwTextChanged (idx,ev.Value) |> dispatch)][]
+            textarea [Class "textarea"; valueOrDefault slip.Text; MaxLength 512.0; OnChange (fun ev -> QwTextChanged (idx,ev.Value) |> dispatch)][]
             br[]
-            yield! MainTemplates.imgArea qwKey isLoading (QwImgChanged >> dispatch) (fun _ -> QwImgClear qwKey |> dispatch) qw.ImgKey "" "Clear"
+            yield! MainTemplates.imgArea qwKey isLoading (QwImgChanged >> dispatch) (fun _ -> QwImgClear qwKey |> dispatch) slip.ImgKey "" "Clear"
         ]
         td[] [
-            textarea [Class "textarea"; valueOrDefault qw.Answer; MaxLength 512.0; OnChange (fun ev -> QwAnswerChanged (idx,ev.Value) |> dispatch)][]
+            textarea [Class "textarea"; valueOrDefault slip.Answer; MaxLength 512.0; OnChange (fun ev -> QwAnswerChanged (idx,ev.Value) |> dispatch)][]
         ]
         td[] [
-            textarea [Class "textarea"; valueOrDefault qw.Comment; MaxLength 512.0; OnChange (fun ev -> QwCommentChanged (idx,ev.Value) |> dispatch)][]
+            textarea [Class "textarea"; valueOrDefault slip.Comment; MaxLength 512.0; OnChange (fun ev -> QwCommentChanged (idx,ev.Value) |> dispatch)][]
             br[]
-            yield! MainTemplates.imgArea qwKey isLoading (CommentImgChanged >> dispatch) (fun _ -> CommentImgClear qwKey |> dispatch) qw.CommentImgKey "" "Clear"
+            yield! MainTemplates.imgArea qwKey isLoading (CommentImgChanged >> dispatch) (fun _ -> CommentImgClear qwKey |> dispatch) slip.CommentImgKey "" "Clear"
         ]
     ]
 
