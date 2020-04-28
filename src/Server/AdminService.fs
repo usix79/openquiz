@@ -48,7 +48,8 @@ let api (context:HttpContext) : IAdminApi =
         uploadFile = ex "uploadFile" <| uploadFile (Config.getFilesAccessPoint cfg)
         startCountDown = ex "startCountDown" startCountDown
         pauseCountDown = ex "pauseCountDown" pauseCountDown
-        finishQuestion = ex "finishQuestion" finishQuestion
+        settleTour = ex "settleTour" settleTour
+        nextTour = ex "nextTour" nextTour
         nextQuestion = ex "nextQuestion" nextQuestion
         getAnswers = ex "getAnswers" getAnswers
         updateResults = ex "updateResults" updateResults
@@ -152,7 +153,7 @@ module Jury =
 
     let createJury (tour:Domain.QuizTour) =
         match tour.Slip with
-        | Domain.WWWSlip slip ->
+        | Domain.Single slip ->
             if not (String.IsNullOrWhiteSpace (slip.Answer)) then
                 Some (jury slip.Answer)
             else
@@ -273,11 +274,25 @@ let getPackageCard quiz req =
 let uploadFile bucketName _ req =
     Bucket.uploadFile  bucketName req.Cat req.FileType req.FileBody
 
+let nextQuestion quiz req =
+    let logic quiz =
+        match req.CurrentTour with
+        | Some tour ->
+            quiz |> Domain.Quizzes.update tour.Name tour.Seconds req.PackageSlipIdx (slipToDomain tour.Slip)
+            |> Domain.Quizzes.setQuestionIdx (tour.NextQwIdx + 1)
+        | None -> Error "Question is empty"
+
+    result{
+        let! quiz = CommonService.updateQuiz quiz.QuizId logic
+        return Admin.quizCard quiz
+    }
+
 let startCountDown quiz req =
     let logic quiz =
         match req.CurrentTour with
         | Some tour ->
-            quiz |> Domain.Quizzes.startCountdown tour.Name tour.Seconds req.PackageSlipIdx (slipToDomain tour.Slip) DateTime.UtcNow
+            quiz |> Domain.Quizzes.update tour.Name tour.Seconds req.PackageSlipIdx (slipToDomain tour.Slip)
+            |> Domain.Quizzes.startCountdown DateTime.UtcNow
         | None -> Error "Question is empty"
 
     result{
@@ -286,23 +301,15 @@ let startCountDown quiz req =
     }
 
 let pauseCountDown quiz _ =
-    let logic quiz =
-        quiz |> Domain.Quizzes.pauseCountdown
-
     result{
-        let! quiz = CommonService.updateQuiz quiz.QuizId logic
+        let! quiz = CommonService.updateQuiz quiz.QuizId Domain.Quizzes.pauseCountdown
         return Admin.quizCard quiz
     }
 
-let finishQuestion quiz _ =
-    let logic quiz =
-        quiz |> Domain.Quizzes.settle
-
+let settleTour quiz _ =
     result{
-        let! quiz = CommonService.updateQuiz quiz.QuizId logic
-
+        let! quiz = CommonService.updateQuiz quiz.QuizId Domain.Quizzes.settle
         settleAnswers quiz
-
         return Admin.quizCard quiz
     }
 
@@ -321,7 +328,7 @@ let settleAnswers (quiz : Domain.Quiz) =
         | None -> ()
     | _ -> ()
 
-let nextQuestion quiz _ =
+let nextTour quiz _ =
     let logic quiz =
         quiz |> Domain.Quizzes.next CommonService.packageLoader |> Ok
 
@@ -329,6 +336,7 @@ let nextQuestion quiz _ =
         let! quiz = CommonService.updateQuiz quiz.QuizId logic
         return Admin.quizCard quiz
     }
+
 
 let getAnswers quiz _ =
     result{
@@ -354,4 +362,3 @@ let getResults quiz _ =
 
         return {|Teams = teams |> teamResults true; Questions = questionResults quiz|}
     }
-

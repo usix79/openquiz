@@ -1,6 +1,10 @@
 # Release Notes
 
-## 0.6.0 - 2020-04-24
+## 0.7.0 - 2020-04-28
+
+* Added support of doublets and blitzes
+
+## 0.6.0 - 2020-04-25
 
 * Added ability to delete quizzes and packages
 

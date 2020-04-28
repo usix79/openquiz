@@ -53,11 +53,11 @@ let packageCard (package: Package) : PackageCard =
             |> List.map slip
     }
 
-let slip (sl : Slip) : Shared.Slip =
-    match sl with
-    | WWWSlip sl ->
-        Shared.WWWSlip {
-            Text = sl.Text
+let slip (slip : Slip) : Shared.Slip =
+    match slip with
+    | Single sl ->
+        Shared.Single {
+            Questions = sl.Questions
             ImgKey = sl.ImgKey
             Answer = sl.Answer
             Comment = sl.Comment
@@ -66,9 +66,9 @@ let slip (sl : Slip) : Shared.Slip =
 
 let slipToDomain (slip : Shared.Slip) : Slip =
     match slip with
-    | Shared.WWWSlip s ->
-        WWWSlip {
-            Text = s.Text
+    | Shared.Single s ->
+        Single {
+            Questions = s.Questions
             ImgKey = s.ImgKey
             Answer = s.Answer
             Comment = s.Comment
@@ -90,18 +90,21 @@ let tourCard idx (tour:QuizTour) : TourCard =
         Cap = tour.Name
         Sec = tour.Seconds
         TS = tourStatus tour.Status
-        Slip = slipCard tour.Status tour.Slip
+        Slip = slipCard tour.Status tour.NextQwIdx tour.Slip
         ST = tour.StartTime
     }
 
-let slipCard status (slip:Slip) : SlipCard =
+let qwText qwList =
+    qwList |> List.mapi (fun idx qw -> sprintf "%i. %s" (idx + 1) qw) |> String.concat "\n"
+
+let slipCard status nextQwIdx (slip:Slip) : SlipCard =
     match slip with
-    | WWWSlip s ->
-        Shared.WWWSlipCard {
+    | Single s ->
+        Shared.SingleSlipCard {
             Txt =
                 match status with
-                | Announcing -> ""
-                | Countdown -> s.Text
+                | Announcing -> s.Questions |> List.take nextQwIdx |> qwText
+                | Countdown -> s.Questions |> qwText
                 | Settled -> s.Answer
             Img =
                 match status with
@@ -229,6 +232,7 @@ module Admin =
             Status = tourStatus tour.Status
             StartTime = tour.StartTime
             Slip = slip tour.Slip
+            NextQwIdx = tour.NextQwIdx
         }
 
     let teamAnswersRecord (team:Team) : AdminModels.TeamAnswersRecord =
@@ -346,7 +350,7 @@ module Audience =
             Img = quiz.Dsc.ImgKey
             Wcm = quiz.Dsc.WelcomeText
             Fwl = quiz.Dsc.FarewellText
-            Qw =
+            TC =
                 match quiz.CurrentTour with
                 | Some qw when quiz.Dsc.Status = Live -> Some <| tourCard quiz.CurrentTourIndex qw
                 | _ -> None

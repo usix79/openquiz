@@ -42,12 +42,6 @@ type Msg =
     | DeleteQuiz of int
     | DeleteQuizResp of TRESP<int,unit>
 
-type DeleteForm = {
-    ConfirmText : string
-    Error : string
-    IsSending : bool
-}
-
 type Model = {
     Quizzes : QuizProdRecord list
     Card : QuizProdCard option
@@ -122,12 +116,7 @@ let updateMixlrCode txt model =
     })
 
 let toggleDeleteForm model =
-    { model with
-        Form =
-            match model.Form with
-            | Some _ -> None
-            | None -> Some {ConfirmText = ""; Error = ""; IsSending = false}
-    }
+    { model with Form = DeleteForm.Toggle model.Form}
 
 let updateDeleteForm (f : DeleteForm -> DeleteForm) model =
     match model.Form with
@@ -164,10 +153,10 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | QuizImgChanged res -> cm |> uploadFile res.Tag api (taggedMsg UploadQuizImgResp res.Tag) res.Type res.Body
     | UploadQuizImgResp {Tag = _; Rsp = {Value = Ok res}} -> cm |> editing |> updateCard (fun c -> {c with ImgKey = res.BucketKey}) |> noCmd
     | ToggleDeleteForm -> cm |> toggleDeleteForm |> noCmd
-    | DeleteFormUpdateText txt -> cm |> updateDeleteForm (fun form -> {form with ConfirmText = txt; Error = ""}) |> noCmd
+    | DeleteFormUpdateText txt -> cm |> updateDeleteForm (fun form -> {form with ConfirmText = txt; FormError = ""}) |> noCmd
     | DeleteQuiz quizId -> cm |> updateDeleteForm (fun form -> {form with IsSending = true}) |> apiCmd api.deleteQuiz {|QuizId = quizId|} (taggedMsg DeleteQuizResp quizId) Exn
     | DeleteQuizResp {Tag = quizId; Rsp = {Value = Ok _}} -> cm |> afterQuizDeletion quizId |> noCmd
-    | DeleteQuizResp {Tag = _; Rsp = {Value = Error txt}} -> cm |> updateDeleteForm (fun form -> {form with IsSending = false; Error = txt}) |>  noCmd
+    | DeleteQuizResp {Tag = _; Rsp = {Value = Error txt}} -> cm |> updateDeleteForm (fun form -> {form with IsSending = false; FormError = txt}) |>  noCmd
     | DeleteError id -> cm |> delError id |> noCmd
     | Exn ex -> cm |> addError ex.Message |> editing |> noCmd
     | Err txt -> cm |> addError txt |> editing |> noCmd
@@ -367,7 +356,9 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) (form : Delet
             ]
         ]
         match form with
-        | Some fm -> div [][ deleteForm dispatch fm card.QuizId card.Name]
+        | Some fm ->
+            MainTemplates.deleteForm dispatch "Type name of the Quiz to confirm" card.Name fm.ConfirmText fm.IsSending fm.FormError
+                ToggleDeleteForm DeleteFormUpdateText (DeleteQuiz card.QuizId)
         | None ->
             nav [Class "level"][
                 div [Class "level-left"][
@@ -386,24 +377,3 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) (form : Delet
                 ]
             ]
     ]
-
-let deleteForm dispatch form quizId quizName=
-    div[][
-        div [Class "field has-addons"; Style[PaddingBottom "5px"]][
-            p [Class "control is-expanded"][
-                input [Class "input"; Disabled form.IsSending; Type "text"; Placeholder "Type name of the Quiz to confirm"; MaxLength 128.0;
-                    valueOrDefault form.ConfirmText;
-                    OnChange (fun ev -> dispatch <| DeleteFormUpdateText ev.Value)]
-            ]
-            p [Class "control"][
-                button [classList ["button", true; "has-text-danger", true; "has-text-weight-semibold", true; "is-loading", form.IsSending];
-                  Disabled (form.ConfirmText <> quizName);
-                  OnClick (fun _ -> dispatch <| DeleteQuiz quizId)][str "Delete"]
-            ]
-            p [Class "control"][
-                button [classList ["button", true]; OnClick (fun _ -> dispatch ToggleDeleteForm)][str "Cancel"]
-            ]
-        ]
-        p [Class "help is-danger"][str form.Error]
-    ]
-

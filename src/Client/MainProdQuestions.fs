@@ -8,12 +8,11 @@ open Fable.FontAwesome
 
 open Shared
 open Common
-open MainModels
 
-type QwKey = {
-    PackageId:int
-    Idx:int
-}
+type QwKey = {PackageId:int; SlipIdx:int; QwIdx:int}
+    with
+        member x.Idx = (x.SlipIdx, x.QwIdx)
+        member x.IdxOfQw (idx:int) = (x.SlipIdx, idx)
 
 type Msg =
     | Exn of exn
@@ -28,37 +27,31 @@ type Msg =
     | CancelCard
     | SubmitCard
     | SubmitCardResp of RESP<PackageRecord>
-    | AppendQuiestion
-    | DelQuestion of int
-    | QwTextChanged of int * string
-    | QwAnswerChanged of int * string
-    | QwCommentChanged of int * string
+    | AppendSingleSlip of qwCount : int
+    | DelSlip of slipIdx:int
+    | QwTextChanged of idx:(int * int) * txt:string
+    | QwAnswerChanged of idx:(int * int) * string
+    | QwCommentChanged of idx:(int * int) * string
     | QwImgChanged of {|Type:string; Body:byte[]; Tag:QwKey|}
-    | QwImgClear of QwKey
-    | UploadQwImgResponse of TRESP<QwKey, {|BucketKey:string|}>
+    | QwImgClear of idx:(int * int)
+    | UploadQwImgResp of TRESP<(int*int), {|BucketKey:string|}>
     | CommentImgChanged of {|Type:string; Body:byte[]; Tag:QwKey|}
-    | CommentImgClear of QwKey
-    | UploadCommentImgResponse of TRESP<QwKey, {|BucketKey:string|}>
-    | ToggleAquiringForm
-    | AquiringFormUpdatePackageId of string
-    | AquiringFormUpdateTransferToken of string
-    | AquiringFormSend
-    | AquiringFormCancel
-    | AquiringResp of RESP<PackageRecord>
+    | CommentImgClear of idx:(int * int)
+    | UploadCommentImgResp of TRESP<(int*int), {|BucketKey:string|}>
+    | ToggleAquireForm
+    | AquireFormUpdatePackageId of string
+    | AquireFormUpdateTransferToken of string
+    | AquireFormSend
+    | AquireFormCancel
+    | AquirePackageResp of RESP<PackageRecord>
     | ToggleDeleteForm
     | DeleteFormUpdateText of string
     | DeletePackage of int
     | DeletePackageResp of TRESP<int,unit>
 
-type AquiringForm = {
+type AquireForm = {
     PackageId : int
     TransferToken : string
-    IsSending : bool
-}
-
-type DeleteForm = {
-    ConfirmText : string
-    Error : string
     IsSending : bool
 }
 
@@ -67,7 +60,7 @@ type Model = {
     Errors : Map<string, string>
     CardIsLoading : int option // packageId
     Card : PackageCard option
-    AquiringForm : AquiringForm option
+    AquiringForm : AquireForm option
     DeleteForm : DeleteForm option
 }
 
@@ -103,11 +96,38 @@ let updateCard f model =
     | Some card -> {model with Card = Some <| f card}
     | _ -> model
 
-let updateWWWSlip idx f model =
-    model
-    |> updateCard (fun card ->
-        match card.GetSlip idx with
-        | Some (WWWSlip slip) -> f slip |> WWWSlip |> card.UpdateSlip idx
+let updateQwText (slipIdx,qwIdx) txt model =
+    model |> updateCard (fun card ->
+        match card.GetSlip slipIdx with
+        | Some (Single slip) -> slip.SetQwText qwIdx txt |> Single |> card.UpdateSlip slipIdx
+        | None -> card
+    )
+
+let updateQwImg (slipIdx,qwIdx) imgKey model =
+    model |> updateCard (fun card ->
+        match card.GetSlip slipIdx with
+        | Some (Single slip) -> {slip with ImgKey = imgKey} |> Single |> card.UpdateSlip slipIdx
+        | None -> card
+    )
+
+let updateQwAnswer (slipIdx,qwIdx) txt model =
+    model |> updateCard (fun card ->
+        match card.GetSlip slipIdx with
+        | Some (Single slip) -> {slip with Answer = txt} |> Single |> card.UpdateSlip slipIdx
+        | None -> card
+    )
+
+let updateQwComment (slipIdx,qwIdx) txt model =
+    model |> updateCard (fun card ->
+        match card.GetSlip slipIdx with
+        | Some (Single slip) -> {slip with Comment = txt} |> Single |> card.UpdateSlip slipIdx
+        | None -> card
+    )
+
+let updateCommentImg (slipIdx,qwIdx) imgKey model =
+    model |> updateCard (fun card ->
+        match card.GetSlip slipIdx with
+        | Some (Single slip) -> {slip with CommentImgKey = imgKey} |> Single |> card.UpdateSlip slipIdx
         | None -> card
     )
 
@@ -129,7 +149,7 @@ let uploadFile packageId (api:IMainApi) respMsg fileType body model =
 let toggleAquiringForm model =
     {model with AquiringForm = (match model.AquiringForm with Some _ -> None | None -> Some {PackageId = 0; TransferToken = ""; IsSending = false})}
 
-let updateAquiringForm (f : AquiringForm -> AquiringForm) (model:Model) =
+let updateAquiringForm (f : AquireForm -> AquireForm) (model:Model) =
     match model.AquiringForm with
     | Some form -> {model with AquiringForm = Some (f form)}
     | None -> model
@@ -139,16 +159,11 @@ let sendAquiringForm (api:IMainApi) model =
     | Some form when form.PackageId > 0 && not <| System.String.IsNullOrWhiteSpace(form.TransferToken) ->
         model
         |> updateAquiringForm (fun form -> {form with IsSending = true})
-        |> apiCmd api.aquirePackage {|PackageId = form.PackageId; TransferToken = form.TransferToken.Trim()|} AquiringResp Exn
+        |> apiCmd api.aquirePackage {|PackageId = form.PackageId; TransferToken = form.TransferToken.Trim()|} AquirePackageResp Exn
     | _ -> model |> noCmd
 
 let toggleDeleteForm model =
-    { model with
-        DeleteForm =
-            match model.DeleteForm with
-            | Some _ -> None
-            | None -> Some {ConfirmText = ""; Error = ""; IsSending = false}
-    }
+    { model with DeleteForm = DeleteForm.Toggle model.DeleteForm}
 
 let updateDeleteForm (f : DeleteForm -> DeleteForm) model =
     match model.DeleteForm with
@@ -175,29 +190,29 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | CancelCard -> {cm with Card = None} |> noCmd
     | SubmitCard -> cm |> submitCard api
     | SubmitCardResp {Value = Ok res } -> {cm with Card = None} |> editing |> replaceRecord res |> noCmd
-    | AppendQuiestion -> cm |> updateCard (fun c -> c.AddWWWSlip()) |> noCmd
-    | DelQuestion idx -> cm |> updateCard (fun c -> c.DelQuestion idx) |> noCmd
-    | QwTextChanged (idx,txt) -> cm |> updateWWWSlip idx (fun qw -> {qw with Text = txt}) |> noCmd
-    | QwCommentChanged (idx,txt) -> cm |> updateWWWSlip idx (fun qw -> {qw with Comment = txt}) |> noCmd
-    | QwAnswerChanged (idx,txt) -> cm |> updateWWWSlip idx (fun qw -> {qw with Answer = txt}) |> noCmd
-    | QwImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadQwImgResponse res.Tag) res.Type res.Body
-    | QwImgClear qwKey -> cm |> updateWWWSlip qwKey.Idx (fun qw -> {qw with ImgKey = ""}) |> noCmd
-    | UploadQwImgResponse {Tag = qwKey; Rsp = {Value = Ok res}} -> cm |> editing |> updateWWWSlip qwKey.Idx (fun qw -> {qw with ImgKey = res.BucketKey}) |> noCmd
-    | CommentImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadCommentImgResponse res.Tag) res.Type res.Body
-    | CommentImgClear qwKey -> cm |> updateWWWSlip qwKey.Idx (fun qw -> {qw with CommentImgKey = ""}) |> noCmd
-    | UploadCommentImgResponse {Tag = qwKey; Rsp = {Value = Ok res}} -> cm |> editing |> updateWWWSlip qwKey.Idx (fun qw -> {qw with CommentImgKey = res.BucketKey}) |> noCmd
-    | ToggleAquiringForm -> cm |> toggleAquiringForm |> noCmd
-    | AquiringFormUpdatePackageId txt-> cm |> updateAquiringForm (fun form -> {form with PackageId = System.Int32.Parse(txt)}) |> noCmd
-    | AquiringFormUpdateTransferToken txt-> cm |> updateAquiringForm (fun form -> {form with TransferToken = txt.Trim()}) |> noCmd
-    | AquiringFormCancel -> {cm with AquiringForm = None} |> noCmd
-    | AquiringFormSend -> cm |> sendAquiringForm api
-    | AquiringResp {Value = Ok record} -> {cm with Packages = record :: cm.Packages; AquiringForm = None} |> noCmd
-    | AquiringResp {Value = Error txt} -> cm |> addError txt |> updateAquiringForm (fun form -> {form with IsSending = false}) |> noCmd
+    | AppendSingleSlip qwCount -> cm |> updateCard (fun c -> c.AddSingleSlip qwCount) |> noCmd
+    | DelSlip idx -> cm |> updateCard (fun c -> c.DelSlip idx) |> noCmd
+    | QwTextChanged (idx,txt) -> cm |> updateQwText idx txt |> noCmd
+    | QwAnswerChanged (idx,txt) -> cm |> updateQwAnswer idx txt |> noCmd
+    | QwCommentChanged (idx,txt) -> cm |> updateQwComment idx txt |> noCmd
+    | QwImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadQwImgResp res.Tag.Idx) res.Type res.Body
+    | QwImgClear idx -> cm |> updateQwImg idx "" |> noCmd
+    | UploadQwImgResp {Tag = idx; Rsp = {Value = Ok res}} -> cm |> editing |> updateQwImg idx res.BucketKey |> noCmd
+    | CommentImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadCommentImgResp res.Tag.Idx) res.Type res.Body
+    | CommentImgClear idx -> cm |> updateCommentImg idx "" |> noCmd
+    | UploadCommentImgResp {Tag = idx; Rsp = {Value = Ok res}} -> cm |> editing |> updateCommentImg idx res.BucketKey |> noCmd
+    | ToggleAquireForm -> cm |> toggleAquiringForm |> noCmd
+    | AquireFormUpdatePackageId txt-> cm |> updateAquiringForm (fun form -> {form with PackageId = System.Int32.Parse(txt)}) |> noCmd
+    | AquireFormUpdateTransferToken txt-> cm |> updateAquiringForm (fun form -> {form with TransferToken = txt.Trim()}) |> noCmd
+    | AquireFormCancel -> {cm with AquiringForm = None} |> noCmd
+    | AquireFormSend -> cm |> sendAquiringForm api
+    | AquirePackageResp {Value = Ok record} -> {cm with Packages = record :: cm.Packages; AquiringForm = None} |> noCmd
+    | AquirePackageResp {Value = Error txt} -> cm |> addError txt |> updateAquiringForm (fun form -> {form with IsSending = false}) |> noCmd
     | ToggleDeleteForm -> cm |> toggleDeleteForm |> noCmd
-    | DeleteFormUpdateText txt -> cm |> updateDeleteForm (fun form -> {form with ConfirmText = txt; Error = ""}) |> noCmd
+    | DeleteFormUpdateText txt -> cm |> updateDeleteForm (fun form -> {form with ConfirmText = txt; FormError = ""}) |> noCmd
     | DeletePackage packageId -> cm |> updateDeleteForm (fun form -> {form with IsSending = true}) |> apiCmd api.deletePackage {|PackageId = packageId|} (taggedMsg DeletePackageResp packageId) Exn
     | DeletePackageResp {Tag = quizId; Rsp = {Value = Ok _}} -> cm |> afterPackageDeletion quizId |> noCmd
-    | DeletePackageResp {Tag = _; Rsp = {Value = Error txt}} -> cm |> updateDeleteForm (fun form -> {form with IsSending = false; Error = txt}) |>  noCmd
+    | DeletePackageResp {Tag = _; Rsp = {Value = Error txt}} -> cm |> updateDeleteForm (fun form -> {form with IsSending = false; FormError = txt}) |>  noCmd
     | Exn ex -> cm |> addError ex.Message |> editing |> noCmd
     | Err txt -> cm |> addError txt |> editing |> noCmd
     | _ -> cm |> noCmd
@@ -211,7 +226,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
             div [Class "level-right"][
                 if model.AquiringForm.IsNone then
                     p [Class "level-item"][
-                        button [Class "button is-dark"; OnClick (fun _ -> dispatch ToggleAquiringForm)][str "Acquire Package"]
+                        button [Class "button is-dark"; OnClick (fun _ -> dispatch ToggleAquireForm)][str "Acquire Package"]
                     ]
 
                 p [Class "level-item"][
@@ -263,25 +278,25 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
         ]
     ]
 
-let aquiringForm (dispatch : Msg -> unit) (form : AquiringForm) =
+let aquiringForm (dispatch : Msg -> unit) (form : AquireForm) =
     div [Class "field has-addons"; Style[PaddingBottom "5px"]][
         p [Class "control"][
             input [Class "input"; Disabled form.IsSending; Type "number"; Placeholder "Package Id"; MaxLength 8.0;
                 valueOrDefault (if form.PackageId > 0 then form.PackageId.ToString() else "");
-                OnChange (fun ev -> dispatch <| AquiringFormUpdatePackageId ev.Value)]
+                OnChange (fun ev -> dispatch <| AquireFormUpdatePackageId ev.Value)]
         ]
         p [Class "control is-expanded"][
             input [Class "input"; Disabled form.IsSending; Type "text"; Placeholder "Transfer Token"; MaxLength 128.0;
                 valueOrDefault form.TransferToken;
-                OnChange (fun ev -> dispatch <| AquiringFormUpdateTransferToken ev.Value)]
+                OnChange (fun ev -> dispatch <| AquireFormUpdateTransferToken ev.Value)]
         ]
         p [Class "control"][
             button [classList ["button", true; "has-text-danger", true; "has-text-weight-semibold", true; "is-loading", form.IsSending];
               Disabled (form.PackageId <= 0 || (System.String.IsNullOrWhiteSpace form.TransferToken));
-              OnClick (fun _ -> dispatch AquiringFormSend)][str "Acquire"]
+              OnClick (fun _ -> dispatch AquireFormSend)][str "Acquire"]
         ]
         p [Class "control"][
-            button [classList ["button", true]; OnClick (fun _ -> dispatch AquiringFormCancel)][str "Cancel"]
+            button [classList ["button", true]; OnClick (fun _ -> dispatch AquireFormCancel)][str "Cancel"]
         ]
     ]
 
@@ -306,9 +321,15 @@ let card (dispatch : Msg -> unit) (card : PackageCard) (deleteForm : DeleteForm 
                                 OnChange (fun ev -> dispatch <| UpdateTransferToken ev.Value)]
                         ]
                         br[]
-                        div [Class "field"][
+                        div [Class "field is-grouped"][
                             div [Class "control"][
-                                button [Class "button "; Disabled isLoading; OnClick (fun _ -> dispatch AppendQuiestion)] [str "Append Question"]
+                                button [Class "button "; Disabled isLoading; OnClick (fun _ -> AppendSingleSlip 1 |> dispatch)] [str "Append Question"]
+                            ]
+                            div [Class "control"][
+                                button [Class "button "; Disabled isLoading; OnClick (fun _ -> AppendSingleSlip 2 |> dispatch)] [str "Append Doublet"]
+                            ]
+                            div [Class "control"][
+                                button [Class "button "; Disabled isLoading; OnClick (fun _ -> AppendSingleSlip 3 |> dispatch)] [str "Append Blitz"]
                             ]
                         ]
                     ]
@@ -316,7 +337,9 @@ let card (dispatch : Msg -> unit) (card : PackageCard) (deleteForm : DeleteForm 
             ]
             div [Class "level-right"][
                 match deleteForm with
-                | Some form -> div [][deleteFormEl dispatch form card.PackageId card.Name]
+                | Some form ->
+                    MainTemplates.deleteForm dispatch "Type name of the Package to confirm" card.Name form.ConfirmText form.IsSending form.FormError
+                        ToggleDeleteForm DeleteFormUpdateText (DeletePackage card.PackageId)
                 | None ->
                     div [Class "level-item"][
                         div [Class "control"][
@@ -341,62 +364,64 @@ let card (dispatch : Msg -> unit) (card : PackageCard) (deleteForm : DeleteForm 
                 ]
             ]
 
-            let rows =
-                card.Slips
-                |> List.mapi (slipRow dispatch isLoading card.PackageId)
-                |> List.rev
+            tbody [][
+                for (slipIdx,slip) in card.Slips |> List.indexed |> List.rev do
+                    match slip with
+                    | Single s -> yield wwwSlipRow dispatch isLoading card.PackageId slipIdx s
 
-            tbody [] rows
+            ]
         ]
     ]
 
-let slipRow dispatch isLoading pkgId idx (slip: Slip) =
-    match slip with
-    | WWWSlip s -> wwwSlipRow dispatch isLoading pkgId idx s
+let idxCell dispatch idx =
+    td[] [
+        str <| (idx + 1).ToString()
+        br []
+        br []
+        br []
+        button [Class "button is-small"; OnClick(fun _ -> dispatch <| DelSlip (idx))][Fa.i [ Fa.Regular.TrashAlt ] [ ]]
+    ]
 
-let wwwSlipRow dispatch isLoading pkgId idx (slip: WWWSlip) =
+let qwCell dispatch (key:QwKey) txt imgKey isLoading =
+    td[] [
+        textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwTextChanged (key.Idx,ev.Value) |> dispatch)][]
+        br[]
+        yield! MainTemplates.imgArea key isLoading (QwImgChanged >> dispatch) (fun _ -> QwImgClear key.Idx |> dispatch) imgKey "" "Clear"
+    ]
 
-    let qwKey = {PackageId = pkgId; Idx=idx}
+let qwInput dispatch placeholder txt idx  =
+    div [Class "control"; Style [MarginBottom "3px"]][
+        input [Class "input"; Type "text"; Placeholder placeholder;
+            valueOrDefault txt; MaxLength 256.0; OnChange (fun ev -> QwTextChanged (idx,ev.Value) |> dispatch)]
+    ]
+
+let awCell dispatch (key:QwKey) txt isLoading =
+    td[] [
+        textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwAnswerChanged (key.Idx,ev.Value) |> dispatch)][]
+    ]
+
+let cmntCell dispatch (key:QwKey) txt imgKey isLoading =
+    td[] [
+        textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwCommentChanged (key.Idx,ev.Value) |> dispatch)][]
+        br[]
+        yield! MainTemplates.imgArea key isLoading (CommentImgChanged >> dispatch) (fun _ -> CommentImgClear key.Idx |> dispatch) imgKey "" "Clear"
+    ]
+
+let wwwSlipRow dispatch isLoading pkgId idx (slip: SingleAwSlip) =
+
+    let key = {PackageId = pkgId; SlipIdx=idx; QwIdx = 0}
 
     tr[][
-        td[] [
-            str <| (idx + 1).ToString()
-            br []
-            br []
-            br []
-            button [Class "button is-small"; OnClick(fun _ -> dispatch <| DelQuestion (idx))][Fa.i [ Fa.Regular.TrashAlt ] [ ]]
-        ]
-        td[] [
-            textarea [Class "textarea"; valueOrDefault slip.Text; MaxLength 512.0; OnChange (fun ev -> QwTextChanged (idx,ev.Value) |> dispatch)][]
-            br[]
-            yield! MainTemplates.imgArea qwKey isLoading (QwImgChanged >> dispatch) (fun _ -> QwImgClear qwKey |> dispatch) slip.ImgKey "" "Clear"
-        ]
-        td[] [
-            textarea [Class "textarea"; valueOrDefault slip.Answer; MaxLength 512.0; OnChange (fun ev -> QwAnswerChanged (idx,ev.Value) |> dispatch)][]
-        ]
-        td[] [
-            textarea [Class "textarea"; valueOrDefault slip.Comment; MaxLength 512.0; OnChange (fun ev -> QwCommentChanged (idx,ev.Value) |> dispatch)][]
-            br[]
-            yield! MainTemplates.imgArea qwKey isLoading (CommentImgChanged >> dispatch) (fun _ -> CommentImgClear qwKey |> dispatch) slip.CommentImgKey "" "Clear"
-        ]
-    ]
-
-let deleteFormEl dispatch form quizId quizName=
-    div[][
-        div [Class "field has-addons"; Style[PaddingBottom "5px"]][
-            p [Class "control is-expanded"][
-                input [Class "input"; Disabled form.IsSending; Type "text"; Placeholder "Type name of the Package to confirm"; MaxLength 128.0;
-                    valueOrDefault form.ConfirmText;
-                    OnChange (fun ev -> dispatch <| DeleteFormUpdateText ev.Value)]
+        idxCell dispatch idx
+        match slip.Questions with
+        | [qw] -> qwCell dispatch key qw slip.ImgKey isLoading
+        | list ->
+            td[] [
+                for (idx,qw) in list |> List.indexed do
+                    qwInput dispatch (sprintf "Question %i" (idx + 1)) qw (key.IdxOfQw idx)
+                br[]
+                yield! MainTemplates.imgArea key isLoading (QwImgChanged >> dispatch) (fun _ -> (QwImgClear key.Idx) |> dispatch) slip.ImgKey "" "Clear"
             ]
-            p [Class "control"][
-                button [classList ["button", true; "has-text-danger", true; "has-text-weight-semibold", true; "is-loading", form.IsSending];
-                  Disabled (form.ConfirmText <> quizName);
-                  OnClick (fun _ -> dispatch <| DeletePackage quizId)][str "Delete"]
-            ]
-            p [Class "control"][
-                button [classList ["button", true]; OnClick (fun _ -> dispatch ToggleDeleteForm)][str "Cancel"]
-            ]
-        ]
-        p [Class "help is-danger"][str form.Error]
+        awCell dispatch key slip.Answer isLoading
+        cmntCell dispatch key slip.Comment slip.CommentImgKey isLoading
     ]

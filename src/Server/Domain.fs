@@ -62,31 +62,19 @@ type Package = {
         if idx >= 0 && idx <x.Slips.Length then
             Some (x.Slips.Item(idx))
         else None
-    member x.UpdateSlip idx qw =
-        {x with
-            Slips = x.Slips |> List.mapi (fun i q -> if idx = i then qw else q)
-        }
-    member x.AddWWWSlip () =
-        {x with
-            Slips = x.Slips @ [WWWSlip {Text="";ImgKey="";Answer="";Comment="";CommentImgKey=""}]
-        }
-    member x.DelSlip idx =
-        {x with
-            Slips = x.Slips
-                |> List.mapi (fun i q -> if idx = i then None else Some q)
-                |> List.filter (fun v -> v.IsSome)
-                |> List.map (fun v -> v.Value)
-        }
 
 type Slip =
-    | WWWSlip of WWWSlip
+    | Single of SingeAwSlip
 with
     member x.Answers =
         match x with
-        | WWWSlip slip -> [slip.Answer]
+        | Single slip -> [slip.Answer]
+    member x.QuestionsCount =
+        match x with
+        | Single slip -> slip.Questions |> List.length
 
-type WWWSlip = {
-    Text : string
+type SingeAwSlip = {
+    Questions : string list
     ImgKey : string
     Answer : string
     Comment : string
@@ -133,9 +121,14 @@ type QuizTour = {
     Seconds : int
     Status : QuizTourStatus
     StartTime : DateTime option
-    QwIdx : int option
+    NextQwIdx : int
     Slip : Slip
-}
+} with
+    member x.NextQw () =
+        {x with NextQwIdx = if x.NextQwIdx + 1 < x.Slip.QuestionsCount then x.NextQwIdx + 1 else x.Slip.QuestionsCount}
+
+    member x.SetNextQwIndex idx =
+        {x with NextQwIdx = if idx < x.Slip.QuestionsCount then idx else x.Slip.QuestionsCount}
 
 type QuizDescriptor = {
     QuizId : int
@@ -213,19 +206,19 @@ module Quizzes =
         if (quiz.Dsc.PkgId <> packageId) then {quiz with Dsc = {quiz.Dsc with PkgId = packageId; PkgSlipIdx = None}}
         else quiz
 
-    let setQwIndex qwIdx (quiz:Quiz) =
+    let setSlipIndex slipIdx (quiz:Quiz) =
         match quiz.Dsc.PkgId with
-        | Some pkgId -> {quiz with Dsc = {quiz.Dsc with PkgSlipIdx = Some qwIdx}}
+        | Some _ -> {quiz with Dsc = {quiz.Dsc with PkgSlipIdx = Some slipIdx}}
         | None -> quiz
 
     let addSlip (slip:Slip option) (quiz:Quiz) =
         match slip with
         | Some slip ->
             match slip with
-            | WWWSlip s -> quiz |> addWWWSlip (Some s)
-        | None -> quiz |> addWWWSlip None
+            | Single s -> quiz |> addSingleSlip (Some s)
+        | None -> quiz |> addSingleSlip None
 
-    let addWWWSlip (slip:WWWSlip option) (quiz:Quiz) =
+    let addSingleSlip (slip:SingeAwSlip option) (quiz:Quiz) =
         let name, seconds =
             match quiz.CurrentTour with
             | Some qw ->
@@ -234,20 +227,20 @@ module Quizzes =
                     if m.Success then ((m.Groups.Item 1).Value) + (System.Int32.Parse((m.Groups.Item 2).Value) + 1).ToString()
                     else qw.Name  + "1"
                 newName, qw.Seconds
-            | None -> "1", 60
+            | None -> "Question 1", 60
 
         {quiz with Tours = {
                     Name = name
                     Seconds = seconds
                     Status = Announcing
-                    Slip = WWWSlip {
-                        Text = if slip.IsSome then slip.Value.Text else "";
+                    Slip = Single {
+                        Questions = if slip.IsSome then slip.Value.Questions else [""];
                         ImgKey = if slip.IsSome then slip.Value.ImgKey else "";
                         Answer = if slip.IsSome then slip.Value.Answer else "";
                         Comment = if slip.IsSome then slip.Value.Comment else "";
                         CommentImgKey = if slip.IsSome then slip.Value.CommentImgKey else "";
                     }
-                    QwIdx = None
+                    NextQwIdx = 0
                     StartTime = None}
                     :: quiz.Tours}
 
@@ -259,12 +252,12 @@ module Quizzes =
                 match pkgProvider pkgId with
                 | Some pkg ->
                     let qwIdx = defaultArg quiz.Dsc.PkgSlipIdx 0
-                    quiz |> setQwIndex qwIdx |> addSlip (pkg.GetSlip qwIdx)
-                | None ->  quiz |> addWWWSlip None
-            | None -> quiz |> addWWWSlip None
+                    quiz |> setSlipIndex qwIdx |> addSlip (pkg.GetSlip qwIdx)
+                | None ->  quiz |> addSingleSlip None
+            | None -> quiz |> addSingleSlip None
         | quiz -> quiz
 
-    let private updateCurrentQuestion (f : QuizTour -> QuizTour) (quiz:Quiz) =
+    let private updateCurrentTour (f : QuizTour -> QuizTour) (quiz:Quiz) =
         match quiz.Dsc.Status with
         | Live ->
             let newList =
@@ -276,24 +269,32 @@ module Quizzes =
         | _ ->
             quiz
 
-    let startCountdown qwName seconds pkgQwIdx slip now (quiz:Quiz) =
+    let setQuestionIdx qwIdx (quiz:Quiz) =
+        quiz |> updateCurrentTour (fun tour -> tour.SetNextQwIndex qwIdx) |> Ok
+
+    let update qwName seconds pkgQwIdx slip (quiz:Quiz) =
         {quiz with Dsc = {quiz.Dsc with PkgSlipIdx = pkgQwIdx}}
-        |> updateCurrentQuestion (fun qw ->
-                    {qw with
+        |> updateCurrentTour (fun tour ->
+                    {tour.NextQw() with
                         Name = qwName
                         Seconds = seconds
-                        Status = Countdown
-                        StartTime = Some now
                         Slip = slip
                     }
         )
+
+    let nextQuestion tourName seconds pkgQwIdx slip (quiz:Quiz) =
+        {quiz with Dsc = {quiz.Dsc with PkgSlipIdx = pkgQwIdx}}
+        |> updateCurrentTour (fun tour -> {tour.NextQw () with Name = tourName; Seconds = seconds; Slip = slip})
         |> Ok
 
+    let startCountdown now (quiz:Quiz) =
+        quiz |> updateCurrentTour (fun tour -> {tour.NextQw() with Status = Countdown; StartTime = Some now }) |> Ok
+
     let pauseCountdown (quiz:Quiz) =
-        quiz |> updateCurrentQuestion (fun qw -> {qw with Status = Announcing; StartTime = None}) |> Ok
+        quiz |> updateCurrentTour (fun qw -> {qw with Status = Announcing; StartTime = None}) |> Ok
 
     let settle (quiz:Quiz) =
-        quiz |> updateCurrentQuestion (fun qw -> {qw with Status = Settled}) |> Ok
+        quiz |> updateCurrentTour (fun qw -> {qw with Status = Settled}) |> Ok
 
     let next (pkgProvider : Provider<int,Package>) (quiz:Quiz) =
         match quiz.Dsc.PkgId with
@@ -303,8 +304,8 @@ module Quizzes =
                 match pkgProvider pkgId with
                 | Some pkg -> pkg.GetSlip qwIdx
                 | None -> None
-            quiz |> setQwIndex qwIdx |> addSlip qw
-        | None -> quiz |> addWWWSlip None
+            quiz |> setSlipIndex qwIdx |> addSlip qw
+        | None -> quiz |> addSingleSlip None
 
 type TeamStatus =
     | New

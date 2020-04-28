@@ -139,12 +139,12 @@ let playQuiz status msg =
 
 let playTour (tour:Shared.TourCard option) =
     div [] [
-        h5 [Class "title is-5"] [ str <| "Question: " + match tour with Some qw -> qw.Cap | None -> "???" ]
+        h5 [Class "title is-5"] [ str <|  match tour with Some t -> t.Cap | None -> "???" ]
 
         match tour with
         | Some t ->
             match t.Slip with
-            | Shared.WWWSlipCard slip ->
+            | Shared.SingleSlipCard slip ->
                 yield! imgEl slip.Img
                 if t.TS = Shared.Settled then
                     p [ Class "has-text-weight-bold" ] [ str "Answer" ]
@@ -202,3 +202,30 @@ let mixlrFrame (userId : int option) =
         let src = sprintf "https://mixlr.com/users/%i/embed" id
         iframe[Src src; Style[Width "100%"; Height "180px"]; Scrolling "no"; FrameBorder "no"; MarginHeight 0.0; MarginWidth 0.0][]
     | None -> div [][]
+
+let deleteForm dispatch placeholder validText inputText isSending error toggleMsg updateMsg deleteMsg =
+    div[][
+        div [Class "field has-addons"; Style[PaddingBottom "5px"]][
+            p [Class "control is-expanded"][
+                input [Class "input"; Disabled isSending; Type "text"; Placeholder placeholder; MaxLength 128.0;
+                    valueOrDefault inputText;
+                    OnChange (fun ev -> dispatch <| updateMsg ev.Value)]
+            ]
+            p [Class "control"][
+                button [classList ["button", true; "has-text-danger", true; "has-text-weight-semibold", true; "is-loading", isSending];
+                  Disabled (inputText <> validText);
+                  OnClick (fun _ -> dispatch <| deleteMsg)][str "Delete"]
+            ]
+            p [Class "control"][
+                button [classList ["button", true]; OnClick (fun _ -> dispatch toggleMsg)][str "Cancel"]
+            ]
+        ]
+        p [Class "help is-danger"][str error]
+    ]
+
+let qwCell dispatch key idx txt imgKey isLoading txtChangeMsg imgChangeMsg imgClearMsg=
+    div[Class "field"] [
+        textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> txtChangeMsg (idx,ev.Value) |> dispatch)][]
+        br[]
+        yield! imgArea key isLoading (imgChangeMsg >> dispatch) (fun _ -> imgClearMsg idx |> dispatch) imgKey "" "Clear"
+    ]

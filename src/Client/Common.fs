@@ -145,6 +145,18 @@ let inline (|Err|_|) (msg:'msg) : string option =
             None
     | None -> None
 
+type DeleteForm = {
+    ConfirmText : string
+    FormError : string
+    IsSending : bool
+} with
+    static member CreateEmpty() =
+        {ConfirmText = ""; FormError = ""; IsSending = false}
+    static member Toggle (form : DeleteForm option) =
+        match form with
+        | Some _ -> None
+        | None -> DeleteForm.CreateEmpty() |> Some
+
 module Infra =
 
     [<Emit("window.location.href")>]
@@ -377,7 +389,8 @@ module Infra =
                 uploadFile = x.Wrap adminApi.uploadFile
                 startCountDown = x.Wrap adminApi.startCountDown
                 pauseCountDown = x.Wrap adminApi.pauseCountDown
-                finishQuestion = x.Wrap adminApi.finishQuestion
+                settleTour = x.Wrap adminApi.settleTour
+                nextTour = x.Wrap adminApi.nextTour
                 nextQuestion = x.Wrap adminApi.nextQuestion
                 getAnswers = x.Wrap adminApi.getAnswers
                 updateResults = x.Wrap adminApi.updateResults

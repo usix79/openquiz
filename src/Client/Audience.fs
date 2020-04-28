@@ -37,13 +37,13 @@ type Model = {
 } with
     member x.CurrentQuestion =
         match x.Quiz with
-        | Some quiz -> quiz.Qw
+        | Some quiz -> quiz.TC
         | None -> None
 
     member x.IsCountdownActive =
         match x.Quiz with
         | Some quiz ->
-            match quiz.Qw with
+            match quiz.TC with
             | Some qw -> quiz.QS = Live && qw.IsCountdownActive (serverTime x.TimeDiff)
             | None -> false
         | None -> false
@@ -91,7 +91,7 @@ let update (api:IAudApi) (user:AudUser) (msg : Msg) (cm : Model) : Model * Cmd<M
     match msg with
     | GetQuizRsp {Value = Ok res; ST = st} -> {cm with Quiz = Some res; TimeDiff = timeDiff st} |> subscribe user.QuizId |> setupCountdown
     | CountdownTick _ -> cm |> noCmd |> setupCountdown
-    | QuizChanged evt -> cm |> updateQuiz (fun quiz -> {quiz with QS = evt.QS; Qw = evt.T}) |> noCmd |> setupCountdown
+    | QuizChanged evt -> cm |> updateQuiz (fun quiz -> {quiz with QS = evt.QS; TC = evt.T}) |> noCmd |> setupCountdown
     | ChangeTab Question -> {cm with ActiveTab = Question} |> ok |> noCmd
     | ChangeTab History -> {cm with ActiveTab = History} |> ok |> apiCmd api.getHistory () GetHistoryResp Exn
     | ChangeTab Results -> {cm with ActiveTab = Results} |> ok |> apiCmd api.getResults () GetResultsResp Exn
@@ -112,7 +112,7 @@ let view (dispatch : Msg -> unit) (model : Model) =
 let quizView (dispatch : Msg -> unit) (model:Model) (quiz:QuizCard) =
     let serverTime = serverTime model.TimeDiff
     let secondsLeft, isCountdownActive =
-        match quiz.Qw with
+        match quiz.TC with
         | Some q -> q.SecondsLeft serverTime, q.IsCountdownActive serverTime
         | None -> 0, false
 
@@ -129,7 +129,7 @@ let quizView (dispatch : Msg -> unit) (model:Model) (quiz:QuizCard) =
                 | History -> yield historyView dispatch model
                 | Question ->
                     match quiz.QS with
-                    | Live -> yield MainTemplates.playTour quiz.Qw
+                    | Live -> yield MainTemplates.playTour quiz.TC
                     | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg
                 | Results -> yield MainTemplates.resultsView None model.TeamResults
 

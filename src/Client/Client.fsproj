@@ -11,8 +11,8 @@
     <Compile Include="SSE.fs" />
     <Compile Include="Common.fs" />
     <Compile Include="MainTemplates.fs" />
-    <Compile Include="MainProdQuestions.fs" />
     <Compile Include="MainProdQuizzes.fs" />
+    <Compile Include="MainProdQuestions.fs" />
     <Compile Include="MainProd.fs" />
     <Compile Include="MainPub.fs" />
     <Compile Include="Main.fs" />

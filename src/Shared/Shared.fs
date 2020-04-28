@@ -97,14 +97,14 @@ type TourStatus =
     | Countdown
     | Settled
 
-type WWWSlipCard = {
+type SingleAwSlipCard = {
     Txt : string
     Img : string
     Com : string
 }
 
 type SlipCard =
-    | WWWSlipCard of WWWSlipCard
+    | SingleSlipCard of SingleAwSlipCard
 
 type TourCard = {
     Idx : int
@@ -153,32 +153,38 @@ type PackageCard = {
         {x with
             Slips = x.Slips |> List.mapi (fun i q -> if idx = i then slip else q)
         }
-    member x.AddWWWSlip () =
+    member x.AddSingleSlip qwCount =
         {x with
-            Slips = x.Slips @ [WWWSlip{Text="";ImgKey="";Answer="";Comment="";CommentImgKey=""}]
+            Slips = x.Slips @ [Single{Questions= (List.init qwCount (fun i -> ""));ImgKey="";Answer="";Comment="";CommentImgKey=""}]
         }
-    member x.DelQuestion idx =
+    member x.DelSlip idx =
         {x with
             Slips = x.Slips
-                |> List.mapi (fun i q -> if idx = i then None else Some q)
-                |> List.filter (fun v -> v.IsSome)
-                |> List.map (fun v -> v.Value)
+                |> List.indexed
+                |> List.choose (fun (i, s) -> if idx = i then None else Some s)
         }
 
 type Slip =
-    | WWWSlip of WWWSlip
+    | Single of SingleAwSlip
 with
     member x.Text =
         match x with
-        | WWWSlip slip -> slip.Text
+        | Single slip -> slip.Questions |> String.concat "\n"
+    member x.LastQwIdx =
+        match x with
+        | Single slip -> (slip.Questions |> List.length) - 1
 
-type WWWSlip = {
-    Text : string
+type SingleAwSlip = {
+    Questions : string list
     ImgKey : string
     Answer : string
     Comment : string
     CommentImgKey : string
-}
+} with
+    member x.SetQwText idx txt =
+        {x with Questions = x.Questions |> List.mapi (fun i qw -> if i = idx then txt else qw)}
+    member x.GetQwText idx =
+        x.Questions |> List.tryItem idx |> Option.defaultValue ""
 
 type TeamResult = {
     TeamId : int
@@ -282,6 +288,7 @@ module AdminModels =
         Name : string
         Seconds : int
         Status : TourStatus
+        NextQwIdx : int
         Slip : Slip
         StartTime : System.DateTime option
     }
@@ -296,6 +303,9 @@ module AdminModels =
 
         member x.IsCoundownActive now =
             x.Status = Countdown && x.SecondsLeft now > 0
+        member x.IsLastQuestion =
+            x.NextQwIdx >= x.Slip.LastQwIdx
+
 
     type QuizControlCard = {
         QuizStatus : QuizStatus
@@ -354,7 +364,6 @@ module AdminModels =
                 )
             }
 
-
 module TeamModels =
     type QuizCard = {
         QS : QuizStatus
@@ -388,7 +397,7 @@ module AudModels =
         Img : string
         Wcm : string
         Fwl : string
-        Qw : TourCard option
+        TC : TourCard option
         LT : string
         Mxlr : int option
         V : int
@@ -403,7 +412,6 @@ module AudModels =
         QwName : string
         QwAw : string
     }
-
 
 module Infra =
     let routeBuilder clientPath (typeName: string) (methodName: string) =
@@ -457,8 +465,9 @@ type IAdminApi = {
     uploadFile : REQ<{|Cat:ImgCategory; FileType : string; FileBody : byte[]|}> -> ARESP<{|BucketKey: string|}>
     startCountDown : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     pauseCountDown : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
-    finishQuestion : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
-    nextQuestion : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
+    settleTour : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
+    nextTour : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
+    nextQuestion : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     getAnswers : REQ<unit> -> ARESP<AdminModels.AnswersBundle>
     updateResults : REQ<{|TeamId: int; Idx: int; Res: decimal option |} list> -> ARESP<unit>
     getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>

@@ -71,12 +71,17 @@ let entryOfOption = function
 
 let documentOfSlip (slip: Slip) =
     match slip with
-    | WWWSlip s -> documentOfWWWSlip s
+    | Single s -> documentOfSingleSlip s
 
-let documentOfWWWSlip (slip : WWWSlip) =
+let documentOfSingleSlip (slip : SingeAwSlip) =
     let slipDoc = Document()
-    slipDoc.["Kind"] <- v2.ConvertToEntry "WWW"
-    slipDoc.["Text"] <- v2.ConvertToEntry slip.Text
+    slipDoc.["Kind"] <- v2.ConvertToEntry "Singe"
+
+    let qwEntry = PrimitiveList()
+    for txt in slip.Questions do
+        qwEntry.Add(Primitive.op_Implicit txt)
+    slipDoc.["Questions"] <- qwEntry
+
     slipDoc.["ImgKey"] <- v2.ConvertToEntry slip.ImgKey
     slipDoc.["Answer"] <- v2.ConvertToEntry slip.Answer
     slipDoc.["Comment"] <- v2.ConvertToEntry slip.Comment
@@ -86,11 +91,14 @@ let documentOfWWWSlip (slip : WWWSlip) =
 
 let slipOfDocument (slipDoc:Document) : Slip =
     match stringOfDoc slipDoc "Kind" with
-    | "WWW" | _ -> wwwSlipOfDocument slipDoc |> WWWSlip
+    | "WWW" | "Single" | _ -> singleSlipOfDocument slipDoc |> Single
 
-let wwwSlipOfDocument (slipDoc:Document) : WWWSlip =
+let singleSlipOfDocument (slipDoc:Document) : SingeAwSlip =
     {
-        Text = stringOfDoc slipDoc "Text"
+        Questions =
+            match slipDoc.TryGetValue "Questions" with
+            | true, en -> en.AsListOfPrimitive() |> Seq.map (fun p -> p.AsString()) |> List.ofSeq
+            | _ -> [stringOfDoc slipDoc "Text"]
         ImgKey = stringOfDoc slipDoc "ImgKey"
         Answer = stringOfDoc slipDoc "Answer"
         Comment = stringOfDoc slipDoc "Comment"
@@ -285,7 +293,7 @@ module Quizzes =
              tourItem.["Status"] <- v2.ConvertToEntry <| tour.Status.ToString()
              tourItem.["Slip"] <- documentOfSlip tour.Slip
              tourItem.["StartTime"] <- entryOfOption tour.StartTime
-             tourItem.["QwIdx"] <- entryOfOption tour.QwIdx
+             tourItem.["QwIdx"] <- v2.ConvertToEntry tour.NextQwIdx
              toursEntry.Add(tourItem)
 
         gameItem.["Questions"] <- toursEntry
@@ -331,12 +339,12 @@ module Quizzes =
             Name = stringOfDoc tourDoc "Name"
             Seconds = tourDoc.["Seconds"].AsInt()
             Status = defaultArg (fromString (stringOfDoc tourDoc "Status")) Announcing
-            QwIdx = optionOfEntry tourDoc "QwIdx"
+            NextQwIdx = optionOfEntry tourDoc "QwIdx" |> Option.defaultValue 0
             StartTime = optionOfEntry tourDoc "StartTime"
             Slip =
                 match tourDoc.TryGetValue "Slip" with
                 | true, entry -> slipOfDocument (entry.AsDocument())
-                | _ -> wwwSlipOfDocument tourDoc |> WWWSlip
+                | _ -> singleSlipOfDocument tourDoc |> Single
         }
 
 //#endregion

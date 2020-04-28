@@ -20,23 +20,24 @@ type Msg =
     | PackagesResp of RESP<PackageRecord list>
     | SelectPackage of string
     | PackagesCardResp of RESP<PackageCard option>
-    | SelectQwIdx of string
-    | UpdateQwName of string
-    | UpdateQwSeconds of string
-    | UpdateQwText of string
-    | UpdateQwAnswer of string
-    | UpdateQwComment of string
-    | QwImgChanged of {|Type:string; Body:byte[]; Tag:unit|}
-    | QwImgClear of unit
-    | UploadQwImgResp of RESP<{|BucketKey:string|}>
-    | QwCommentImgChanged of {|Type:string; Body:byte[]; Tag:unit|}
-    | QwCommentImgClear of unit
-    | UploadQwCommentImgResp of RESP<{|BucketKey:string|}>
+    | SelectSlipIdx of string
+    | UpdateTourName of string
+    | UpdateTourSeconds of string
+    | UpdateQwText of idx:int * txt:string
+    | UpdateQwAnswer of idx:int * txt:string
+    | UpdateQwComment of idx:int * txt:string
+    | QwImgChanged of {|Type:string; Body:byte[]; Tag:int|}
+    | QwImgClear of idx:int
+    | UploadQwImgResp of TRESP<int, {|BucketKey:string|}>
+    | QwCommentImgChanged of {|Type:string; Body:byte[]; Tag:int|}
+    | QwCommentImgClear of idx:int
+    | UploadQwCommentImgResp of TRESP<int,{|BucketKey:string|}>
+    | NextQw
     | Start
     | Tick
     | Pause
-    | Finish
-    | Next
+    | Settle
+    | NextSlip
 
 type Model = {
     Errors : Map<string, string>
@@ -46,7 +47,7 @@ type Model = {
     IsLoading : bool
     TimeDiff: TimeSpan
 } with
-    member x.IsLastQuestion =
+    member x.IsLastSlip =
         match x.Quiz, x.Package with
         | Some quiz, Some pkg ->
             match quiz.PackageId, quiz.PackageSlipIdx with
@@ -77,7 +78,7 @@ let setPackage api txt model =
     | true, id -> model |> loading |> apiCmd api.setPackage {|PackageId = if id <> -1 then Some id else None|} QuizCardResp Exn
     | _ -> model |> noCmd
 
-let setQwIdx txt model =
+let setSlipIdx txt model =
     match Int32.TryParse txt with
     | true, id ->
         match model.Package with
@@ -86,10 +87,7 @@ let setQwIdx txt model =
             |> updateCard (fun q -> {q with PackageSlipIdx = if id <> -1 then Some id else None})
             |> (fun model ->
                     match pkg.GetSlip id with
-                    | Some slip ->
-                        model
-                        |> updateTour (
-                            fun q -> {q with Slip = slip})
+                    | Some slip -> model |> updateTour (fun q -> {q with Slip = slip; NextQwIdx = 0})
                     | None -> model
             )
         | None -> model
@@ -117,10 +115,10 @@ let updateTour (f : TourControlCard -> TourControlCard) model =
         | None -> model
     | _ -> model
 
-let updateWWWSlip (f : WWWSlip-> WWWSlip) model =
+let updateSingleSlip (f : SingleAwSlip-> SingleAwSlip) model =
     model |> updateTour (fun tour ->
         match tour.Slip with
-        | WWWSlip s -> {tour with Slip = WWWSlip (f s)})
+        | Single s -> {tour with Slip = Single (f s)})
 
 let uploadFile api respMsg fileType body model =
     if Array.length body > (1024*128) then
@@ -136,6 +134,36 @@ let scheduleTick (model : Model,  cmd : Cmd<Msg>) =
         | _ -> model, cmd
     | _ -> model, cmd
 
+let updateQwText idx txt model =
+    model |> updateTour (fun tour ->
+        match tour.Slip with
+        | Single s -> {tour with Slip = s.SetQwText idx txt |> Single}
+    )
+
+let updateQwImg idx imgKey model =
+    model |> updateTour (fun tour ->
+        match tour.Slip with
+        | Single s -> {tour with Slip = {s with ImgKey = imgKey} |> Single}
+    )
+
+let updateAnswer idx txt model =
+    model |> updateTour (fun tour ->
+        match tour.Slip with
+        | Single s -> {tour with Slip = {s with Answer = txt} |> Single}
+    )
+
+let updateComment idx txt model =
+    model |> updateTour (fun tour ->
+        match tour.Slip with
+        | Single s -> {tour with Slip = {s with Comment = txt} |> Single}
+    )
+
+let updateCommentImg idx imgKey model =
+    model |> updateTour (fun tour ->
+        match tour.Slip with
+        | Single s -> {tour with Slip = {s with CommentImgKey = imgKey} |> Single}
+    )
+
 let init (api:IAdminApi) user : Model*Cmd<Msg> =
     {Errors = Map.empty; Quiz = None; Package = None; IsLoading = true; AvailablePackages = None; TimeDiff = TimeSpan.Zero} |> apiCmd api.getQuizCard () QuizCardResp Exn
 
@@ -147,24 +175,25 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | PackagesClick -> cm |> uploadPackages api
     | PackagesResp {Value = Ok pkgs} -> {cm with AvailablePackages = Some pkgs} |> editing |> noCmd
     | SelectPackage txt -> cm |> setPackage api txt
-    | SelectQwIdx txt -> cm |> setQwIdx txt |> noCmd
+    | SelectSlipIdx txt -> cm |> setSlipIdx txt |> noCmd
     | PackagesCardResp {Value = Ok res} -> {cm with Package = res} |> editing |> noCmd
-    | UpdateQwName txt -> cm |> updateTour (fun qw -> {qw with Name = txt}) |> noCmd
-    | UpdateQwSeconds txt -> cm |> updateTour (fun qw -> {qw with Seconds = Int32.Parse txt}) |> noCmd
-    | UpdateQwText txt -> cm |> updateWWWSlip (fun qw -> {qw with Text = txt}) |> noCmd
-    | UpdateQwAnswer txt -> cm |> updateWWWSlip (fun qw -> {qw with Answer = txt}) |> noCmd
-    | UpdateQwComment txt -> cm |> updateWWWSlip (fun qw -> {qw with Comment = txt}) |> noCmd
-    | QwImgClear _ -> cm |> updateWWWSlip (fun qw -> {qw with ImgKey = ""}) |> noCmd
-    | QwImgChanged res -> cm |> uploadFile api UploadQwImgResp res.Type res.Body
-    | UploadQwImgResp {Value = Ok res} -> cm |> updateWWWSlip (fun qw -> {qw with ImgKey = res.BucketKey}) |> editing |> noCmd
-    | QwCommentImgClear _ -> cm |> updateWWWSlip (fun qw -> {qw with CommentImgKey = ""}) |> noCmd
-    | QwCommentImgChanged res -> cm |> uploadFile api UploadQwCommentImgResp res.Type res.Body
-    | UploadQwCommentImgResp {Value = Ok res} -> cm |> updateWWWSlip (fun qw -> {qw with CommentImgKey = res.BucketKey}) |> editing |> noCmd
+    | UpdateTourName txt -> cm |> updateTour (fun qw -> {qw with Name = txt}) |> noCmd
+    | UpdateTourSeconds txt -> cm |> updateTour (fun qw -> {qw with Seconds = Int32.Parse txt}) |> noCmd
+    | UpdateQwText (idx,txt) -> cm |> updateQwText idx txt |> noCmd
+    | UpdateQwAnswer (idx,txt) -> cm |> updateAnswer idx txt |> noCmd
+    | UpdateQwComment (idx,txt) -> cm |> updateComment idx txt |> noCmd
+    | QwImgClear idx -> cm |> updateQwImg idx "" |> noCmd
+    | QwImgChanged res -> cm |> uploadFile api (taggedMsg UploadQwImgResp res.Tag) res.Type res.Body
+    | UploadQwImgResp {Tag = idx; Rsp = {Value = Ok res}} -> cm |> updateQwImg idx res.BucketKey |> editing |> noCmd
+    | QwCommentImgClear idx -> cm |> updateCommentImg idx "" |> noCmd
+    | QwCommentImgChanged res -> cm |> uploadFile api (taggedMsg UploadQwCommentImgResp res.Tag) res.Type res.Body
+    | UploadQwCommentImgResp {Tag = idx; Rsp = {Value = Ok res}} -> cm |> updateCommentImg idx res.BucketKey |> editing |> noCmd
+    | NextQw -> cm |> loading |> apiCmd api.nextQuestion cm.Quiz.Value QuizCardResp Exn
     | Start -> cm |> loading |> apiCmd api.startCountDown cm.Quiz.Value QuizCardResp Exn
     | Tick -> cm |> noCmd |> scheduleTick
     | Pause -> cm |> loading |> apiCmd api.pauseCountDown () QuizCardResp Exn
-    | Finish -> cm |> loading |> apiCmd api.finishQuestion () QuizCardResp Exn
-    | Next -> cm |> loading |> apiCmd api.nextQuestion () QuizCardResp Exn
+    | Settle -> cm |> loading |> apiCmd api.settleTour () QuizCardResp Exn
+    | NextSlip -> cm |> loading |> apiCmd api.nextTour () QuizCardResp Exn
     | Exn ex -> cm |> addError ex.Message |> editing |> noCmd
     | Err txt -> cm |> addError txt |> editing |> noCmd
     | _ -> cm |> noCmd
@@ -219,7 +248,7 @@ let quizView (dispatch : Msg -> unit) (user:AdminUser) (model : Model) (quiz : Q
         ]
         div [Class "field is-grouped"][
             div [Class "control"][
-                let isControlReadOnly = changesNotAllowed && (not model.IsLastQuestion) || model.IsLoading
+                let isControlReadOnly = changesNotAllowed && (not model.IsLastSlip) || model.IsLoading
                 label [Class "label"][str "Questions Package"]
                 match model.AvailablePackages with
                 | Some pkgs ->
@@ -250,7 +279,7 @@ let quizView (dispatch : Msg -> unit) (user:AdminUser) (model : Model) (quiz : Q
                     label [Class "label"][str "Question"]
                     div [Class "select"][
                         let value = match quiz.PackageSlipIdx with Some idx -> idx | None -> -1
-                        select[Disabled isReadOnly; Value value; OnChange (fun ev -> SelectQwIdx ev.Value |> dispatch)][
+                        select[Disabled isReadOnly; Value value; OnChange (fun ev -> SelectSlipIdx ev.Value |> dispatch)][
                             option[Value -1][str "Not Selected"]
                             match model.Package with
                             | Some pkg ->
@@ -266,10 +295,62 @@ let quizView (dispatch : Msg -> unit) (user:AdminUser) (model : Model) (quiz : Q
             match quiz.CurrentTour with
             | Some qw ->
                 yield hr[Class "has-background-grey"]
-                yield qwView dispatch user qw model.TimeDiff isReadOnly model.IsLoading model.IsLastQuestion
+                yield qwView dispatch user qw model.TimeDiff isReadOnly model.IsLoading model.IsLastSlip
             | None -> ()
         ]
 
+    ]
+
+let qwTextArea dispatch idx txt isReadOnly =
+    div [Class "field"][
+        label [Class "label"][str "Question Text"]
+        div [Class "control"][
+            textarea [Class "textarea"; Disabled isReadOnly; MaxLength 512.0; valueOrDefault txt; OnChange (fun ev -> dispatch <| UpdateQwText (idx,ev.Value) )][]
+        ]
+    ]
+
+let qwInput dispatch placeholder txt idx anounced =
+    div [Class "control has-icons-left has-icons-right"; Style [MarginBottom "3px"]][
+        input [Class "input"; Type "text"; Placeholder placeholder; ReadOnly anounced;
+            valueOrDefault txt; MaxLength 256.0; OnChange (fun ev -> UpdateQwText (idx,ev.Value) |> dispatch)]
+        span [Class "icon is-left"][str (sprintf "%i" (idx + 1))]
+        if (anounced) then
+            span [Class "icon is-right"][Fa.i [Fa.Solid.Check][]]
+    ]
+
+let awTextArea dispatch idx txt isReadOnly =
+    div [Class "field"][
+        label [Class "label"][str "Answer"]
+        div [Class "control"][
+            textarea [Class "textarea"; Disabled isReadOnly; MaxLength 512.0; valueOrDefault txt; OnChange (fun ev -> dispatch <| UpdateQwAnswer (idx,ev.Value) )][]
+        ]
+    ]
+
+let cmtTextArea dispatch idx txt isReadOnly =
+    div [Class "field"][
+        label [Class "label"][str "Comment"]
+        div [Class "control"][
+            textarea [Class "textarea"; Disabled isReadOnly; MaxLength 512.0; valueOrDefault txt; OnChange (fun ev -> dispatch <| UpdateQwComment (idx,ev.Value) )][]
+        ]
+    ]
+
+let singleSlipEl dispatch (slip:SingleAwSlip) nextQwIdx isReadOnly =
+    div [][
+        match slip.Questions with
+        | [qw] -> qwTextArea dispatch 0 qw isReadOnly
+        | list ->
+            div [Class "field"][
+                label [Class "label"][str "Questions Text"]
+                for (idx,qw) in list |> List.indexed do
+                    qwInput dispatch (sprintf "Question %i" (idx + 1)) qw idx (idx < nextQwIdx)
+            ]
+
+        yield! MainTemplates.imgArea 0 isReadOnly (QwImgChanged >> dispatch) (fun () -> dispatch (QwImgClear 0))  slip.ImgKey "" "Clear"
+        br[]
+        awTextArea dispatch 0 slip.Answer isReadOnly
+        br[]
+        cmtTextArea dispatch 0 slip.Comment isReadOnly
+        yield! MainTemplates.imgArea 0 isReadOnly (QwCommentImgChanged >> dispatch) (fun () -> dispatch (QwCommentImgClear 0))   slip.CommentImgKey "" "Clear"
     ]
 
 let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) timeDiff isReadOnly isLoading isLastQw =
@@ -277,8 +358,8 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) ti
     div[][
         div [Class "field is-grouped"][
             div [Class "control"][
-                label [Class "label is-large"][str "Question #"]
-                input [Class "input is-large"; Type "text"; Disabled isReadOnly;  valueOrDefault tour.Name; OnChange (fun ev -> dispatch <| UpdateQwName ev.Value)]
+                label [Class "label is-large"][str "Slip"]
+                input [Class "input is-large"; Type "text"; Disabled isReadOnly;  valueOrDefault tour.Name; OnChange (fun ev -> dispatch <| UpdateTourName ev.Value)]
             ]
 
             match tour.Status, tour.SecondsLeft (serverTime timeDiff) with
@@ -290,7 +371,7 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) ti
             | _ ->
                 div [Class "control"; Style [Width "min-content"]][
                     label [Class "label is-large"][str "Seconds"]
-                    input [Class "input is-large"; Type "number"; Disabled isReadOnly; valueOrDefault tour.Seconds; OnChange (fun ev -> dispatch <| UpdateQwSeconds ev.Value)]
+                    input [Class "input is-large"; Type "number"; Disabled isReadOnly; valueOrDefault tour.Seconds; OnChange (fun ev -> dispatch <| UpdateTourSeconds ev.Value)]
                 ]
         ]
 
@@ -298,40 +379,15 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) ti
             button [Class "button is-large is-fullwidth"; Disabled isLoading; OnClick (fun _ -> dispatch msg)][str caption]
 
         match tour.Status, tour.SecondsLeft (serverTime timeDiff) with
-        | Announcing, _ -> ctrlBtn Start "Start"
-        | Countdown, sec when sec > 0 -> ctrlBtn Pause "Reset countdown"
-        | Countdown, _ -> ctrlBtn Finish "Show answer"
+        | Announcing, _  when tour.IsLastQuestion-> ctrlBtn Start "Start Countdown"
+        | Announcing, _  -> ctrlBtn NextQw (sprintf "Show Question %i" (tour.NextQwIdx + 1))
+        | Countdown, sec when sec > 0 -> ctrlBtn Pause "Reset Countdown"
+        | Countdown, _ -> ctrlBtn Settle "Show answer"
         | Settled, _ when isLastQw -> ctrlBtn (ChangeStatus (Finished.ToString())) "Finish"
-        | Settled, _-> ctrlBtn Next "Next"
+        | Settled, _-> ctrlBtn NextSlip "Next Slip"
 
         hr[Class "has-background-grey"]
 
         match tour.Slip with
-        | WWWSlip slip ->
-            div [Class "field"][
-                label [Class "label"][str "Question Text"]
-                div [Class "control"][
-                    textarea [Class "textarea"; Disabled isReadOnly; MaxLength 512.0; valueOrDefault slip.Text; OnChange (fun ev -> dispatch <| UpdateQwText ev.Value )][]
-                ]
-            ]
-
-            yield! MainTemplates.imgArea () isReadOnly (QwImgChanged >> dispatch) (QwImgClear >> dispatch)  slip.ImgKey "" "Clear"
-
-            br[]
-
-            div [Class "field"][
-                label [Class "label"][str "Answer"]
-                div [Class "control"][
-                    textarea [Class "textarea"; Disabled isReadOnly; MaxLength 512.0; valueOrDefault slip.Answer; OnChange (fun ev -> dispatch <| UpdateQwAnswer ev.Value )][]
-                ]
-            ]
-
-            div [Class "field"][
-                label [Class "label"][str "Comment"]
-                div [Class "control"][
-                    textarea [Class "textarea"; Disabled isReadOnly; MaxLength 512.0; valueOrDefault slip.Comment; OnChange (fun ev -> dispatch <| UpdateQwComment ev.Value )][]
-                ]
-            ]
-
-            yield! MainTemplates.imgArea () isReadOnly (QwCommentImgChanged >> dispatch) (QwCommentImgClear >> dispatch)  slip.CommentImgKey "" "Clear"
+        | Single slip -> singleSlipEl dispatch slip tour.NextQwIdx isReadOnly
     ]
