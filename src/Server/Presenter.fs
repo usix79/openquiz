@@ -94,8 +94,9 @@ let tourCard idx (tour:QuizTour) : TourCard =
         ST = tour.StartTime
     }
 
-let qwText qwList =
-    qwList |> List.mapi (fun idx qw -> sprintf "%i. %s" (idx + 1) qw) |> String.concat "\n"
+let qwText totalCount qwList =
+    if totalCount = 1 then qwList |> String.concat "\n"
+    else  qwList |> List.mapi (fun idx qw -> sprintf "%i. %s" (idx + 1) qw) |> String.concat "\n"
 
 let slipCard status nextQwIdx (slip:Slip) : SlipCard =
     match slip with
@@ -103,8 +104,8 @@ let slipCard status nextQwIdx (slip:Slip) : SlipCard =
         Shared.SingleSlipCard {
             Txt =
                 match status with
-                | Announcing -> s.Questions |> List.take nextQwIdx |> qwText
-                | Countdown -> s.Questions |> qwText
+                | Announcing -> s.Questions |> List.take nextQwIdx |> qwText s.Questions.Length
+                | Countdown -> s.Questions |> qwText s.Questions.Length
                 | Settled -> s.Answer
             Img =
                 match status with

@@ -77,9 +77,9 @@ let documentOfSingleSlip (slip : SingeAwSlip) =
     let slipDoc = Document()
     slipDoc.["Kind"] <- v2.ConvertToEntry "Singe"
 
-    let qwEntry = PrimitiveList()
+    let qwEntry = DynamoDBList()
     for txt in slip.Questions do
-        qwEntry.Add(Primitive.op_Implicit txt)
+        qwEntry.Add(v2.ConvertToEntry (if txt <> "" then txt else " "))
     slipDoc.["Questions"] <- qwEntry
 
     slipDoc.["ImgKey"] <- v2.ConvertToEntry slip.ImgKey
@@ -97,7 +97,7 @@ let singleSlipOfDocument (slipDoc:Document) : SingeAwSlip =
     {
         Questions =
             match slipDoc.TryGetValue "Questions" with
-            | true, en -> en.AsListOfPrimitive() |> Seq.map (fun p -> p.AsString()) |> List.ofSeq
+            | true, en -> en.AsListOfString() |> List.ofSeq
             | _ -> [stringOfDoc slipDoc "Text"]
         ImgKey = stringOfDoc slipDoc "ImgKey"
         Answer = stringOfDoc slipDoc "Answer"
@@ -507,10 +507,8 @@ module Packages =
         if descriptors.Length > 0 then (descriptors |> List.maxBy (fun t -> t.PackageId)).PackageId else 0
 
     let update (pkg : Package) =
-        printfn "%A" pkg
         let pkg =  {pkg with Version = pkg.Version + 1}
 
-        printfn "%A" pkg
         let teamItem = documentOfPackage pkg
         let table = loadTable "Packages"
         (table.UpdateItemAsync (teamItem)).Wait()
