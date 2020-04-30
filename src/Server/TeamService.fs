@@ -57,7 +57,7 @@ let takeActiveSession (sessionId:int) (teamKey:Domain.TeamKey) req =
 
 let answer team req =
     let logic (team:Domain.Team) =
-        team |> Domain.Teams.registerAnswer req.QwIndex req.Answer DateTime.UtcNow
+        team |> Domain.Teams.registerAnswer (qwKeyToDomain req.QwKey) req.Answer DateTime.UtcNow
 
     match team.Status with
     | Domain.Admitted ->

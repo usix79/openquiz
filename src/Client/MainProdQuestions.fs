@@ -9,10 +9,10 @@ open Fable.FontAwesome
 open Shared
 open Common
 
-type QwKey = {PackageId:int; SlipIdx:int; QwIdx:int}
+type PkgQwKey = {PackageId:int; TourIdx:int; QwIdx:int}
     with
-        member x.Idx = (x.SlipIdx, x.QwIdx)
-        member x.IdxOfQw (idx:int) = (x.SlipIdx, idx)
+        member x.Key = {TourIdx = x.TourIdx; QwIdx = x.QwIdx}
+        member x.IdxOfQw (idx:int) = (x.TourIdx, idx)
 
 type Msg =
     | Exn of exn
@@ -28,16 +28,23 @@ type Msg =
     | SubmitCard
     | SubmitCardResp of RESP<PackageRecord>
     | AppendSingleSlip of qwCount : int
+    | AppendMultipleSlip
+    | AppendQwToMultiple of int
     | DelSlip of slipIdx:int
-    | QwTextChanged of idx:(int * int) * txt:string
-    | QwAnswerChanged of idx:(int * int) * string
-    | QwCommentChanged of idx:(int * int) * string
-    | QwImgChanged of {|Type:string; Body:byte[]; Tag:QwKey|}
-    | QwImgClear of idx:(int * int)
-    | UploadQwImgResp of TRESP<(int*int), {|BucketKey:string|}>
-    | CommentImgChanged of {|Type:string; Body:byte[]; Tag:QwKey|}
-    | CommentImgClear of idx:(int * int)
-    | UploadCommentImgResp of TRESP<(int*int), {|BucketKey:string|}>
+    | DelQwInMultiple of key:QwKey
+    | UpdateTourName of tourIdx:int * txt:string
+    | QwTextChanged of key:QwKey * txt:string
+    | QwTextSplitChanged of key:QwKey * part:int * txt:string
+    | QwAnswerChanged of key:QwKey * string
+    | QwCommentChanged of key:QwKey * string
+    | QwPointsChanged of key:QwKey * txt:string
+    | QwJeopardyChanged of key:QwKey * bool
+    | QwImgChanged of {|Type:string; Body:byte[]; Tag:PkgQwKey|}
+    | QwImgClear of key:QwKey
+    | UploadQwImgResp of TRESP<QwKey, {|BucketKey:string|}>
+    | CommentImgChanged of {|Type:string; Body:byte[]; Tag:PkgQwKey|}
+    | CommentImgClear of key:QwKey
+    | UploadCommentImgResp of TRESP<QwKey, {|BucketKey:string|}>
     | ToggleAquireForm
     | AquireFormUpdatePackageId of string
     | AquireFormUpdateTransferToken of string
@@ -96,38 +103,13 @@ let updateCard f model =
     | Some card -> {model with Card = Some <| f card}
     | _ -> model
 
-let updateQwText (slipIdx,qwIdx) txt model =
+let updateSlip (qwKey:QwKey) (f:SingleAwSlip -> SingleAwSlip) (model:Model) =
     model |> updateCard (fun card ->
-        match card.GetSlip slipIdx with
-        | Some (Single slip) -> slip.SetQwText qwIdx txt |> Single |> card.UpdateSlip slipIdx
-        | None -> card
-    )
-
-let updateQwImg (slipIdx,qwIdx) imgKey model =
-    model |> updateCard (fun card ->
-        match card.GetSlip slipIdx with
-        | Some (Single slip) -> {slip with ImgKey = imgKey} |> Single |> card.UpdateSlip slipIdx
-        | None -> card
-    )
-
-let updateQwAnswer (slipIdx,qwIdx) txt model =
-    model |> updateCard (fun card ->
-        match card.GetSlip slipIdx with
-        | Some (Single slip) -> {slip with Answer = txt} |> Single |> card.UpdateSlip slipIdx
-        | None -> card
-    )
-
-let updateQwComment (slipIdx,qwIdx) txt model =
-    model |> updateCard (fun card ->
-        match card.GetSlip slipIdx with
-        | Some (Single slip) -> {slip with Comment = txt} |> Single |> card.UpdateSlip slipIdx
-        | None -> card
-    )
-
-let updateCommentImg (slipIdx,qwIdx) imgKey model =
-    model |> updateCard (fun card ->
-        match card.GetSlip slipIdx with
-        | Some (Single slip) -> {slip with CommentImgKey = imgKey} |> Single |> card.UpdateSlip slipIdx
+        match card.GetSlip qwKey.TourIdx with
+        | Some (Single slip) -> f slip  |> Single |> card.UpdateSlip qwKey.TourIdx
+        | Some (Multiple (name, slips)) ->
+            (name, slips |> List.mapi (fun idx slip -> if idx = qwKey.QwIdx then f slip else slip)) |> Multiple
+            |> card.UpdateSlip qwKey.TourIdx
         | None -> card
     )
 
@@ -190,17 +172,24 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | CancelCard -> {cm with Card = None} |> noCmd
     | SubmitCard -> cm |> submitCard api
     | SubmitCardResp {Value = Ok res } -> {cm with Card = None} |> editing |> replaceRecord res |> noCmd
-    | AppendSingleSlip qwCount -> cm |> updateCard (fun c -> c.AddSingleSlip qwCount) |> noCmd
-    | DelSlip idx -> cm |> updateCard (fun c -> c.DelSlip idx) |> noCmd
-    | QwTextChanged (idx,txt) -> cm |> updateQwText idx txt |> noCmd
-    | QwAnswerChanged (idx,txt) -> cm |> updateQwAnswer idx txt |> noCmd
-    | QwCommentChanged (idx,txt) -> cm |> updateQwComment idx txt |> noCmd
-    | QwImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadQwImgResp res.Tag.Idx) res.Type res.Body
-    | QwImgClear idx -> cm |> updateQwImg idx "" |> noCmd
-    | UploadQwImgResp {Tag = idx; Rsp = {Value = Ok res}} -> cm |> editing |> updateQwImg idx res.BucketKey |> noCmd
-    | CommentImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadCommentImgResp res.Tag.Idx) res.Type res.Body
-    | CommentImgClear idx -> cm |> updateCommentImg idx "" |> noCmd
-    | UploadCommentImgResp {Tag = idx; Rsp = {Value = Ok res}} -> cm |> editing |> updateCommentImg idx res.BucketKey |> noCmd
+    | AppendSingleSlip qwCount -> cm |> updateCard (fun c -> c.AppendSlip (SingleAwSlip.InitEmpty qwCount |> Single)) |> noCmd
+    | AppendMultipleSlip -> cm |> updateCard (fun c -> c.AppendSlip (("",[]) |> Multiple)) |> noCmd
+    | DelSlip tourIdx -> cm |> updateCard (fun c -> c.DelSlip tourIdx) |> noCmd
+    | UpdateTourName (tourIdx,txt) -> cm |> updateCard (fun c -> c.GetSlip tourIdx |> Option.bind (fun slip -> slip.SetMultipleName txt |>  c.UpdateSlip tourIdx |> Some) |> Option.defaultValue c) |> noCmd
+    | AppendQwToMultiple tourIdx -> cm |> updateCard (fun c -> c.GetSlip tourIdx |> Option.bind (fun slip -> SingleAwSlip.InitEmpty 1 |> slip.AppendToMultiple |>  c.UpdateSlip tourIdx |> Some) |> Option.defaultValue c) |> noCmd
+    | DelQwInMultiple key -> cm |> updateCard (fun c -> c.GetSlip key.TourIdx |> Option.bind (fun slip -> slip.RemoveFromMultiple key.QwIdx |>  c.UpdateSlip key.TourIdx |> Some) |> Option.defaultValue c) |> noCmd
+    | QwTextChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Question = Solid txt}) |> noCmd
+    | QwTextSplitChanged (key,part,txt) -> cm |> updateSlip key (fun slip -> slip.SetQwText part txt) |> noCmd
+    | QwAnswerChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Answer = txt}) |> noCmd
+    | QwCommentChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Comment = txt}) |> noCmd
+    | QwPointsChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Points = System.Decimal.Parse(txt)}) |> noCmd
+    | QwJeopardyChanged (key,v) -> cm |> updateSlip key (fun slip -> {slip with Jeopardy = v}) |> noCmd
+    | QwImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadQwImgResp res.Tag.Key) res.Type res.Body
+    | QwImgClear key -> cm |> updateSlip key (fun slip -> {slip with ImgKey = ""}) |> noCmd
+    | UploadQwImgResp {Tag = key; Rsp = {Value = Ok res}} -> cm |> editing |> updateSlip key (fun slip -> {slip with ImgKey = res.BucketKey}) |> noCmd
+    | CommentImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadCommentImgResp res.Tag.Key) res.Type res.Body
+    | CommentImgClear key -> cm |> updateSlip key (fun slip -> {slip with CommentImgKey = ""}) |> noCmd
+    | UploadCommentImgResp {Tag = key; Rsp = {Value = Ok res}} -> cm |> editing |> updateSlip key (fun slip -> {slip with CommentImgKey = res.BucketKey}) |> noCmd
     | ToggleAquireForm -> cm |> toggleAquiringForm |> noCmd
     | AquireFormUpdatePackageId txt-> cm |> updateAquiringForm (fun form -> {form with PackageId = System.Int32.Parse(txt)}) |> noCmd
     | AquireFormUpdateTransferToken txt-> cm |> updateAquiringForm (fun form -> {form with TransferToken = txt.Trim()}) |> noCmd
@@ -331,6 +320,9 @@ let card (dispatch : Msg -> unit) (card : PackageCard) (deleteForm : DeleteForm 
                             div [Class "control"][
                                 button [Class "button "; Disabled isLoading; OnClick (fun _ -> AppendSingleSlip 3 |> dispatch)] [str "Append Blitz"]
                             ]
+                            div [Class "control"][
+                                button [Class "button "; Disabled isLoading; OnClick (fun _ -> AppendMultipleSlip |> dispatch)] [str "Append Multiple Slip"]
+                            ]
                         ]
                     ]
                 ]
@@ -361,67 +353,115 @@ let card (dispatch : Msg -> unit) (card : PackageCard) (deleteForm : DeleteForm 
                     th [] [str "Question"]
                     th [] [str "Answer"]
                     th [] [str "Comment"]
+                    th [Style [Width "90px"]] [str "Points"]
+                    th [Style [Width "30px"]] [str "Del"]
                 ]
             ]
 
             tbody [][
                 for (slipIdx,slip) in card.Slips |> List.indexed |> List.rev do
                     match slip with
-                    | Single s -> yield wwwSlipRow dispatch isLoading card.PackageId slipIdx s
-
+                    | Single s -> yield singleSlipRow dispatch isLoading card.PackageId slipIdx None s
+                    | Multiple (name, slips) ->
+                        yield multipleSlipRowHeader dispatch isLoading card.PackageId slipIdx name
+                        for (qwIdx,slip) in slips |> List.indexed |> List.rev do
+                            yield singleSlipRow dispatch isLoading card.PackageId slipIdx (Some qwIdx) slip
             ]
         ]
     ]
 
-let idxCell dispatch idx =
+let idxCell tourIdx qwIdx =
     td[] [
-        str <| (idx + 1).ToString()
-        br []
-        br []
-        br []
-        button [Class "button is-small"; OnClick(fun _ -> dispatch <| DelSlip (idx))][Fa.i [ Fa.Regular.TrashAlt ] [ ]]
+        str <| (tourIdx + 1).ToString()
+        match qwIdx with
+        | Some idx -> str <| sprintf ".%i" (idx + 1)
+        | None -> ()
     ]
 
-let qwCell dispatch (key:QwKey) txt imgKey isLoading =
+let delTourCell dispatch tourIdx =
     td[] [
-        textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwTextChanged (key.Idx,ev.Value) |> dispatch)][]
+        button [Class "button is-small"; OnClick(fun _ -> dispatch <| DelSlip (tourIdx))][Fa.i [ Fa.Regular.TrashAlt ] [ ]]
+    ]
+
+let delQwCell dispatch qwKey =
+    td[] [
+        button [Class "button is-small"; OnClick(fun _ -> dispatch <| DelQwInMultiple qwKey)][Fa.i [ Fa.Regular.TrashAlt ] [ ]]
+    ]
+
+let qwCell dispatch (key:PkgQwKey) txt imgKey isLoading =
+    td[] [
+        textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwTextChanged (key.Key,ev.Value) |> dispatch)][]
         br[]
-        yield! MainTemplates.imgArea key isLoading (QwImgChanged >> dispatch) (fun _ -> QwImgClear key.Idx |> dispatch) imgKey "" "Clear"
+        yield! MainTemplates.imgArea key isLoading (QwImgChanged >> dispatch) (fun _ -> QwImgClear key.Key |> dispatch) imgKey "" "Clear"
     ]
 
-let qwInput dispatch placeholder txt idx  =
+let qwInput dispatch placeholder txt key partIdx  =
     div [Class "control"; Style [MarginBottom "3px"]][
         input [Class "input"; Type "text"; Placeholder placeholder;
-            valueOrDefault txt; MaxLength 256.0; OnChange (fun ev -> QwTextChanged (idx,ev.Value) |> dispatch)]
+            valueOrDefault txt; MaxLength 256.0; OnChange (fun ev -> QwTextSplitChanged (key, partIdx, ev.Value) |> dispatch)]
     ]
 
-let awCell dispatch (key:QwKey) txt isLoading =
+let awCell dispatch (key:PkgQwKey) txt isLoading =
     td[] [
-        textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwAnswerChanged (key.Idx,ev.Value) |> dispatch)][]
+        textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwAnswerChanged (key.Key,ev.Value) |> dispatch)][]
     ]
 
-let cmntCell dispatch (key:QwKey) txt imgKey isLoading =
+let cmntCell dispatch (key:PkgQwKey) txt imgKey isLoading =
     td[] [
-        textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwCommentChanged (key.Idx,ev.Value) |> dispatch)][]
+        textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwCommentChanged (key.Key,ev.Value) |> dispatch)][]
         br[]
-        yield! MainTemplates.imgArea key isLoading (CommentImgChanged >> dispatch) (fun _ -> CommentImgClear key.Idx |> dispatch) imgKey "" "Clear"
+        yield! MainTemplates.imgArea key isLoading (CommentImgChanged >> dispatch) (fun _ -> CommentImgClear key.Key |> dispatch) imgKey "" "Clear"
     ]
 
-let wwwSlipRow dispatch isLoading pkgId idx (slip: SingleAwSlip) =
+let singleSlipRow dispatch isLoading pkgId tourIdx qwIdx (slip: SingleAwSlip) =
 
-    let key = {PackageId = pkgId; SlipIdx=idx; QwIdx = 0}
+    let packageKey = {PackageId = pkgId; TourIdx=tourIdx; QwIdx = qwIdx |> Option.defaultValue 0}
 
     tr[][
-        idxCell dispatch idx
-        match slip.Questions with
-        | [qw] -> qwCell dispatch key qw slip.ImgKey isLoading
-        | list ->
+        idxCell tourIdx qwIdx
+        match slip.Question with
+        | Solid qw -> qwCell dispatch packageKey qw slip.ImgKey isLoading
+        | Split list ->
             td[] [
                 for (idx,qw) in list |> List.indexed do
-                    qwInput dispatch (sprintf "Question %i" (idx + 1)) qw (key.IdxOfQw idx)
+                    qwInput dispatch (sprintf "Question %i" (idx + 1)) qw packageKey.Key idx
                 br[]
-                yield! MainTemplates.imgArea key isLoading (QwImgChanged >> dispatch) (fun _ -> (QwImgClear key.Idx) |> dispatch) slip.ImgKey "" "Clear"
+                yield! MainTemplates.imgArea packageKey isLoading (QwImgChanged >> dispatch) (fun _ -> (QwImgClear packageKey.Key) |> dispatch) slip.ImgKey "" "Clear"
             ]
-        awCell dispatch key slip.Answer isLoading
-        cmntCell dispatch key slip.Comment slip.CommentImgKey isLoading
+        awCell dispatch packageKey slip.Answer isLoading
+        cmntCell dispatch packageKey slip.Comment slip.CommentImgKey isLoading
+        td[][
+            div [Class "control"][
+                input [Class "input"; Type "number";
+                    valueOrDefault slip.Points; MaxLength 4.; ReadOnly isLoading; OnChange (fun ev -> QwPointsChanged (packageKey.Key,ev.Value) |> dispatch)]
+            ]
+            label [Class "checkbox"][
+                str "jeopardy"
+                input [Type "checkbox";
+                    Checked slip.Jeopardy; ReadOnly isLoading; OnChange (fun ev -> QwJeopardyChanged (packageKey.Key, (ev.Checked)) |> dispatch)]
+            ]
+        ]
+        match qwIdx with
+        | Some idx -> delQwCell dispatch {TourIdx = tourIdx; QwIdx = idx}
+        | None -> delTourCell dispatch tourIdx
+    ]
+
+let multipleSlipRowHeader dispatch isLoading pkgId tourIdx (name:string) =
+    tr[][
+        idxCell tourIdx None
+        td[ColSpan 3][
+            div [Class "field has-addons"; Style[PaddingBottom "5px"]][
+                p [Class "control is-expanded"][
+                    input [Class "input"; Disabled isLoading; Type "text"; Placeholder "Tour Name"; MaxLength 128.0;
+                        valueOrDefault name;
+                        OnChange (fun ev -> dispatch <| UpdateTourName (tourIdx,ev.Value))]
+                ]
+                p [Class "control"][
+                    button [classList ["button", true; "has-text-weight-semibold", true; "is-loading", isLoading];
+                      OnClick (fun _ -> dispatch <| AppendQwToMultiple tourIdx)][str "Append Question To Slip"]
+                ]
+            ]
+        ]
+        td[][]
+        delTourCell dispatch tourIdx
     ]

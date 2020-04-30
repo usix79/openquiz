@@ -64,22 +64,49 @@ type Package = {
         else None
 
 type Slip =
-    | Single of SingeAwSlip
+    | Single of SingleAwSlip
+    | Multiple of name:string * SingleAwSlip list
 with
     member x.Answers =
         match x with
         | Single slip -> [slip.Answer]
+        | Multiple (_,slips) -> slips |> List.map (fun s -> s.Answer)
     member x.QuestionsCount =
         match x with
-        | Single slip -> slip.Questions |> List.length
+        | Single slip -> slip.QuestionsCount
+        | Multiple (_,slips) -> slips |> List.sumBy (fun s -> s.QuestionsCount)
 
-type SingeAwSlip = {
-    Questions : string list
+type QuestionText =
+    | Solid of string
+    | Split of string list
+
+type SingleAwSlip = {
+    Question : QuestionText
     ImgKey : string
     Answer : string
     Comment : string
     CommentImgKey : string
-}
+    Points : decimal
+    Jeopardy : bool
+} with
+    member x.QuestionsCount =
+        match x.Question with
+        | Solid _ -> 1
+        | Split list -> list.Length
+    static member InitEmpty qwCount =
+        {
+            Question =
+                match qwCount with
+                | 1 -> Solid ""
+                | n -> List.init n (fun i -> "") |> Split
+            ImgKey=""
+            Answer=""
+            Comment=""
+            CommentImgKey=""
+            Points = 1m
+            Jeopardy = false
+        }
+
 
 module Packages =
 
@@ -159,11 +186,9 @@ type Quiz = {
     member this.CurrentTour =
         List.tryHead this.Tours
     member this.CurrentTourIndex =
-        List.length this.Tours
+        List.length this.Tours - 1
     member this.GetTour index =
-        if index > 0 && index <= this.Tours.Length then
-            Some (this.Tours.Item(this.Tours.Length - index))
-        else None
+        this.Tours |> List.tryItem index
 
 module Quizzes =
     let createNew quizId producerId : Quiz=
@@ -211,50 +236,48 @@ module Quizzes =
         | Some _ -> {quiz with Dsc = {quiz.Dsc with PkgSlipIdx = Some slipIdx}}
         | None -> quiz
 
-    let addSlip (slip:Slip option) (quiz:Quiz) =
-        match slip with
-        | Some slip ->
-            match slip with
-            | Single s -> quiz |> addSingleSlip (Some s)
-        | None -> quiz |> addSingleSlip None
+    let addEmptySlip (quiz:Quiz) =
+        quiz|> addSlip (SingleAwSlip.InitEmpty 1 |> Single)
 
-    let addSingleSlip (slip:SingeAwSlip option) (quiz:Quiz) =
-        let name, seconds =
-            match quiz.CurrentTour with
-            | Some qw ->
-                let newName =
-                    let m = Regex.Match (qw.Name, "([^\\d]*)(\\d+)")
-                    if m.Success then ((m.Groups.Item 1).Value) + (System.Int32.Parse((m.Groups.Item 2).Value) + 1).ToString()
-                    else qw.Name  + "1"
-                newName, qw.Seconds
-            | None -> "Question 1", 60
+    let getNextTourName (quiz:Quiz) =
+        match quiz.CurrentTour with
+        | Some qw ->
+            let newName =
+                let m = Regex.Match (qw.Name, "([^\\d]*)(\\d+)")
+                if m.Success then ((m.Groups.Item 1).Value) + (System.Int32.Parse((m.Groups.Item 2).Value) + 1).ToString()
+                else qw.Name  + "1"
+            newName
+        | None -> "Question 1"
 
-        {quiz with Tours = {
-                    Name = name
-                    Seconds = seconds
-                    Status = Announcing
-                    Slip = Single {
-                        Questions = if slip.IsSome then slip.Value.Questions else [""];
-                        ImgKey = if slip.IsSome then slip.Value.ImgKey else "";
-                        Answer = if slip.IsSome then slip.Value.Answer else "";
-                        Comment = if slip.IsSome then slip.Value.Comment else "";
-                        CommentImgKey = if slip.IsSome then slip.Value.CommentImgKey else "";
-                    }
-                    NextQwIdx = 0
-                    StartTime = None}
-                    :: quiz.Tours}
+    let getNextTourSeconds (quiz:Quiz) =
+        match quiz.CurrentTour with
+        | Some qw -> qw.Seconds
+        | None -> 60
+
+    let addSlip (slip:Slip) (quiz:Quiz) =
+        {quiz with
+            Tours = {
+                Name = quiz |> getNextTourName
+                Seconds = quiz |> getNextTourSeconds
+                Status = Announcing
+                Slip = slip
+                NextQwIdx = 0
+                StartTime = None }
+                :: quiz.Tours
+        }
+
+    let addNextSlip qwIdx (pkgProvider : Provider<int,Package>) (quiz:Quiz) =
+        quiz.Dsc.PkgId
+        |> Option.bind pkgProvider
+        |> Option.bind (fun pkg -> pkg.GetSlip qwIdx)
+        |> Option.bind (fun slip -> quiz |> setSlipIndex qwIdx |> addSlip slip |> Some)
+        |> Option.defaultValue (quiz |> addEmptySlip)
 
     let changeStatus status  (pkgProvider : Provider<int,Package>) (quiz:Quiz) =
         match {quiz with Dsc = {quiz.Dsc with Status = status}} with
         | quiz when status = Live && quiz.Tours.Length = 0 ->
-            match quiz.Dsc.PkgId with
-            | Some pkgId ->
-                match pkgProvider pkgId with
-                | Some pkg ->
-                    let qwIdx = defaultArg quiz.Dsc.PkgSlipIdx 0
-                    quiz |> setSlipIndex qwIdx |> addSlip (pkg.GetSlip qwIdx)
-                | None ->  quiz |> addSingleSlip None
-            | None -> quiz |> addSingleSlip None
+            let qwIdx = defaultArg quiz.Dsc.PkgSlipIdx 0
+            quiz |> addNextSlip qwIdx pkgProvider
         | quiz -> quiz
 
     let private updateCurrentTour (f : QuizTour -> QuizTour) (quiz:Quiz) =
@@ -297,15 +320,8 @@ module Quizzes =
         quiz |> updateCurrentTour (fun qw -> {qw with Status = Settled}) |> Ok
 
     let next (pkgProvider : Provider<int,Package>) (quiz:Quiz) =
-        match quiz.Dsc.PkgId with
-        | Some pkgId ->
-            let qwIdx = (defaultArg quiz.Dsc.PkgSlipIdx 0) + 1
-            let qw =
-                match pkgProvider pkgId with
-                | Some pkg -> pkg.GetSlip qwIdx
-                | None -> None
-            quiz |> setSlipIndex qwIdx |> addSlip qw
-        | None -> quiz |> addSingleSlip None
+        let qwIdx = (defaultArg quiz.Dsc.PkgSlipIdx 0) + 1
+        quiz |> addNextSlip qwIdx pkgProvider
 
 type TeamStatus =
     | New
@@ -336,14 +352,18 @@ type TeamDescriptor = {
 } with
     member x.Key = {QuizId = x.QuizId; TeamId = x.TeamId}
 
+type QwKey  = {
+    TourIdx : int
+    QwIdx : int
+}
 
 type Team = {
     Dsc : TeamDescriptor
-    Answers : Map<int, TeamAnswer>
+    Answers : Map<QwKey, TeamAnswer>
     Version : int
 } with
-    member x.GetAnswer index =
-        x.Answers |> Map.tryFind index
+    member x.GetAnswer qwKey =
+        x.Answers |> Map.tryFind qwKey
 
     member x.Points =
         x.Answers |> Map.fold (fun s _ aw -> match aw.Result with Some d -> s + d | None -> s) 0m
@@ -392,14 +412,22 @@ module Teams =
         | Some aw -> {team with Answers = team.Answers |> Map.add qwIdx (f aw)}
         | None -> team
 
-    let settleAnswer qwIdx (jury : string -> bool) now (team: Team) =
+    let settleAnswer qwIdx (jury : string -> bool) points jeopardy now (team: Team) =
         team |> updateAnswer qwIdx (fun aw ->
-            if (aw.IsAutoResult || aw.Result.IsNone) && (jury aw.Text) then
-                {aw with
-                    Result = Some 1m
-                    IsAutoResult = true
-                    UpdateTime = Some now
-                }
+            if (aw.IsAutoResult || aw.Result.IsNone) then
+                let result =
+                    match jury aw.Text with
+                    | true -> Some points
+                    | false when jeopardy -> Some (-points)
+                    | false -> None
+                match result with
+                | Some _ ->
+                    {aw with
+                        Result = result
+                        IsAutoResult = true
+                        UpdateTime = Some now
+                    }
+                | None -> aw
             else aw
         )
 

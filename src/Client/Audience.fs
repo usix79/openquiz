@@ -152,7 +152,7 @@ let historyView dispatch model =
         ]
 
         tbody [ ] [
-            for aw in model.History |> List.sortByDescending (fun aw -> aw.QwIdx)  do
+            for aw in model.History |> List.sortByDescending (fun aw -> aw.QwKey)  do
 
                 tr [ ][
                     td [] [p [][str aw.QwName]]

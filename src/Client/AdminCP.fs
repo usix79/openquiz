@@ -23,15 +23,18 @@ type Msg =
     | SelectSlipIdx of string
     | UpdateTourName of string
     | UpdateTourSeconds of string
-    | UpdateQwText of idx:int * txt:string
-    | UpdateQwAnswer of idx:int * txt:string
-    | UpdateQwComment of idx:int * txt:string
-    | QwImgChanged of {|Type:string; Body:byte[]; Tag:int|}
-    | QwImgClear of idx:int
-    | UploadQwImgResp of TRESP<int, {|BucketKey:string|}>
-    | QwCommentImgChanged of {|Type:string; Body:byte[]; Tag:int|}
-    | QwCommentImgClear of idx:int
-    | UploadQwCommentImgResp of TRESP<int,{|BucketKey:string|}>
+    | UpdateQwText of key:QwKey * txt:string
+    | UpdateQwTextPart of key:QwKey * partIdx:int * txt:string
+    | UpdateQwAnswer of key:QwKey * txt:string
+    | UpdateQwComment of key:QwKey * txt:string
+    | UpdateQwPoints of key:QwKey * txt:string
+    | UpdateQwJeopardy of key:QwKey * bool
+    | QwImgChanged of {|Type:string; Body:byte[]; Tag:QwKey|}
+    | QwImgClear of key:QwKey
+    | UploadQwImgResp of TRESP<QwKey, {|BucketKey:string|}>
+    | QwCommentImgChanged of {|Type:string; Body:byte[]; Tag:QwKey|}
+    | QwCommentImgClear of key:QwKey
+    | UploadQwCommentImgResp of TRESP<QwKey,{|BucketKey:string|}>
     | NextQw
     | Start
     | Tick
@@ -115,10 +118,12 @@ let updateTour (f : TourControlCard -> TourControlCard) model =
         | None -> model
     | _ -> model
 
-let updateSingleSlip (f : SingleAwSlip-> SingleAwSlip) model =
+let updateSlip (qwKey:QwKey) (f:SingleAwSlip -> SingleAwSlip) (model:Model) =
     model |> updateTour (fun tour ->
         match tour.Slip with
-        | Single s -> {tour with Slip = Single (f s)})
+        | Single slip -> {tour with Slip = f slip  |> Single }
+        | Multiple (name, slips) -> {tour with Slip = (name, slips |> List.mapi (fun idx slip -> if idx = qwKey.QwIdx then f slip else slip)) |> Multiple}
+    )
 
 let uploadFile api respMsg fileType body model =
     if Array.length body > (1024*128) then
@@ -134,35 +139,6 @@ let scheduleTick (model : Model,  cmd : Cmd<Msg>) =
         | _ -> model, cmd
     | _ -> model, cmd
 
-let updateQwText idx txt model =
-    model |> updateTour (fun tour ->
-        match tour.Slip with
-        | Single s -> {tour with Slip = s.SetQwText idx txt |> Single}
-    )
-
-let updateQwImg idx imgKey model =
-    model |> updateTour (fun tour ->
-        match tour.Slip with
-        | Single s -> {tour with Slip = {s with ImgKey = imgKey} |> Single}
-    )
-
-let updateAnswer idx txt model =
-    model |> updateTour (fun tour ->
-        match tour.Slip with
-        | Single s -> {tour with Slip = {s with Answer = txt} |> Single}
-    )
-
-let updateComment idx txt model =
-    model |> updateTour (fun tour ->
-        match tour.Slip with
-        | Single s -> {tour with Slip = {s with Comment = txt} |> Single}
-    )
-
-let updateCommentImg idx imgKey model =
-    model |> updateTour (fun tour ->
-        match tour.Slip with
-        | Single s -> {tour with Slip = {s with CommentImgKey = imgKey} |> Single}
-    )
 
 let init (api:IAdminApi) user : Model*Cmd<Msg> =
     {Errors = Map.empty; Quiz = None; Package = None; IsLoading = true; AvailablePackages = None; TimeDiff = TimeSpan.Zero} |> apiCmd api.getQuizCard () QuizCardResp Exn
@@ -179,15 +155,18 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | PackagesCardResp {Value = Ok res} -> {cm with Package = res} |> editing |> noCmd
     | UpdateTourName txt -> cm |> updateTour (fun qw -> {qw with Name = txt}) |> noCmd
     | UpdateTourSeconds txt -> cm |> updateTour (fun qw -> {qw with Seconds = Int32.Parse txt}) |> noCmd
-    | UpdateQwText (idx,txt) -> cm |> updateQwText idx txt |> noCmd
-    | UpdateQwAnswer (idx,txt) -> cm |> updateAnswer idx txt |> noCmd
-    | UpdateQwComment (idx,txt) -> cm |> updateComment idx txt |> noCmd
-    | QwImgClear idx -> cm |> updateQwImg idx "" |> noCmd
+    | UpdateQwText (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Question = Solid txt}) |> noCmd
+    | UpdateQwTextPart (key,partIdx,txt) -> cm |> updateSlip key (fun slip -> slip.SetQwText partIdx txt) |> noCmd
+    | UpdateQwAnswer (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Answer = txt}) |> noCmd
+    | UpdateQwComment (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Comment = txt}) |> noCmd
+    | UpdateQwPoints (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Points = System.Decimal.Parse(txt)}) |> noCmd
+    | UpdateQwJeopardy (key,v) -> cm |> updateSlip key (fun slip -> {slip with Jeopardy = v}) |> noCmd
+    | QwImgClear key -> cm |> updateSlip key (fun slip -> {slip with ImgKey = ""}) |> noCmd
     | QwImgChanged res -> cm |> uploadFile api (taggedMsg UploadQwImgResp res.Tag) res.Type res.Body
-    | UploadQwImgResp {Tag = idx; Rsp = {Value = Ok res}} -> cm |> updateQwImg idx res.BucketKey |> editing |> noCmd
-    | QwCommentImgClear idx -> cm |> updateCommentImg idx "" |> noCmd
+    | UploadQwImgResp {Tag = key; Rsp = {Value = Ok res}} -> cm |> editing |> updateSlip key (fun slip -> {slip with ImgKey = res.BucketKey}) |> noCmd
+    | QwCommentImgClear key -> cm |> updateSlip key (fun slip -> {slip with CommentImgKey = ""}) |> noCmd
     | QwCommentImgChanged res -> cm |> uploadFile api (taggedMsg UploadQwCommentImgResp res.Tag) res.Type res.Body
-    | UploadQwCommentImgResp {Tag = idx; Rsp = {Value = Ok res}} -> cm |> updateCommentImg idx res.BucketKey |> editing |> noCmd
+    | UploadQwCommentImgResp {Tag = key; Rsp = {Value = Ok res}} -> cm |> updateSlip key (fun slip -> {slip with CommentImgKey = res.BucketKey}) |> noCmd
     | NextQw -> cm |> loading |> apiCmd api.nextQuestion cm.Quiz.Value QuizCardResp Exn
     | Start -> cm |> loading |> apiCmd api.startCountDown cm.Quiz.Value QuizCardResp Exn
     | Tick -> cm |> noCmd |> scheduleTick
@@ -284,7 +263,7 @@ let quizView (dispatch : Msg -> unit) (user:AdminUser) (model : Model) (quiz : Q
                             match model.Package with
                             | Some pkg ->
                                 for (idx,slip) in pkg.Slips |> List.mapi (fun idx slip -> idx,slip) do
-                                    option[Value idx][str <| sprintf "%i %s" (idx + 1) (trimEnd 32 "..." slip.Text)]
+                                    option[Value idx][str <| sprintf "%i %s" (idx + 1) (trimEnd 32 "..." slip.Annotation)]
                             | None -> ()
                         ]
                     ]
@@ -301,56 +280,69 @@ let quizView (dispatch : Msg -> unit) (user:AdminUser) (model : Model) (quiz : Q
 
     ]
 
-let qwTextArea dispatch idx txt isReadOnly =
+let qwTextArea dispatch key txt isReadOnly =
     div [Class "field"][
         label [Class "label"][str "Question Text"]
         div [Class "control"][
-            textarea [Class "textarea"; Disabled isReadOnly; MaxLength 512.0; valueOrDefault txt; OnChange (fun ev -> dispatch <| UpdateQwText (idx,ev.Value) )][]
+            textarea [Class "textarea"; Disabled isReadOnly; MaxLength 512.0; valueOrDefault txt; OnChange (fun ev -> dispatch <| UpdateQwText (key,ev.Value) )][]
         ]
     ]
 
-let qwInput dispatch placeholder txt idx anounced =
+let qwInput dispatch placeholder txt key partIdx anounced =
     div [Class "control has-icons-left has-icons-right"; Style [MarginBottom "3px"]][
         input [Class "input"; Type "text"; Placeholder placeholder; ReadOnly anounced;
-            valueOrDefault txt; MaxLength 256.0; OnChange (fun ev -> UpdateQwText (idx,ev.Value) |> dispatch)]
-        span [Class "icon is-left"][str (sprintf "%i" (idx + 1))]
+            valueOrDefault txt; MaxLength 256.0; OnChange (fun ev -> UpdateQwTextPart (key,partIdx,ev.Value) |> dispatch)]
+        span [Class "icon is-left"][str (sprintf "%i" (key.QwIdx + 1))]
         if (anounced) then
             span [Class "icon is-right"][Fa.i [Fa.Solid.Check][]]
     ]
 
-let awTextArea dispatch idx txt isReadOnly =
+let awTextArea dispatch key txt isReadOnly =
     div [Class "field"][
         label [Class "label"][str "Answer"]
         div [Class "control"][
-            textarea [Class "textarea"; Disabled isReadOnly; MaxLength 512.0; valueOrDefault txt; OnChange (fun ev -> dispatch <| UpdateQwAnswer (idx,ev.Value) )][]
+            textarea [Class "textarea"; Disabled isReadOnly; MaxLength 512.0; valueOrDefault txt; OnChange (fun ev -> dispatch <| UpdateQwAnswer (key,ev.Value) )][]
         ]
     ]
 
-let cmtTextArea dispatch idx txt isReadOnly =
+let cmtTextArea dispatch key txt isReadOnly =
     div [Class "field"][
         label [Class "label"][str "Comment"]
         div [Class "control"][
-            textarea [Class "textarea"; Disabled isReadOnly; MaxLength 512.0; valueOrDefault txt; OnChange (fun ev -> dispatch <| UpdateQwComment (idx,ev.Value) )][]
+            textarea [Class "textarea"; Disabled isReadOnly; MaxLength 512.0; valueOrDefault txt; OnChange (fun ev -> dispatch <| UpdateQwComment (key,ev.Value) )][]
         ]
     ]
 
-let singleSlipEl dispatch (slip:SingleAwSlip) nextQwIdx isReadOnly =
+let singleSlipEl dispatch (key:QwKey) (slip:SingleAwSlip) nextQwIdx isReadOnly =
     div [][
-        match slip.Questions with
-        | [qw] -> qwTextArea dispatch 0 qw isReadOnly
-        | list ->
+
+        label [Class "label"][str "Points"]
+        div [Class "field is-grouped"][
+            div [Class "control"][
+                input [Class "input"; Type "number"; Disabled isReadOnly; valueOrDefault slip.Points; OnChange (fun ev -> dispatch <| UpdateQwPoints (key,ev.Value) )]
+            ]
+            label [Class "checkbox"][
+                input [Type "checkbox";
+                    Checked slip.Jeopardy; Disabled isReadOnly; OnChange (fun ev -> UpdateQwJeopardy (key, (ev.Checked)) |> dispatch)]
+                str " with jeopardy"
+            ]
+        ]
+
+        match slip.Question with
+        | Solid qw -> qwTextArea dispatch key qw isReadOnly
+        | Split list ->
             div [Class "field"][
                 label [Class "label"][str "Questions Text"]
                 for (idx,qw) in list |> List.indexed do
-                    qwInput dispatch (sprintf "Question %i" (idx + 1)) qw idx (idx < nextQwIdx)
+                    qwInput dispatch (sprintf "Question %i" (idx + 1)) qw key idx (idx < nextQwIdx)
             ]
 
-        yield! MainTemplates.imgArea 0 isReadOnly (QwImgChanged >> dispatch) (fun () -> dispatch (QwImgClear 0))  slip.ImgKey "" "Clear"
+        yield! MainTemplates.imgArea key isReadOnly (QwImgChanged >> dispatch) (fun () -> dispatch (QwImgClear key))  slip.ImgKey "" "Clear"
         br[]
-        awTextArea dispatch 0 slip.Answer isReadOnly
+        awTextArea dispatch key slip.Answer isReadOnly
         br[]
-        cmtTextArea dispatch 0 slip.Comment isReadOnly
-        yield! MainTemplates.imgArea 0 isReadOnly (QwCommentImgChanged >> dispatch) (fun () -> dispatch (QwCommentImgClear 0))   slip.CommentImgKey "" "Clear"
+        cmtTextArea dispatch key slip.Comment isReadOnly
+        yield! MainTemplates.imgArea key isReadOnly (QwCommentImgChanged >> dispatch) (fun () -> dispatch (QwCommentImgClear key))   slip.CommentImgKey "" "Clear"
     ]
 
 let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) timeDiff isReadOnly isLoading isLastQw =
@@ -389,5 +381,6 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) ti
         hr[Class "has-background-grey"]
 
         match tour.Slip with
-        | Single slip -> singleSlipEl dispatch slip tour.NextQwIdx isReadOnly
+        | Single slip -> singleSlipEl dispatch {TourIdx = -1; QwIdx = 0} slip tour.NextQwIdx isReadOnly
+        | Multiple (name,slips) -> ()
     ]

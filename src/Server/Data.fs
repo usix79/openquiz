@@ -30,6 +30,11 @@ let readAll search =
 
 //#region Common Converters
 
+let private tryParseInt32 (str:string) =
+    match System.Int32.TryParse(str) with
+    | true, n -> Some n
+    | _ -> None
+
 let toString (x:'a) =
     match FSharpValue.GetUnionFields(x, typeof<'a>) with
     | case, _ -> case.Name
@@ -54,6 +59,11 @@ let intOfDoc (doc : Document) attr =
     | true, en -> en.AsInt()
     | _ -> 0
 
+let decimalOfDoc (doc : Document) attr =
+    match doc.TryGetValue attr with
+    | true, en -> en.AsDecimal() |> Some
+    | _ -> None
+
 let listOfDoc (doc : Document) attr  =
     match doc.TryGetValue attr with
     | true, en -> en.AsListOfPrimitive()
@@ -72,40 +82,71 @@ let entryOfOption = function
 let documentOfSlip (slip: Slip) =
     match slip with
     | Single s -> documentOfSingleSlip s
+    | Multiple (name, slips) -> documentOfMultipleSlip name slips
 
-let documentOfSingleSlip (slip : SingeAwSlip) =
+let documentOfMultipleSlip  (name:string) (slips : SingleAwSlip list) =
+    let slipDoc = Document()
+    slipDoc.["Kind"] <- v2.ConvertToEntry "Multiple"
+    slipDoc.["Name"] <- v2.ConvertToEntry name
+
+    let itemsEntry = DynamoDBList()
+    for slip in slips do
+        itemsEntry.Add(documentOfSingleSlip slip)
+    slipDoc.["Items"] <- itemsEntry
+
+    slipDoc
+
+let documentOfSingleSlip (slip : SingleAwSlip) =
     let slipDoc = Document()
     slipDoc.["Kind"] <- v2.ConvertToEntry "Singe"
 
     let qwEntry = DynamoDBList()
-    for txt in slip.Questions do
-        qwEntry.Add(v2.ConvertToEntry (if txt <> "" then txt else " "))
-    slipDoc.["Questions"] <- qwEntry
+    match slip.Question with
+    | Solid qw -> slipDoc.["Text"] <- v2.ConvertToEntry qw
+    | Split list ->
+        for txt in list do
+            qwEntry.Add(v2.ConvertToEntry (if txt <> "" then txt else " "))
+        slipDoc.["Questions"] <- qwEntry
 
     slipDoc.["ImgKey"] <- v2.ConvertToEntry slip.ImgKey
     slipDoc.["Answer"] <- v2.ConvertToEntry slip.Answer
     slipDoc.["Comment"] <- v2.ConvertToEntry slip.Comment
     slipDoc.["CommentImgKey"] <- v2.ConvertToEntry slip.CommentImgKey
+    slipDoc.["Points"] <- v2.ConvertToEntry slip.Points
+    slipDoc.["Jeopardy"] <- v2.ConvertToEntry slip.Jeopardy
 
     slipDoc
 
 let slipOfDocument (slipDoc:Document) : Slip =
     match stringOfDoc slipDoc "Kind" with
+    | "Multiple" -> multipleSlipOfDocument slipDoc |> Multiple
     | "WWW" | "Single" | _ -> singleSlipOfDocument slipDoc |> Single
 
-let singleSlipOfDocument (slipDoc:Document) : SingeAwSlip =
+let multipleSlipOfDocument (slipDoc:Document)  =
+    let name = stringOfDoc slipDoc "Name"
+    let items =
+        slipDoc.["Items"].AsListOfDocument()
+        |> Seq.map singleSlipOfDocument
+        |> List.ofSeq
+    (name,items)
+
+let singleSlipOfDocument (slipDoc:Document) : SingleAwSlip =
     {
-        Questions =
+        Question =
             match slipDoc.TryGetValue "Questions" with
-            | true, en -> en.AsListOfString() |> List.ofSeq
-            | _ -> [stringOfDoc slipDoc "Text"]
+            | true, en ->
+                match en.AsListOfString() |> List.ofSeq with
+                | [qw] -> Solid qw
+                | list -> Split list
+            | _ -> stringOfDoc slipDoc "Text" |> Solid
+
         ImgKey = stringOfDoc slipDoc "ImgKey"
         Answer = stringOfDoc slipDoc "Answer"
         Comment = stringOfDoc slipDoc "Comment"
         CommentImgKey = stringOfDoc slipDoc "CommentImgKey"
+        Points = decimalOfDoc slipDoc "Points" |> Option.defaultValue 1m
+        Jeopardy = boolOfDoc slipDoc "Jeopardy"
     }
-
-
 //#endregion
 
 module RefreshTokens =
@@ -452,7 +493,7 @@ module Teams =
              awItem.["Result"] <- entryOfOption aw.Result
              awItem.["IsAutoResult"] <- v2.ConvertToEntry aw.IsAutoResult
              awItem.["UpdateTime"] <- entryOfOption aw.UpdateTime
-             answersEntry.[index.ToString()] <- awItem
+             answersEntry.[stringOfQwKey index] <- awItem
 
         teamItem.["Answers"] <- answersEntry
         teamItem.["Version"] <- v2.ConvertToEntry team.Version
@@ -466,7 +507,7 @@ module Teams =
         let awMap = doc.["Answers"].AsDocument()
         let answers =
             awMap
-            |> Seq.map (fun pair -> Int32.Parse(pair.Key), teamAnswerOfDocument(pair.Value))
+            |> Seq.map (fun pair -> qwKeyOfString(pair.Key), teamAnswerOfDocument(pair.Value))
             |> Map.ofSeq
 
         {Dsc = dsc; Version = version; Answers = answers}
@@ -497,6 +538,23 @@ module Teams =
         let awIsAutoResult = boolOfDoc awDoc "IsAutoResult"
 
         {Text = awText; RecieveTime = awRecieveTime; Result = awResult; IsAutoResult = awIsAutoResult; UpdateTime = awUpdateTime}
+
+    let private qwKeyOfString (str:string) : QwKey =
+        match str.StartsWith "qw" with
+        | true ->
+            let indexes = (str.Substring(2)).Split '.'
+            {
+                TourIdx = indexes |> Array.tryItem 0 |> Option.bind tryParseInt32 |> Option.defaultValue 0
+                QwIdx = indexes |> Array.tryItem 1 |> Option.bind tryParseInt32 |> Option.defaultValue 0
+            }
+        | false ->
+            {
+                TourIdx = str |> tryParseInt32 |> Option.defaultValue 0
+                QwIdx = 0
+            }
+
+    let private stringOfQwKey (key:QwKey) : string =
+        sprintf "qw%i.%i" key.TourIdx key.QwIdx
 
 //#endregion
 

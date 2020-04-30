@@ -145,7 +145,7 @@ let sendAnswer api (model : Model) =
     let answerCmd api model =
         match model.Answer with
         | Some aw when not (String.IsNullOrWhiteSpace aw.Text) ->
-            model |> answerStatus Sending |> apiCmd api.answer {|Answer = aw.Text; QwIndex = aw.QwIdx|} AnswerResponse Exn
+            model |> answerStatus Sending |> apiCmd api.answer {|Answer = aw.Text; QwKey = {TourIdx = aw.QwIdx; QwIdx = 0}|} AnswerResponse Exn
         | _ ->  model |> answerStatus Failed |> noCmd
 
     match model.Answer with

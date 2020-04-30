@@ -103,6 +103,11 @@ type SingleAwSlipCard = {
     Com : string
 }
 
+type QwKey  = {
+    TourIdx : int
+    QwIdx : int
+}
+
 type SlipCard =
     | SingleSlipCard of SingleAwSlipCard
 
@@ -133,6 +138,77 @@ type QuizChangedEvent = {
     T : TourCard option
 }
 
+type Slip =
+    | Single of SingleAwSlip
+    | Multiple of string * SingleAwSlip list
+with
+    member x.Annotation =
+        match x with
+        | Single slip -> slip.GetQwText 0
+        | Multiple (name,_) -> name
+    member x.LastQwIdx =
+        match x with
+        | Single slip -> slip.LastQwIdx
+        | Multiple (name,slips) -> slips.Length - 1
+    member x.SetMultipleName name =
+        match x with
+        | Single _ -> x
+        | Multiple (_,slips) -> (name,slips) |> Multiple
+    member x.AppendToMultiple slip =
+        match x with
+        | Single _ -> x
+        | Multiple (name,slips) -> (name,slips @ [slip]) |> Multiple
+    member x.RemoveFromMultiple idx =
+        match x with
+        | Single _ -> x
+        | Multiple (name,slips) ->
+            let slips = slips |> List.indexed |> List.choose (fun (i,s) -> if idx <> i then Some s else None)
+            (name, slips) |> Multiple
+
+
+type QuestionText =
+    | Solid of string
+    | Split of string list
+
+type SingleAwSlip = {
+    Question : QuestionText
+    ImgKey : string
+    Answer : string
+    Comment : string
+    CommentImgKey : string
+    Points : decimal
+    Jeopardy : bool
+} with
+    member x.SetQwText idx txt =
+        {x with
+            Question =
+                match x.Question with
+                | Solid _ -> Solid txt
+                | Split list -> list |> List.mapi (fun i qw -> if i = idx then txt else qw) |> Split
+         }
+    member x.GetQwText idx =
+        match x.Question with
+        | Solid qw -> qw
+        | Split list -> list |> List.tryItem idx |> Option.defaultValue ""
+    member x.LastQwIdx =
+        match x.Question with
+        | Solid _ -> 0
+        | Split list -> list.Length - 1
+    static member InitEmpty qwCount =
+        {
+            Question =
+                match qwCount with
+                | 1 -> Solid ""
+                | n -> List.init n (fun i -> "") |> Split
+            ImgKey=""
+            Answer=""
+            Comment=""
+            CommentImgKey=""
+            Points = 1m
+            Jeopardy = false
+        }
+
+
 type PackageRecord = {
     PackageId : int
     Name : string
@@ -145,46 +221,10 @@ type PackageCard = {
     Slips : Slip list
 }
  with
-    member x.GetSlip idx =
-        if idx >= 0 && idx <x.Slips.Length then
-            Some (x.Slips.Item(idx))
-        else None
-    member x.UpdateSlip idx slip =
-        {x with
-            Slips = x.Slips |> List.mapi (fun i q -> if idx = i then slip else q)
-        }
-    member x.AddSingleSlip qwCount =
-        {x with
-            Slips = x.Slips @ [Single{Questions= (List.init qwCount (fun i -> ""));ImgKey="";Answer="";Comment="";CommentImgKey=""}]
-        }
-    member x.DelSlip idx =
-        {x with
-            Slips = x.Slips
-                |> List.indexed
-                |> List.choose (fun (i, s) -> if idx = i then None else Some s)
-        }
-
-type Slip =
-    | Single of SingleAwSlip
-with
-    member x.Text =
-        match x with
-        | Single slip -> slip.Questions |> String.concat "\n"
-    member x.LastQwIdx =
-        match x with
-        | Single slip -> (slip.Questions |> List.length) - 1
-
-type SingleAwSlip = {
-    Questions : string list
-    ImgKey : string
-    Answer : string
-    Comment : string
-    CommentImgKey : string
-} with
-    member x.SetQwText idx txt =
-        {x with Questions = x.Questions |> List.mapi (fun i qw -> if i = idx then txt else qw)}
-    member x.GetQwText idx =
-        x.Questions |> List.tryItem idx |> Option.defaultValue ""
+    member x.GetSlip idx = x.Slips |> List.tryItem idx
+    member x.AppendSlip slip = {x with Slips = x.Slips @ [slip]}
+    member x.UpdateSlip idx slip = {x with Slips = x.Slips |> List.mapi (fun i q -> if idx = i then slip else q)}
+    member x.DelSlip idx = {x with Slips = x.Slips |> List.indexed |> List.choose (fun (i, s) -> if idx = i then None else Some s) }
 
 type TeamResult = {
     TeamId : int
@@ -192,11 +232,11 @@ type TeamResult = {
     Points : decimal
     PlaceFrom : int
     PlaceTo : int
-    History : Map<int, decimal>
+    History : Map<QwKey, decimal>
 }
 
 type QuestionResult = {
-    Idx : int
+    Key : QwKey
     Name : string
 }
 
@@ -323,17 +363,19 @@ module AdminModels =
     }
 
     type QuestionRecord = {
-        Idx : int
+        Key : QwKey
         Nm : string
         Sec : int
-        QQS : TourStatus
+        TS : TourStatus
         ST : System.DateTime option
+        Pt : decimal
+        Jpd : bool
     }
 
     type TeamAnswersRecord = {
         Id : int
         Nm : string
-        Awrs : Map<int,Answer>
+        Awrs : Map<QwKey,Answer>
     } with
         member x.GetAw idx =
             match x.Awrs.TryGetValue idx with
@@ -346,6 +388,8 @@ module AdminModels =
         Questions : QuestionRecord list
         Teams : TeamAnswersRecord list
     } with
+        member x.GetQw idx =
+            x.Questions |> List.tryFind (fun qw -> qw.Key = idx)
         member x.GetAw teamId idx =
             match x.Teams |> List.tryFind (fun t -> t.Id = teamId) with
             | Some team -> team.GetAw idx
@@ -408,7 +452,7 @@ module AudModels =
             | Finished | Archived -> x.Fwl
 
     type HistoryRecord = {
-        QwIdx : int
+        QwKey : QwKey
         QwName : string
         QwAw : string
     }
@@ -469,14 +513,14 @@ type IAdminApi = {
     nextTour : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
     nextQuestion : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     getAnswers : REQ<unit> -> ARESP<AdminModels.AnswersBundle>
-    updateResults : REQ<{|TeamId: int; Idx: int; Res: decimal option |} list> -> ARESP<unit>
+    updateResults : REQ<{|TeamId: int; QwKey: QwKey; Res: decimal option |} list> -> ARESP<unit>
     getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
 }
 
 type ITeamApi = {
     getState : REQ<unit> -> ARESP<TeamModels.QuizCard>
     takeActiveSession : REQ<unit> -> ARESP<TeamModels.QuizCard>
-    answer : REQ<{|QwIndex:int; Answer:string|}> -> ARESP<unit>
+    answer : REQ<{|QwKey:QwKey; Answer:string|}> -> ARESP<unit>
     getHistory : REQ<unit> -> ARESP<TeamModels.TeamHistoryRecord list>
     getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
 }
