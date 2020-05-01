@@ -97,11 +97,20 @@ type TourStatus =
     | Countdown
     | Settled
 
-type SingleAwSlipCard = {
+type SlipQwCard = {
+    Txt : string
+    Img : string
+}
+
+type SlipAwCard = {
     Txt : string
     Img : string
     Com : string
 }
+type SingleSlipCard =
+    | X3
+    | QW of SlipQwCard
+    | AW of SlipAwCard
 
 type QwKey  = {
     TourIdx : int
@@ -109,11 +118,17 @@ type QwKey  = {
 }
 
 type SlipCard =
-    | SingleSlipCard of SingleAwSlipCard
+    | SS of SingleSlipCard
+    | MS of name:string * slips:SingleSlipCard list
+    with
+        member x.QwCount =
+            match x with
+            | SS _ -> 1
+            | MS (_,slips) -> slips.Length
 
 type TourCard = {
     Idx : int
-    Cap : string
+    Name : string
     Sec : int
     TS : TourStatus
     Slip : SlipCard
@@ -132,6 +147,12 @@ type TourCard = {
         | Some _ when x.TS = Countdown -> x.SecondsLeft now > 0
         | _ -> false
 
+    member x.IsCountdownFinished now =
+        match x.ST with
+        | Some _ when x.TS = Countdown -> x.SecondsLeft now = 0
+        | _ when x.TS = Settled -> true
+        | _ -> false
+
 type QuizChangedEvent = {
     Id : int
     QS : QuizStatus
@@ -148,8 +169,12 @@ with
         | Multiple (name,_) -> name
     member x.LastQwIdx =
         match x with
-        | Single slip -> slip.LastQwIdx
-        | Multiple (name,slips) -> slips.Length - 1
+        | Single slip -> 0
+        | Multiple (_,slips) -> slips.Length - 1
+    member x.LastQwPartIdx qwIdx=
+        match x with
+        | Single slip -> slip.LastPartIdx
+        | Multiple (_,slips) -> slips |> List.tryItem qwIdx |> Option.map (fun slip -> slip.LastPartIdx) |> Option.defaultValue 0
     member x.SetMultipleName name =
         match x with
         | Single _ -> x
@@ -190,7 +215,7 @@ type SingleAwSlip = {
         match x.Question with
         | Solid qw -> qw
         | Split list -> list |> List.tryItem idx |> Option.defaultValue ""
-    member x.LastQwIdx =
+    member x.LastPartIdx =
         match x.Question with
         | Solid _ -> 0
         | Split list -> list.Length - 1
@@ -328,7 +353,8 @@ module AdminModels =
         Name : string
         Seconds : int
         Status : TourStatus
-        NextQwIdx : int
+        QwIdx : int
+        QwPartIdx : int
         Slip : Slip
         StartTime : System.DateTime option
     }
@@ -343,8 +369,12 @@ module AdminModels =
 
         member x.IsCoundownActive now =
             x.Status = Countdown && x.SecondsLeft now > 0
-        member x.IsLastQuestion =
-            x.NextQwIdx >= x.Slip.LastQwIdx
+
+        member x.IsLastPart =
+            x.QwPartIdx >= (x.Slip.LastQwPartIdx x.QwIdx)
+
+        member x.IsLastQuestionAndPart =
+            x.QwIdx >= x.Slip.LastQwIdx && x.QwPartIdx >= (x.Slip.LastQwPartIdx x.QwIdx)
 
 
     type QuizControlCard = {
@@ -416,7 +446,7 @@ module TeamModels =
         Wcm : string
         Fwl : string
         TC : TourCard option
-        Aw : string option
+        Aw : Map<int,string>
         LT : string
         Mxlr : int option
         V : int
@@ -512,6 +542,7 @@ type IAdminApi = {
     settleTour : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
     nextTour : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
     nextQuestion : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
+    nextQuestionPart : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     getAnswers : REQ<unit> -> ARESP<AdminModels.AnswersBundle>
     updateResults : REQ<{|TeamId: int; QwKey: QwKey; Res: decimal option |} list> -> ARESP<unit>
     getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
@@ -520,7 +551,7 @@ type IAdminApi = {
 type ITeamApi = {
     getState : REQ<unit> -> ARESP<TeamModels.QuizCard>
     takeActiveSession : REQ<unit> -> ARESP<TeamModels.QuizCard>
-    answer : REQ<{|QwKey:QwKey; Answer:string|}> -> ARESP<unit>
+    answers : REQ<Map<QwKey,string>> -> ARESP<unit>
     getHistory : REQ<unit> -> ARESP<TeamModels.TeamHistoryRecord list>
     getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
 }

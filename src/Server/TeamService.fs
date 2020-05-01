@@ -29,7 +29,7 @@ let api (context:HttpContext) : ITeamApi =
     let api : ITeamApi = {
         takeActiveSession = SecurityService.execute logger "takeActiveSession" <| SecurityService.authorizeTeam secret takeActiveSession
         getState = ex "getState" getState
-        answer = ex "answer" answer
+        answers = ex "answer" answers
         getHistory = ex "getHistory" getHistory
         getResults = ex "getResults" getResults
     }
@@ -55,9 +55,11 @@ let takeActiveSession (sessionId:int) (teamKey:Domain.TeamKey) req =
         return Teams.quizCard quiz team
     }
 
-let answer team req =
+let answers team req =
     let logic (team:Domain.Team) =
-        team |> Domain.Teams.registerAnswer (qwKeyToDomain req.QwKey) req.Answer DateTime.UtcNow
+        let now = DateTime.UtcNow
+        req |> Map.toList
+        |> List.fold (fun team (qwKey,aw) -> team |> Result.bind (Domain.Teams.registerAnswer (qwKeyToDomain qwKey) aw now)) (Ok team)
 
     match team.Status with
     | Domain.Admitted ->

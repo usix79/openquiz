@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.8.0 - 2020-05-01
+
+* Added points value for a question
+* Added jeopardy flag (team loses points in case of wrong answers)
+* Added support of several questions in a slip
+
 ## 0.7.0 - 2020-04-28
 
 * Added support of doublets and blitzes

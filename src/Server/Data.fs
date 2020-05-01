@@ -328,14 +328,15 @@ module Quizzes =
 
         let toursEntry = DynamoDBList()
         for tour in quiz.Tours do
-             let tourItem = Document()
-             tourItem.["Name"] <- v2.ConvertToEntry tour.Name
-             tourItem.["Seconds"] <- v2.ConvertToEntry tour.Seconds
-             tourItem.["Status"] <- v2.ConvertToEntry <| tour.Status.ToString()
-             tourItem.["Slip"] <- documentOfSlip tour.Slip
-             tourItem.["StartTime"] <- entryOfOption tour.StartTime
-             tourItem.["QwIdx"] <- v2.ConvertToEntry tour.NextQwIdx
-             toursEntry.Add(tourItem)
+            let tourItem = Document()
+            tourItem.["Name"] <- v2.ConvertToEntry tour.Name
+            tourItem.["Seconds"] <- v2.ConvertToEntry tour.Seconds
+            tourItem.["Status"] <- v2.ConvertToEntry <| tour.Status.ToString()
+            tourItem.["Slip"] <- documentOfSlip tour.Slip
+            tourItem.["StartTime"] <- entryOfOption tour.StartTime
+            tourItem.["QwIdx"] <- v2.ConvertToEntry tour.QwIdx
+            tourItem.["QwPartIdx"] <- v2.ConvertToEntry tour.QwPartIdx
+            toursEntry.Add(tourItem)
 
         gameItem.["Questions"] <- toursEntry
         gameItem.["Version"] <- v2.ConvertToEntry quiz.Version
@@ -380,7 +381,8 @@ module Quizzes =
             Name = stringOfDoc tourDoc "Name"
             Seconds = tourDoc.["Seconds"].AsInt()
             Status = defaultArg (fromString (stringOfDoc tourDoc "Status")) Announcing
-            NextQwIdx = optionOfEntry tourDoc "QwIdx" |> Option.defaultValue 0
+            QwIdx = optionOfEntry tourDoc "QwIdx" |> Option.defaultValue 0
+            QwPartIdx = optionOfEntry tourDoc "QwPartIdx" |> Option.defaultValue 0
             StartTime = optionOfEntry tourDoc "StartTime"
             Slip =
                 match tourDoc.TryGetValue "Slip" with

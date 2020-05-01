@@ -72,7 +72,7 @@ let view (dispatch : Msg -> unit) (user:AdminUser) (model : Model) =
                         th [ ] [ str "Id" ]
                         th [ ] [ str "Team" ]
                         if (model.IsDetailed) then
-                            yield! [for qw in model.Questions |> List.sortBy (fun qw -> qw.Key) ->  th [] [str qw.Name]]
+                            yield! [for qw in model.Questions ->  th [] [str qw.Name]]
                         th [ ] [ str "Points" ]
                         th [ ] [ str "Place" ]
                     ]

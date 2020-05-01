@@ -129,7 +129,13 @@ let quizView (dispatch : Msg -> unit) (model:Model) (quiz:QuizCard) =
                 | History -> yield historyView dispatch model
                 | Question ->
                     match quiz.QS with
-                    | Live -> yield MainTemplates.playTour quiz.TC
+                    | Live ->
+                        match quiz.TC with
+                        | Some tour ->
+                            match tour.Slip with
+                            | SS slip ->  yield MainTemplates.singleTourInfo tour.Name slip
+                            | MS (name,slips) -> yield multipleQwView tour name slips
+                        | None -> ()
                     | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg
                 | Results -> yield MainTemplates.resultsView None model.TeamResults
 
@@ -140,6 +146,32 @@ let quizView (dispatch : Msg -> unit) (model:Model) (quiz:QuizCard) =
 
         MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
     ]
+
+let multipleQwView tour name slips =
+    div [][
+        h5 [Class "subtitle is-5"] [str name]
+        for (idx,slip) in slips |> List.indexed do
+            match slip with
+            | QW slip ->
+                p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
+                yield! MainTemplates.imgEl slip.Img
+                p [] (splitByLines slip.Txt)
+                br[]
+                br[]
+
+            | AW slip ->
+                p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
+                p [Class "has-text-weight-light is-family-secondary is-size-6"][
+                    str "correct answer: "
+                    str (slip.Txt.Split('\n').[0])
+                ]
+                yield! MainTemplates.imgEl slip.Img
+                p [Class "is-italic has-text-weight-light is-family-secondary is-size-7"] (splitByLines slip.Com)
+                br[]
+
+            | X3 -> str "x3"
+    ]
+
 
 let historyView dispatch model =
     table [Class "table is-hoverable is-fullwidth"][
@@ -152,7 +184,7 @@ let historyView dispatch model =
         ]
 
         tbody [ ] [
-            for aw in model.History |> List.sortByDescending (fun aw -> aw.QwKey)  do
+            for aw in model.History |> List.rev do
 
                 tr [ ][
                     td [] [p [][str aw.QwName]]

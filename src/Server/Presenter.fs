@@ -8,7 +8,7 @@ let quizStatus (status : QuizStatus) : Shared.QuizStatus=
     | Draft -> Shared.QuizStatus.Draft
     | Published -> Shared.QuizStatus.Published
     | Live -> Shared.QuizStatus.Live
-    | QuizStatus.Finished -> Shared.QuizStatus.Finished
+    | Finished -> Shared.QuizStatus.Finished
     | Archived -> Shared.QuizStatus.Archived
 
 let quizStatusToDomain (status : Shared.QuizStatus) =
@@ -21,9 +21,9 @@ let quizStatusToDomain (status : Shared.QuizStatus) =
 
 let tourStatus (status : QuizTourStatus) : Shared.TourStatus=
     match status with
-    | Announcing -> Shared.TourStatus.Announcing
-    | Countdown -> Shared.TourStatus.Countdown
-    | Settled -> Shared.TourStatus.Settled
+    | Announcing -> TourStatus.Announcing
+    | Countdown -> TourStatus.Countdown
+    | Settled -> TourStatus.Settled
 
 let teamStatus (status : TeamStatus) : Shared.TeamStatus=
     match status with
@@ -71,6 +71,11 @@ let questionTextToDomain = function
     | Shared.Solid qw -> Solid qw
     | Shared.Split list -> Split list
 
+let qwName tour qwIdx =
+    match tour.Slip with
+    | Single _ -> tour.Name
+    | _ -> sprintf "%s.%i" tour.Name (qwIdx + 1)
+
 let singleAwSlip (slip:SingleAwSlip) : Shared.SingleAwSlip =
     {
         Question = questionText slip.Question
@@ -107,44 +112,42 @@ let quizChangeEvent (quiz:Quiz) =
         Id = quiz.Dsc.QuizId
         QS = quizStatus quiz.Dsc.Status
         T = match quiz.CurrentTour with
-             | Some qw -> Some <| tourCard quiz.CurrentTourIndex qw
+             | Some tour -> Some <| tourCard quiz.CurrentTourIndex tour
              | None -> None
     }
 
 let tourCard idx (tour:QuizTour) : TourCard =
     {
         Idx = idx
-        Cap = tour.Name
+        Name = tour.Name
         Sec = tour.Seconds
         TS = tourStatus tour.Status
-        Slip = slipCard tour.Status tour.NextQwIdx tour.Slip
+        Slip = slipCard tour.Status tour.QwIdx tour.QwPartIdx tour.Slip
         ST = tour.StartTime
     }
 
-let qwText nextQwIdx = function
+let qwText nextQwPartIdx = function
     | Solid qw -> qw
-    | Split list -> list |> List.take nextQwIdx |> List.mapi (fun idx qw -> sprintf "%i. %s" (idx + 1) qw) |> String.concat "\n"
+    | Split list -> list |> List.take (max 0 nextQwPartIdx) |> List.mapi (fun idx qw -> sprintf "%i. %s" (idx + 1) qw) |> String.concat "\n"
 
-let slipCard status nextQwIdx (slip:Slip) : SlipCard =
+let slipSingleCard status qwPartIdx (slip:SingleAwSlip) : SingleSlipCard =
+    match status with
+    | Announcing when qwPartIdx = 0 -> X3
+    | Announcing -> {Txt=slip.Question |> qwText qwPartIdx; Img=slip.ImgKey} |> QW
+    | Countdown -> {Txt=slip.Question |> qwText slip.QuestionsCount; Img=slip.ImgKey} |> QW
+    | Settled -> {Txt=slip.Answer; Com = slip.Comment;  Img=slip.CommentImgKey} |> AW
+
+let slipCard status qwIdx qwPartIdx (slip:Slip) : SlipCard =
     match slip with
-    | Single s ->
-        Shared.SingleSlipCard {
-            Txt =
-                match status with
-                | Announcing
-                | Countdown -> s.Question |> qwText nextQwIdx
-                | Settled -> s.Answer
-            Img =
-                match status with
-                | Announcing -> ""
-                | Countdown -> s.ImgKey
-                | Settled -> s.CommentImgKey
-            Com =
-                match status with
-                | Settled -> s.Comment
-                | _ -> ""
-        }
-    | Multiple (name,slips) -> slips.Head |> Single |> slipCard status nextQwIdx
+    | Single slip ->
+        let qwPartIdx = if status = Announcing then qwPartIdx else slip.QuestionsCount - 1
+        slipSingleCard status qwPartIdx slip |> SS
+    | Multiple (name,slips) ->
+        let cards =
+            if status = Announcing then slips |> List.take qwIdx else slips
+            |> List.map (fun s -> s |> slipSingleCard status s.QuestionsCount)
+        // TODO: add next slip if qwPartIdx > 0
+        (name,cards) |> MS
 
 let teamResults withHistory (teams: Team list) : TeamResult list =
     let mutable currentPlace = 1
@@ -166,7 +169,11 @@ let teamResults withHistory (teams: Team list) : TeamResult list =
 let questionResults (quiz:Quiz) : QuestionResult list =
     quiz.Tours
     |> List.rev
-    |> List.mapi (fun idx qw -> {Key = {TourIdx = idx; QwIdx = 0}; Name = qw.Name})
+    |> List.mapi (fun tourIdx tour ->
+        match tour.Slip with
+        | Single _ -> [{Key = {TourIdx = tourIdx; QwIdx = 0}; Name = qwName tour 0}]
+        | Multiple (_, slips) -> slips |> List.mapi (fun idx slip -> {Key = {TourIdx = tourIdx; QwIdx = idx}; Name = qwName tour idx})
+    )|> List.concat
 
 let history (team : Team) =
     team.Answers
@@ -261,7 +268,8 @@ module Admin =
             Status = tourStatus tour.Status
             StartTime = tour.StartTime
             Slip = slip tour.Slip
-            NextQwIdx = tour.NextQwIdx
+            QwIdx = tour.QwIdx
+            QwPartIdx = tour.QwPartIdx
         }
 
     let teamAnswersRecord (team:Team) : AdminModels.TeamAnswersRecord =
@@ -278,34 +286,26 @@ module Admin =
                 )|> Map.ofList
         }
 
+    let qwRecord tourIdx tour qwIdx slip : AdminModels.QuestionRecord =
+        {
+            Key = {TourIdx = tourIdx; QwIdx = qwIdx}
+            Nm = qwName tour qwIdx
+            Sec = tour.Seconds
+            TS = tourStatus tour.Status
+            ST = tour.StartTime
+            Pt = slip.Points
+            Jpd = slip.Jeopardy
+        }
+
     let questionRecords  (quiz:Quiz) : AdminModels.QuestionRecord list =
         quiz.Tours
         |> List.rev
-        |> List.mapi (fun idx tour ->
+        |> List.mapi (fun tourIdx tour ->
             match tour.Slip with
-            | Single slip ->
-                {
-                    Key = {TourIdx = idx; QwIdx = 0}
-                    Nm = tour.Name
-                    Sec = tour.Seconds
-                    TS = tourStatus tour.Status
-                    ST = tour.StartTime
-                    Pt = slip.Points
-                    Jpd = slip.Jeopardy
-                }
-            | Multiple (name,slips) ->
-                let slip = slips.Head
-                {
-                    Key = {TourIdx = idx; QwIdx = 0}
-                    Nm = tour.Name
-                    Sec = tour.Seconds
-                    TS = tourStatus tour.Status
-                    ST = tour.StartTime
-                    Pt = slip.Points
-                    Jpd = slip.Jeopardy
-                }
-        )
-
+            | Single slip -> [qwRecord tourIdx tour 0 slip]
+            | Multiple (_,slips) ->
+                slips |> List.mapi (fun idx slip -> qwRecord tourIdx tour idx slip)
+        )|> List.concat
 
     let AnswersBundle (quiz:Quiz) (teams:Team list): AdminModels.AnswersBundle =
         {
@@ -324,12 +324,13 @@ module Teams =
             Fwl = quiz.Dsc.FarewellText
             TC =
                 match quiz.CurrentTour with
-                | Some qw when quiz.Dsc.Status = Live -> Some <| tourCard quiz.CurrentTourIndex qw
+                | Some tour when quiz.Dsc.Status = Live -> Some <| tourCard quiz.CurrentTourIndex tour
                 | _ -> None
             Aw =
-                match team.GetAnswer {TourIdx =quiz.CurrentTourIndex; QwIdx = 0} with
-                | Some aw when quiz.Dsc.Status = Live -> Some aw.Text
-                | _ -> None
+                match quiz.Dsc.Status with
+                | Live -> team.SelectAnswers quiz.CurrentTourIndex |> List.map (fun (key,aw) -> (key.QwIdx,aw.Text)) |> Map.ofList
+                | _ -> Map.empty
+
             LT = quiz.Dsc.ListenToken
             Mxlr = quiz.Dsc.MixlrCode
             V = quiz.Version
@@ -345,7 +346,7 @@ module Teams =
                 let r =
                     {
                         QwIdx = idx
-                        QwName = tour.Name
+                        QwName = qwName tour awIdx
                         QwAw =
                             if idx = quiz.CurrentTourIndex then
                                 match tour.Status with
@@ -407,7 +408,7 @@ module Audience =
             |> List.mapi (fun awIdx aw ->
                 {
                     QwKey = {TourIdx = idx; QwIdx = awIdx}
-                    QwName = tour.Name
+                    QwName = qwName tour awIdx
                     QwAw =
                         if idx = quiz.CurrentTourIndex then
                             match tour.Status with
@@ -416,5 +417,5 @@ module Audience =
                         else
                             aw
                 } : AudModels.HistoryRecord
-            )
+            ) |> List.rev
         ) |> List.concat

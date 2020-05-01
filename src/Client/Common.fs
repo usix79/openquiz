@@ -392,6 +392,7 @@ module Infra =
                 settleTour = x.Wrap adminApi.settleTour
                 nextTour = x.Wrap adminApi.nextTour
                 nextQuestion = x.Wrap adminApi.nextQuestion
+                nextQuestionPart = x.Wrap adminApi.nextQuestionPart
                 getAnswers = x.Wrap adminApi.getAnswers
                 updateResults = x.Wrap adminApi.updateResults
                 getResults = x.Wrap adminApi.getResults
@@ -401,7 +402,7 @@ module Infra =
             {
                 getState = x.Wrap teamApi.getState
                 takeActiveSession = x.Wrap teamApi.takeActiveSession
-                answer = x.Wrap teamApi.answer
+                answers = x.Wrap teamApi.answers
                 getHistory = x.Wrap teamApi.getHistory
                 getResults = x.Wrap teamApi.getResults
             }

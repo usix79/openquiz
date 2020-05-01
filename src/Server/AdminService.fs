@@ -49,6 +49,7 @@ let api (context:HttpContext) : IAdminApi =
         settleTour = ex "settleTour" settleTour
         nextTour = ex "nextTour" nextTour
         nextQuestion = ex "nextQuestion" nextQuestion
+        nextQuestionPart = ex "nextQuestionPart" nextQuestionPart
         getAnswers = ex "getAnswers" getAnswers
         updateResults = ex "updateResults" updateResults
         getResults = ex "getResults" getResults
@@ -174,8 +175,23 @@ let nextQuestion quiz req =
     let logic quiz =
         match req.CurrentTour with
         | Some tour ->
-            quiz |> Domain.Quizzes.update tour.Name tour.Seconds req.PackageSlipIdx (slipToDomain tour.Slip)
-            |> Domain.Quizzes.setQuestionIdx (tour.NextQwIdx + 1)
+            quiz
+            |> Domain.Quizzes.update tour.Name tour.Seconds req.PackageSlipIdx tour.QwIdx tour.QwPartIdx (slipToDomain tour.Slip)
+            |> Domain.Quizzes.nextQuestion
+        | None -> Error "Question is empty"
+
+    result{
+        let! quiz = CommonService.updateQuiz quiz.QuizId logic
+        return Admin.quizCard quiz
+    }
+
+let nextQuestionPart quiz req =
+    let logic quiz =
+        match req.CurrentTour with
+        | Some tour ->
+            quiz
+            |> Domain.Quizzes.update tour.Name tour.Seconds req.PackageSlipIdx tour.QwIdx tour.QwPartIdx (slipToDomain tour.Slip)
+            |> Domain.Quizzes.nextQuestionPart
         | None -> Error "Question is empty"
 
     result{
@@ -187,7 +203,8 @@ let startCountDown quiz req =
     let logic quiz =
         match req.CurrentTour with
         | Some tour ->
-            quiz |> Domain.Quizzes.update tour.Name tour.Seconds req.PackageSlipIdx (slipToDomain tour.Slip)
+            quiz
+            |> Domain.Quizzes.update tour.Name tour.Seconds req.PackageSlipIdx tour.QwIdx tour.QwPartIdx (slipToDomain tour.Slip)
             |> Domain.Quizzes.startCountdown DateTime.UtcNow
         | None -> Error "Question is empty"
 
@@ -224,20 +241,25 @@ let settleAnswers (quiz : Domain.Quiz) =
         |> List.fold (fun team item -> team |> Domain.Teams.settleAnswer item.Idx item.Jury item.Points item.Jeopardy now) team
         |> Ok
 
+    let createItem (slip:Domain.SingleAwSlip) qwIdx =
+        if not (String.IsNullOrWhiteSpace slip.Answer) then
+            let key = {Domain.QwKey.TourIdx = quiz.CurrentTourIndex; Domain.QwKey.QwIdx = qwIdx}
+            Some {Idx = key ; Jury = (Jury.jury slip.Answer); Points = slip.Points; Jeopardy = slip.Jeopardy}
+        else
+            None
+
     match quiz.CurrentTour with
     | Some tour ->
-        match tour.Slip with
-        | Domain.Single slip ->
-            if slip.Answer <> "" then
-                let key = {Domain.TourIdx = quiz.CurrentTourIndex; Domain.QwIdx = 0}
-                let item = {Idx = key ; Jury = (Jury.jury slip.Answer); Points = slip.Points; Jeopardy = slip.Jeopardy}
-                async {
-                    for teamId in Data.Teams.getIds quiz.Dsc.QuizId do
-                        CommonService.updateTeamNoReply {QuizId = quiz.Dsc.QuizId; TeamId = teamId} (logic [item])
-                } |> Async.Start
-            else ()
-        | Domain.Multiple (_, slips) ->
-            ()
+        let items =
+            match tour.Slip with
+            | Domain.Single slip -> [createItem slip 0]
+            | Domain.Multiple (_, slips) -> slips |> List.mapi (fun idx slip -> createItem slip idx)
+            |> List.choose id
+
+        async {
+            for teamId in Data.Teams.getIds quiz.Dsc.QuizId do
+                CommonService.updateTeamNoReply {QuizId = quiz.Dsc.QuizId; TeamId = teamId} (logic items)
+        } |> Async.Start
 
     | _ -> ()
 

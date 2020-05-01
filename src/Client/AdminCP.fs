@@ -23,6 +23,7 @@ type Msg =
     | SelectSlipIdx of string
     | UpdateTourName of string
     | UpdateTourSeconds of string
+    | UpdateSlipName of string
     | UpdateQwText of key:QwKey * txt:string
     | UpdateQwTextPart of key:QwKey * partIdx:int * txt:string
     | UpdateQwAnswer of key:QwKey * txt:string
@@ -36,6 +37,7 @@ type Msg =
     | QwCommentImgClear of key:QwKey
     | UploadQwCommentImgResp of TRESP<QwKey,{|BucketKey:string|}>
     | NextQw
+    | NextQwPart
     | Start
     | Tick
     | Pause
@@ -90,7 +92,7 @@ let setSlipIdx txt model =
             |> updateCard (fun q -> {q with PackageSlipIdx = if id <> -1 then Some id else None})
             |> (fun model ->
                     match pkg.GetSlip id with
-                    | Some slip -> model |> updateTour (fun q -> {q with Slip = slip; NextQwIdx = 0})
+                    | Some slip -> model |> updateTour (fun q -> {q with Slip = slip; QwIdx = 0; QwPartIdx = 0})
                     | None -> model
             )
         | None -> model
@@ -155,6 +157,7 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | PackagesCardResp {Value = Ok res} -> {cm with Package = res} |> editing |> noCmd
     | UpdateTourName txt -> cm |> updateTour (fun qw -> {qw with Name = txt}) |> noCmd
     | UpdateTourSeconds txt -> cm |> updateTour (fun qw -> {qw with Seconds = Int32.Parse txt}) |> noCmd
+    | UpdateSlipName txt -> cm |> updateTour (fun qw -> {qw with Slip = match qw.Slip with Single _ -> qw.Slip | Multiple (name,slips) -> (txt,slips)|>Multiple}) |> noCmd
     | UpdateQwText (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Question = Solid txt}) |> noCmd
     | UpdateQwTextPart (key,partIdx,txt) -> cm |> updateSlip key (fun slip -> slip.SetQwText partIdx txt) |> noCmd
     | UpdateQwAnswer (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Answer = txt}) |> noCmd
@@ -168,6 +171,7 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | QwCommentImgChanged res -> cm |> uploadFile api (taggedMsg UploadQwCommentImgResp res.Tag) res.Type res.Body
     | UploadQwCommentImgResp {Tag = key; Rsp = {Value = Ok res}} -> cm |> updateSlip key (fun slip -> {slip with CommentImgKey = res.BucketKey}) |> noCmd
     | NextQw -> cm |> loading |> apiCmd api.nextQuestion cm.Quiz.Value QuizCardResp Exn
+    | NextQwPart -> cm |> loading |> apiCmd api.nextQuestionPart cm.Quiz.Value QuizCardResp Exn
     | Start -> cm |> loading |> apiCmd api.startCountDown cm.Quiz.Value QuizCardResp Exn
     | Tick -> cm |> noCmd |> scheduleTick
     | Pause -> cm |> loading |> apiCmd api.pauseCountDown () QuizCardResp Exn
@@ -292,7 +296,7 @@ let qwInput dispatch placeholder txt key partIdx anounced =
     div [Class "control has-icons-left has-icons-right"; Style [MarginBottom "3px"]][
         input [Class "input"; Type "text"; Placeholder placeholder; ReadOnly anounced;
             valueOrDefault txt; MaxLength 256.0; OnChange (fun ev -> UpdateQwTextPart (key,partIdx,ev.Value) |> dispatch)]
-        span [Class "icon is-left"][str (sprintf "%i" (key.QwIdx + 1))]
+        span [Class "icon is-left"][str (sprintf "%i" (partIdx + 1))]
         if (anounced) then
             span [Class "icon is-right"][Fa.i [Fa.Solid.Check][]]
     ]
@@ -313,13 +317,14 @@ let cmtTextArea dispatch key txt isReadOnly =
         ]
     ]
 
-let singleSlipEl dispatch (key:QwKey) (slip:SingleAwSlip) nextQwIdx isReadOnly =
+let singleSlipEl dispatch status (qwIdx:int) (slip:SingleAwSlip) nextQwPartIdx isReadOnly =
+    let key = {TourIdx = -1; QwIdx = qwIdx}
     div [][
 
         label [Class "label"][str "Points"]
         div [Class "field is-grouped"][
             div [Class "control"][
-                input [Class "input"; Type "number"; Disabled isReadOnly; valueOrDefault slip.Points; OnChange (fun ev -> dispatch <| UpdateQwPoints (key,ev.Value) )]
+                input [Class "input"; Style[Width "80px"]; Type "number"; Disabled isReadOnly; valueOrDefault slip.Points; OnChange (fun ev -> dispatch <| UpdateQwPoints (key,ev.Value) )]
             ]
             label [Class "checkbox"][
                 input [Type "checkbox";
@@ -334,7 +339,7 @@ let singleSlipEl dispatch (key:QwKey) (slip:SingleAwSlip) nextQwIdx isReadOnly =
             div [Class "field"][
                 label [Class "label"][str "Questions Text"]
                 for (idx,qw) in list |> List.indexed do
-                    qwInput dispatch (sprintf "Question %i" (idx + 1)) qw key idx (idx < nextQwIdx)
+                    qwInput dispatch (sprintf "Question part %i" (idx + 1)) qw key idx (idx < nextQwPartIdx || status <> Announcing)
             ]
 
         yield! MainTemplates.imgArea key isReadOnly (QwImgChanged >> dispatch) (fun () -> dispatch (QwImgClear key))  slip.ImgKey "" "Clear"
@@ -345,12 +350,40 @@ let singleSlipEl dispatch (key:QwKey) (slip:SingleAwSlip) nextQwIdx isReadOnly =
         yield! MainTemplates.imgArea key isReadOnly (QwCommentImgChanged >> dispatch) (fun () -> dispatch (QwCommentImgClear key))   slip.CommentImgKey "" "Clear"
     ]
 
+let multipleSlipEl dispatch status (name:string) (slips:SingleAwSlip list) nextQwIdx nextQwPartIdx isReadOnly =
+    div[][
+        div [Class "control"][
+            label [Class "label"][str "Tour Name"]
+            input [Class "input"; Type "text"; Disabled isReadOnly;  valueOrDefault name; OnChange (fun ev -> dispatch <| UpdateSlipName ev.Value)]
+        ]
+        br[]
+        div [Class "table-container"; Style[Width "800px"]][
+
+            table [Class "table"][
+                thead[][
+                    tr[][
+                        for n in 1 .. slips.Length do
+                            th [][str <| sprintf "Question %i" n]
+                    ]
+                ]
+                tbody [][
+                    tr[][
+                        for (idx,slip) in slips |> List.indexed do
+                            td [classList ["has-background-success", idx = nextQwIdx ]][
+                                singleSlipEl dispatch status idx slip 0 (isReadOnly || (idx < nextQwIdx))
+                            ]
+                    ]
+                ]
+            ]
+        ]
+    ]
+
 let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) timeDiff isReadOnly isLoading isLastQw =
 
     div[][
         div [Class "field is-grouped"][
             div [Class "control"][
-                label [Class "label is-large"][str "Slip"]
+                label [Class "label is-large"][str "#"]
                 input [Class "input is-large"; Type "text"; Disabled isReadOnly;  valueOrDefault tour.Name; OnChange (fun ev -> dispatch <| UpdateTourName ev.Value)]
             ]
 
@@ -371,8 +404,9 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) ti
             button [Class "button is-large is-fullwidth"; Disabled isLoading; OnClick (fun _ -> dispatch msg)][str caption]
 
         match tour.Status, tour.SecondsLeft (serverTime timeDiff) with
-        | Announcing, _  when tour.IsLastQuestion-> ctrlBtn Start "Start Countdown"
-        | Announcing, _  -> ctrlBtn NextQw (sprintf "Show Question %i" (tour.NextQwIdx + 1))
+        | Announcing, _  when tour.IsLastQuestionAndPart -> ctrlBtn Start "Start Countdown"
+        | Announcing, _  when not tour.IsLastPart -> ctrlBtn NextQwPart (sprintf "Show Question Part %i" (tour.QwPartIdx + 1))
+        | Announcing, _  -> ctrlBtn NextQw (sprintf "Show Question %i" (tour.QwIdx + 1))
         | Countdown, sec when sec > 0 -> ctrlBtn Pause "Reset Countdown"
         | Countdown, _ -> ctrlBtn Settle "Show answer"
         | Settled, _ when isLastQw -> ctrlBtn (ChangeStatus (Finished.ToString())) "Finish"
@@ -381,6 +415,6 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) ti
         hr[Class "has-background-grey"]
 
         match tour.Slip with
-        | Single slip -> singleSlipEl dispatch {TourIdx = -1; QwIdx = 0} slip tour.NextQwIdx isReadOnly
-        | Multiple (name,slips) -> ()
+        | Single slip -> singleSlipEl dispatch tour.Status 0 slip tour.QwPartIdx isReadOnly
+        | Multiple (name,slips) -> multipleSlipEl dispatch tour.Status name slips tour.QwIdx tour.QwPartIdx isReadOnly
     ]

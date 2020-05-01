@@ -137,23 +137,23 @@ let playQuiz status msg =
         p [] (splitByLines msg)
      ]
 
-let playTour (tour:Shared.TourCard option) =
+let singleTourInfo tourName (slip:Shared.SingleSlipCard) =
     div [] [
-        h5 [Class "title is-5"] [ str <|  match tour with Some t -> t.Cap | None -> "???" ]
+        h5 [Class "title is-5"] [ str <| "Question " + tourName]
 
-        match tour with
-        | Some t ->
-            match t.Slip with
-            | Shared.SingleSlipCard slip ->
-                yield! imgEl slip.Img
-                if t.TS = Shared.Settled then
-                    p [ Class "has-text-weight-bold" ] [ str "Answer" ]
-                p [ Class "has-text-weight-semibold" ] (splitByLines slip.Txt)
-                if (slip.Com <> "") then
-                    p [ Class "has-text-weight-bold" ] [ str "Comment" ]
-                    p [ ] (splitByLines slip.Com)
-                br[]
-        | _ -> ()
+        match slip with
+        | Shared.X3 -> ()
+        | Shared.QW slip ->
+            yield! imgEl slip.Img
+            p [ Class "has-text-weight-semibold" ] (splitByLines slip.Txt)
+        | Shared.AW slip ->
+            yield! imgEl slip.Img
+            p [ Class "has-text-weight-bold" ] [ str "Answer" ]
+            p [ Class "has-text-weight-semibold" ] (splitByLines slip.Txt)
+            if (slip.Com <> "") then
+                p [ Class "has-text-weight-bold" ] [ str "Comment" ]
+                p [ ] (splitByLines slip.Com)
+        br[]
     ]
 
 let resultsRow (res:Shared.TeamResult) style =

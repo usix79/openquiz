@@ -13,20 +13,24 @@ open TeamModels
 
 type Tab = History | Question | Results
 
-type AnswerStatus = Input | Sending | Sent | Failed
+type AnswersStatus = Input | Sending | Sent | Failed
 
-type Answer = {
-    QwIdx : int
-    Status : AnswerStatus
-    Text : string
-}
+type AnswersSlip = {
+    TourIdx : int
+    Status : AnswersStatus
+    Values : Map<int, string>
+} with
+    member x.GetText qwIdx =
+        match x.Values.TryGetValue qwIdx with
+        | true, txt -> txt
+        | _ -> ""
 
 type Msg =
     | QuizCardResp of RESP<QuizCard>
     | Exn of exn
     | Reactivate
     | ChangeTab of Tab
-    | UpdateAnswer of string
+    | UpdateAnswer of qwIdx:int*txt:string
     | CountdownTick of {|QwIndex: int|}
     | QuizChanged of QuizChangedEvent
     | SourceError of string
@@ -38,7 +42,7 @@ type Msg =
 type Model = {
     IsActive : bool
     Quiz : QuizCard option
-    Answer : Answer option
+    Answers : AnswersSlip option
     ActiveTab : Tab
     Error : string
     TimeDiff: TimeSpan
@@ -72,13 +76,14 @@ let startup user quiz serverTime model =
         IsActive = true
         Quiz = Some quiz
         TimeDiff = timeDiff serverTime
-        Answer =
-            match Infra.loadFromLocalStorage<Answer> (awStorageKey user) with
-            | Some aw -> Some aw
-            | None ->
-                match quiz.Aw with
-                | Some txt -> Some {QwIdx = (match quiz.TC with Some qw -> qw.Idx | None -> -1); Status = Sent; Text = txt}
-                | None -> None
+        Answers =
+            Infra.loadFromLocalStorage<AnswersSlip> (awStorageKey user)
+            |> Option.defaultValue {
+                    TourIdx = quiz.TC |> Option.map (fun tour -> tour.Idx) |> Option.defaultValue -1
+                    Status = if quiz.Aw.Count > 0 then Sent else Input
+                    Values = quiz.Aw
+            }
+            |> Some
     }
 
 let updateQuiz (f : QuizCard -> QuizCard) model  =
@@ -86,20 +91,21 @@ let updateQuiz (f : QuizCard -> QuizCard) model  =
     | Some quiz -> {model with Quiz = Some <| f quiz}
     | None -> model
 
-let initAnswer (model : Model, cmd : Cmd<Msg>) =
-    let createAnswer (qw:TourCard) timeDiff =
-        {QwIdx = qw.Idx; Text = ""; Status = if qw.IsCountdownActive (serverTime timeDiff) then Input else Failed}
+let initAnswers (model : Model, cmd : Cmd<Msg>) =
+    let createAnswers (tour:TourCard) timeDiff =
+        {
+            TourIdx = tour.Idx
+            Status = if tour.IsCountdownFinished (serverTime timeDiff) then Failed else Input
+            Values = Map.empty
+        }
 
     match model.CurrentTour with
     | Some tour ->
-        match tour.TS with
-        | Announcing -> {model with Answer = None}
-        | Countdown | Settled ->
-            match model.Answer with
-            | Some aw when aw.QwIdx <> tour.Idx -> {model with Answer = Some (createAnswer tour model.TimeDiff)}
-            | None -> {model with Answer = Some (createAnswer tour model.TimeDiff)}
-            | _ -> model
-    | None -> {model with Answer = None}
+        match model.Answers with
+        | Some aw when aw.TourIdx <> tour.Idx -> {model with Answers = Some (createAnswers tour model.TimeDiff)}
+        | None -> {model with Answers = Some (createAnswers tour model.TimeDiff)}
+        | _ -> model
+    | None -> {model with Answers = None}
     , cmd
 
 let setupCountdown (model : Model, cmd : Cmd<Msg>) =
@@ -132,26 +138,32 @@ let applyEvent (evt:QuizChangedEvent) (model:Model) =
     model |> updateQuiz (fun quiz -> {quiz with QS = evt.QS; TC = evt.T})
 
 let answerStatus satus model =
-    match model.Answer with
-    | Some aw -> {model with Answer = Some {aw with Status = satus}}
+    match model.Answers with
+    | Some aw -> {model with Answers = Some {aw with Status = satus}}
     | _ -> model
 
-let answerText txt model =
-    match model.Answer with
-    | Some aw when aw.Status = Input -> {model with Answer = Some {aw with Text = txt}}
+let answerText qwIdx txt model =
+    match model.Answers with
+    | Some aw when aw.Status = Input -> {model with Answers = Some {aw with Values = aw.Values.Add(qwIdx,txt)}}
     | _ -> model
 
 let sendAnswer api (model : Model) =
     let answerCmd api model =
-        match model.Answer with
-        | Some aw when not (String.IsNullOrWhiteSpace aw.Text) ->
-            model |> answerStatus Sending |> apiCmd api.answer {|Answer = aw.Text; QwKey = {TourIdx = aw.QwIdx; QwIdx = 0}|} AnswerResponse Exn
-        | _ ->  model |> answerStatus Failed |> noCmd
+        match model.Answers with
+        | Some aw ->
+            let req =
+                aw.Values
+                |> Map.toList
+                |> List.choose (fun (qwIdx,txt) -> if not (String.IsNullOrEmpty txt) then Some ({TourIdx = aw.TourIdx; QwIdx = qwIdx}, txt) else None)
+                |> Map.ofList
+            if req.Count > 0 then model |> answerStatus Sending |> apiCmd api.answers req AnswerResponse Exn
+            else model |> answerStatus Sent |> noCmd
+        | _ ->  model |> noCmd
 
-    match model.Answer with
+    match model.Answers with
     | Some aw when aw.Status = Input ->
         match model.CurrentTour with
-        | Some tour when (aw.QwIdx <> tour.Idx)
+        | Some tour when (aw.TourIdx <> tour.Idx)
             || (tour.TS = Countdown && not (tour.IsCountdownActive (serverTime model.TimeDiff)))
             || (tour.TS = Settled)
             -> model |> answerCmd api
@@ -165,7 +177,7 @@ let awStorageKey (user:TeamUser) =
     sprintf "aw-%i-%i" user.QuizId user.TeamId
 
 let saveAnswer (user:TeamUser) (model: Model) =
-    match model.Answer with
+    match model.Answers with
     | Some aw -> Infra.saveToLocalStorage (awStorageKey user) aw
     | _ -> ()
     model
@@ -175,18 +187,18 @@ let deleteAnswer (user:TeamUser) (model: Model) =
     model
 
 let init (api:ITeamApi) user : Model*Cmd<Msg> =
-    {IsActive = true; Quiz = None; Answer = None; IsConnectionOk = false;  ActiveTab = Question;
+    {IsActive = true; Quiz = None; Answers = None; IsConnectionOk = false;  ActiveTab = Question;
         Error = ""; TimeDiff = TimeSpan.Zero; SseSource = None; History = []; TeamResults = []; QuestionResults = []} |> apiCmd api.getState () QuizCardResp Exn
 
 let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
     | Reactivate -> cm |> apiCmd api.takeActiveSession () QuizCardResp Exn
-    | QuizCardResp {Value = Ok res; ST = st} -> cm |> startup user res st |> ok |> sendAnswer api |> subscribe user.QuizId |> initAnswer |> setupCountdown
+    | QuizCardResp {Value = Ok res; ST = st} -> cm |> startup user res st |> ok |> sendAnswer api |> subscribe user.QuizId |> initAnswers |> setupCountdown
     | CountdownTick _ -> cm |> sendAnswer api |> setupCountdown
-    | QuizChanged evt -> cm |> applyEvent evt |> sendAnswer api |> initAnswer |> setupCountdown
+    | QuizChanged evt -> cm |> applyEvent evt |> sendAnswer api |> initAnswers |> setupCountdown
     | AnswerResponse {Value = Ok _} -> cm |> deleteAnswer user |> answerStatus Sent |> ok |> noCmd
     | SourceError _ -> cm |> connection false |> noCmd
-    | UpdateAnswer txt -> cm |> answerText txt |> saveAnswer user |> noCmd
+    | UpdateAnswer (qwIdx,txt) -> cm |> answerText qwIdx txt |> saveAnswer user |> noCmd
     | Heartbeat -> cm |> connection true |> noCmd
     | ChangeTab Question -> {cm with ActiveTab = Question} |> noCmd
     | ChangeTab History -> {cm with ActiveTab = History} |> apiCmd api.getHistory () GetHistoryResp Exn
@@ -224,10 +236,10 @@ let notActiveView (dispatch : Msg -> unit) (user:TeamUser) error =
 
 let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
     let serverTime = serverTime model.TimeDiff
-    let secondsLeft, isCountdownActive =
+    let secondsLeft, isCountdownActive, isCountdownFinished =
         match quiz.TC with
-        | Some q -> q.SecondsLeft serverTime, q.IsCountdownActive serverTime
-        | None -> 0, false
+        | Some tour -> tour.SecondsLeft serverTime, tour.IsCountdownActive serverTime, tour.IsCountdownFinished serverTime
+        | None -> 0, false, false
 
     div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
@@ -244,8 +256,8 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
                         match model.ActiveTab with
                         | History -> yield historyView dispatch model
                         | Question ->
-                            match quiz.QS with
-                            | Live -> yield quiestionView dispatch quiz model.Answer isCountdownActive
+                            match quiz.QS, model.Answers with
+                            | Live, Some answers -> yield quiestionView dispatch quiz answers isCountdownFinished
                             | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg
                         | Results -> yield resultsView dispatch user model
                     ]
@@ -258,27 +270,78 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
             MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
     ]
 
-let quiestionView (dispatch : Msg -> unit) quiz answer isCountdownActive =
+let quiestionView (dispatch : Msg -> unit) quiz answers isCountdownFinished =
     div [] [
-        MainTemplates.playTour quiz.TC
+        match quiz.TC with
+        | Some tour ->
+            match tour.Slip with
+            | SS slip -> yield singleQwView dispatch tour slip answers isCountdownFinished
+            | MS (name,slips) -> yield multipleQwView dispatch tour name slips answers isCountdownFinished
+        | None -> ()
+    ]
 
-        match answer with
-        | Some aw ->
+let answerStatusIcon status txt =
+    span [Class "icon is-large is-right has-text-black"][
+        Fa.i [ match status with
+                | Input -> Fa.Solid.Question
+                | Sending -> Fa.Solid.Spinner
+                | Sent when String.IsNullOrEmpty txt -> Fa.Solid.Exclamation
+                | Sent -> Fa.Solid.Check
+                | Failed -> Fa.Solid.Exclamation ] [
+        ]
+    ]
+
+let singleQwView dispatch tour slip answers isCountdownFinished =
+    div[][
+        MainTemplates.singleTourInfo tour.Name slip
+
+        match slip with
+        | X3 -> ()
+        | _ ->
+            let txt = answers.GetText 0
             label [Class "label"][str "Your answer"]
             div [Class "control has-icons-right"][
-                textarea [ Class "textarea"; MaxLength 128.0;
-                    ReadOnly (not isCountdownActive); valueOrDefault aw.Text;
-                    OnChange (fun ev -> dispatch <| UpdateAnswer ev.Value )][]
-                span [Class "icon is-large is-right has-text-black"][
-                    Fa.i [ match aw.Status with
-                            | Input -> Fa.Solid.Question
-                            | Sending -> Fa.Solid.Spinner
-                            | Sent -> Fa.Solid.Check
-                            | Failed -> Fa.Solid.Exclamation ] [
-                    ]
-                ]
+                textarea [ Class "textarea"; MaxLength 64.0;
+                    ReadOnly isCountdownFinished; valueOrDefault txt;
+                    OnChange (fun ev -> dispatch <| UpdateAnswer (0,ev.Value) )][]
+                answerStatusIcon answers.Status txt
             ]
-        | _ -> ()
+    ]
+
+let multipleQwView dispatch tour name slips answers isCountdownFinished =
+    div [][
+        h5 [Class "subtitle is-5"] [str name]
+        for (idx,slip) in slips |> List.indexed do
+            let aw = answers.GetText idx
+            match slip with
+            | QW slip ->
+                p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
+                yield! MainTemplates.imgEl slip.Img
+                p [] (splitByLines slip.Txt)
+                div [Class "control has-icons-right"; Style [MaxWidth "320px"; Display DisplayOptions.InlineBlock]][
+                    input [Class "input"; Type "text"; MaxLength 64.0; Placeholder "Your Answer";
+                        ReadOnly isCountdownFinished; valueOrDefault aw; OnChange (fun ev -> dispatch <| UpdateAnswer (idx,ev.Value) )]
+                    answerStatusIcon answers.Status aw
+                ]
+                br[]
+                br[]
+
+            | AW slip ->
+                p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
+                div [Class "control has-icons-right"; Style [MaxWidth "320px"; Display DisplayOptions.InlineBlock]][
+                    input [Class "input"; Type "text"; MaxLength 64.0; Placeholder "Your Answer";
+                        ReadOnly isCountdownFinished; valueOrDefault aw; OnChange (fun ev -> dispatch <| UpdateAnswer (idx,ev.Value) )]
+                    answerStatusIcon answers.Status aw
+                ]
+                p [Class "has-text-weight-light is-family-secondary is-size-6"][
+                    str "correct answer: "
+                    str (slip.Txt.Split('\n').[0])
+                ]
+                yield! MainTemplates.imgEl slip.Img
+                p [Class "is-italic has-text-weight-light is-family-secondary is-size-7"] (splitByLines slip.Com)
+                br[]
+
+            | X3 -> str "x3"
     ]
 
 let historyView dispatch model =
@@ -287,7 +350,7 @@ let historyView dispatch model =
             tr [ ] [
                 th [Style [Width "30px"] ] [ str "#" ]
                 th [ ] [ str "Answer" ]
-                th [ ] [ str "Result" ]
+                th [ ] [ str "Points" ]
             ]
         ]
 

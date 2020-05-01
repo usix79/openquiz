@@ -73,8 +73,12 @@ with
         | Multiple (_,slips) -> slips |> List.map (fun s -> s.Answer)
     member x.QuestionsCount =
         match x with
-        | Single slip -> slip.QuestionsCount
-        | Multiple (_,slips) -> slips |> List.sumBy (fun s -> s.QuestionsCount)
+        | Single slip -> 1
+        | Multiple (_,slips) -> slips.Length
+    member x.QuestionsPartCount qwIdx =
+        match x with
+        | Single slip -> if qwIdx = 0 then slip.QuestionsCount else 1
+        | Multiple (_,slips) -> slips |> List.tryItem qwIdx |> Option.map (fun slip -> slip.QuestionsCount) |> Option.defaultValue 0
 
 type QuestionText =
     | Solid of string
@@ -148,14 +152,26 @@ type QuizTour = {
     Seconds : int
     Status : QuizTourStatus
     StartTime : DateTime option
-    NextQwIdx : int
+    QwIdx : int
+    QwPartIdx : int
     Slip : Slip
 } with
     member x.NextQw () =
-        {x with NextQwIdx = if x.NextQwIdx + 1 < x.Slip.QuestionsCount then x.NextQwIdx + 1 else x.Slip.QuestionsCount}
+        {x with
+            QwIdx = if x.QwIdx + 1 < x.Slip.QuestionsCount then x.QwIdx + 1 else x.Slip.QuestionsCount
+            QwPartIdx = 0
+        }
+
+    member x.NextQwPart () =
+        let nextIdx = x.QwPartIdx + 1
+        let maxIdx = (x.Slip.QuestionsPartCount x.QwIdx) - 1
+        {x with QwPartIdx = min nextIdx maxIdx}
 
     member x.SetNextQwIndex idx =
-        {x with NextQwIdx = if idx < x.Slip.QuestionsCount then idx else x.Slip.QuestionsCount}
+        {x with QwIdx = if idx < x.Slip.QuestionsCount then idx else x.Slip.QuestionsCount}
+
+    member x.SetNextQwPartIndex qwIdx idx =
+        {x with QwIdx = if idx < (x.Slip.QuestionsPartCount qwIdx) then idx else (x.Slip.QuestionsPartCount qwIdx)}
 
 type QuizDescriptor = {
     QuizId : int
@@ -241,13 +257,13 @@ module Quizzes =
 
     let getNextTourName (quiz:Quiz) =
         match quiz.CurrentTour with
-        | Some qw ->
+        | Some tour ->
             let newName =
-                let m = Regex.Match (qw.Name, "([^\\d]*)(\\d+)")
+                let m = Regex.Match (tour.Name, "([^\\d]*)(\\d+)")
                 if m.Success then ((m.Groups.Item 1).Value) + (System.Int32.Parse((m.Groups.Item 2).Value) + 1).ToString()
-                else qw.Name  + "1"
+                else tour.Name  + "1"
             newName
-        | None -> "Question 1"
+        | None -> "1"
 
     let getNextTourSeconds (quiz:Quiz) =
         match quiz.CurrentTour with
@@ -261,7 +277,8 @@ module Quizzes =
                 Seconds = quiz |> getNextTourSeconds
                 Status = Announcing
                 Slip = slip
-                NextQwIdx = 0
+                QwIdx = 0
+                QwPartIdx = 0
                 StartTime = None }
                 :: quiz.Tours
         }
@@ -276,51 +293,42 @@ module Quizzes =
     let changeStatus status  (pkgProvider : Provider<int,Package>) (quiz:Quiz) =
         match {quiz with Dsc = {quiz.Dsc with Status = status}} with
         | quiz when status = Live && quiz.Tours.Length = 0 ->
-            let qwIdx = defaultArg quiz.Dsc.PkgSlipIdx 0
+            let qwIdx = quiz.Dsc.PkgSlipIdx |> Option.defaultValue 0
             quiz |> addNextSlip qwIdx pkgProvider
         | quiz -> quiz
 
     let private updateCurrentTour (f : QuizTour -> QuizTour) (quiz:Quiz) =
         match quiz.Dsc.Status with
-        | Live ->
-            let newList =
-                match quiz.Tours with
-                | qw :: tail -> (f qw) :: tail
-                | _ -> quiz.Tours
-
-            {quiz with Tours = newList}
-        | _ ->
-            quiz
+        | Live -> {quiz with Tours = match quiz.Tours with  qw :: tail -> (f qw) :: tail | _ -> quiz.Tours}
+        | _ -> quiz
 
     let setQuestionIdx qwIdx (quiz:Quiz) =
         quiz |> updateCurrentTour (fun tour -> tour.SetNextQwIndex qwIdx) |> Ok
 
-    let update qwName seconds pkgQwIdx slip (quiz:Quiz) =
-        {quiz with Dsc = {quiz.Dsc with PkgSlipIdx = pkgQwIdx}}
-        |> updateCurrentTour (fun tour ->
-                    {tour.NextQw() with
-                        Name = qwName
-                        Seconds = seconds
-                        Slip = slip
-                    }
-        )
+    let setQuestionPartIdx qwIdx qwPartIdx (quiz:Quiz) =
+        quiz |> updateCurrentTour (fun tour -> tour.SetNextQwPartIndex qwIdx qwPartIdx) |> Ok
 
-    let nextQuestion tourName seconds pkgQwIdx slip (quiz:Quiz) =
+    let update qwName seconds pkgQwIdx qwIdx qwPartIdx slip (quiz:Quiz) =
         {quiz with Dsc = {quiz.Dsc with PkgSlipIdx = pkgQwIdx}}
-        |> updateCurrentTour (fun tour -> {tour.NextQw () with Name = tourName; Seconds = seconds; Slip = slip})
-        |> Ok
+        |> updateCurrentTour (fun tour -> {tour with Name = qwName; QwIdx = qwIdx; QwPartIdx = qwPartIdx; Seconds = seconds; Slip = slip})
+
+    let nextQuestion (quiz:Quiz) =
+        quiz |> updateCurrentTour (fun tour -> tour.NextQw ()) |> Ok
+
+    let nextQuestionPart (quiz:Quiz) =
+        quiz |> updateCurrentTour (fun tour -> tour.NextQwPart ()) |> Ok
 
     let startCountdown now (quiz:Quiz) =
-        quiz |> updateCurrentTour (fun tour -> {tour.NextQw() with Status = Countdown; StartTime = Some now }) |> Ok
+        quiz |> updateCurrentTour (fun tour -> {tour with Status = Countdown; StartTime = Some now }) |> Ok
 
     let pauseCountdown (quiz:Quiz) =
-        quiz |> updateCurrentTour (fun qw -> {qw with Status = Announcing; StartTime = None}) |> Ok
+        quiz |> updateCurrentTour (fun tour -> {tour with Status = Announcing; StartTime = None}) |> Ok
 
     let settle (quiz:Quiz) =
-        quiz |> updateCurrentTour (fun qw -> {qw with Status = Settled}) |> Ok
+        quiz |> updateCurrentTour (fun tour -> {tour with Status = Settled}) |> Ok
 
     let next (pkgProvider : Provider<int,Package>) (quiz:Quiz) =
-        let qwIdx = (defaultArg quiz.Dsc.PkgSlipIdx 0) + 1
+        let qwIdx = quiz.Dsc.PkgSlipIdx |> Option.defaultValue 0 |> (+) 1
         quiz |> addNextSlip qwIdx pkgProvider
 
 type TeamStatus =
@@ -364,6 +372,8 @@ type Team = {
 } with
     member x.GetAnswer qwKey =
         x.Answers |> Map.tryFind qwKey
+    member x.SelectAnswers tourIdx =
+        x.Answers |> Map.toList |> List.filter (fun (key,aw) -> key.TourIdx = tourIdx)
 
     member x.Points =
         x.Answers |> Map.fold (fun s _ aw -> match aw.Result with Some d -> s + d | None -> s) 0m
