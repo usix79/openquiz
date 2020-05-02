@@ -14,7 +14,7 @@
     <Compile Include="MainProdQuizzes.fs" />
     <Compile Include="MainProdQuestions.fs" />
     <Compile Include="MainProd.fs" />
-    <Compile Include="MainPub.fs" />
+    <Compile Include="MainReg.fs" />
     <Compile Include="Main.fs" />
     <Compile Include="AdminTeams.fs" />
     <Compile Include="AdminCP.fs" />

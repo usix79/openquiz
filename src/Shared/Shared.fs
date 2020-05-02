@@ -81,11 +81,9 @@ with
         | Question -> "qw"
 
 type QuizStatus =
-    | Draft
-    | Published
+    | Setup
     | Live
     | Finished
-    | Archived
 
 type TeamStatus =
     | New
@@ -269,7 +267,6 @@ module RegModels =
     type QuizRecord = {
         QuizId : int
         StartTime : System.DateTime option
-        Brand : string
         Name : string
         Status : QuizStatus
         Description : string
@@ -294,21 +291,20 @@ module MainModels =
         member x.UpdateCompetition (comp:ExpertCompetition) =
             {x with Competitions = x.Competitions.Add(comp.QuizId, comp)}
 
-    type QuizPubRecord = {
+    type QuizRegRecord = {
         QuizId : int
         StartTime : System.DateTime option
-        Brand : string
         Name : string
         Status : QuizStatus
         Description : string
         ImgKey : string
         EventPage : string
+        Comp : ExpertCompetition option
     }
 
     type QuizProdRecord = {
         QuizId : int
         StartTime : System.DateTime option
-        Brand : string
         Name : string
         Status : QuizStatus
         AdminToken : string
@@ -317,16 +313,13 @@ module MainModels =
     type QuizProdCard = {
         QuizId : int
         StartTime : System.DateTime option
-        Brand : string
         Name : string
-        Status : QuizStatus
         ImgKey : string
         ListenToken : string
         AdminToken : string
         RegToken : string
         WelcomeText : string
         FarewellText : string
-        IsPrivate :  bool
         WithPremoderation : bool
         EventPage : string
         MixlrCode : int option
@@ -453,8 +446,8 @@ module TeamModels =
     } with
         member x.Msg =
             match x.QS with
-            | Draft | Published | Live -> x.Wcm
-            | Finished | Archived -> x.Fwl
+            | Setup | Live -> x.Wcm
+            | Finished -> x.Fwl
 
     type TeamHistoryRecord = {
         QwIdx : int
@@ -478,8 +471,8 @@ module AudModels =
     } with
         member x.Msg =
             match x.QS with
-            | Draft | Published | Live -> x.Wcm
-            | Finished | Archived -> x.Fwl
+            | Setup | Live -> x.Wcm
+            | Finished -> x.Fwl
 
     type HistoryRecord = {
         QwKey : QwKey
@@ -509,14 +502,14 @@ type ISecurityApi = {
 
 type IMainApi = {
     becomeProducer : REQ<unit> -> ARESP<unit>
-    createQuiz : REQ<unit> -> ARESP<{|Record : MainModels.QuizProdRecord; Card:MainModels.QuizProdCard|}>
+    createQuiz : REQ<unit> -> ARESP<{|Record : MainModels.QuizProdRecord; Card: MainModels.QuizProdCard|}>
     getProdQuizzes : REQ<unit> -> ARESP<MainModels.QuizProdRecord list>
     getProdQuizCard : REQ<{|QuizId:int|}> -> ARESP<MainModels.QuizProdCard>
     updateProdQuizCard : REQ<MainModels.QuizProdCard> -> ARESP<MainModels.QuizProdRecord>
     deleteQuiz : REQ<{|QuizId : int|}> -> ARESP<unit>
     uploadFile : REQ<{|Cat:ImgCategory; FileType : string; FileBody : byte[]|}> -> ARESP<{|BucketKey: string|}>
-    getPubModel : REQ<unit> -> ARESP<{|Profile : MainModels.ExpertProfile; Quizzes : MainModels.QuizPubRecord list|}>
-    registerTeam : REQ<{|QuizId: int; TeamName: string|}> -> ARESP<MainModels.ExpertCompetition>
+    getRegModel : REQ<unit> -> ARESP<MainModels.QuizRegRecord>
+    registerTeam : REQ<{|TeamName: string|}> -> ARESP<MainModels.QuizRegRecord>
     getProdPackages : REQ<unit> -> ARESP<PackageRecord list>
     getProdPackageCard : REQ<{|PackageId : int|}> -> ARESP<PackageCard>
     createPackage : REQ<unit> -> ARESP<{|Record : PackageRecord; Card: PackageCard|}>

@@ -270,8 +270,8 @@ module Quizzes =
         let config = ScanOperationConfig()
 
         config.AttributesToGet <- new Collections.Generic.List<string> ([
-             "Id"; "Producer"; "StartTime"; "Brand"; "Name"; "Status"; "WelcomeText"; "FarewellText";
-                    "IsPrivate"; "ImgKey";  "WithPremoderation"; "AdminToken"; "RegToken"; "ListenToken";
+             "Id"; "Producer"; "StartTime"; "Name"; "Status"; "WelcomeText"; "FarewellText";
+                    "ImgKey";  "WithPremoderation"; "AdminToken"; "RegToken"; "ListenToken";
                     "PkgId"; "PkgQwIdx"; "EventPage"; "MixlrCode"])
         config.Select <- SelectValues.SpecificAttributes
 
@@ -283,8 +283,8 @@ module Quizzes =
     let getDescriptor (quizId:int) : QuizDescriptor option =
         let config = GetItemOperationConfig()
         config.AttributesToGet <- new Collections.Generic.List<string> ([
-             "Id"; "Producer"; "StartTime"; "Brand"; "Name"; "Status"; "WelcomeText"; "FarewellText";
-                    "IsPrivate"; "ImgKey";  "WithPremoderation"; "AdminToken"; "RegToken"; "ListenToken";
+             "Id"; "Producer"; "StartTime"; "Name"; "Status"; "WelcomeText"; "FarewellText";
+                    "ImgKey";  "WithPremoderation"; "AdminToken"; "RegToken"; "ListenToken";
                     "PkgId"; "PkgQwIdx"; "EventPage"; "MixlrCode"])
 
         let table = loadTable "Quizzes"
@@ -310,13 +310,11 @@ module Quizzes =
         gameItem.["Id"] <- v2.ConvertToEntry  quiz.Dsc.QuizId
         gameItem.["Name"] <- v2.ConvertToEntry quiz.Dsc.Name
         gameItem.["Producer"] <- v2.ConvertToEntry quiz.Dsc.Producer
-        gameItem.["Brand"] <- v2.ConvertToEntry quiz.Dsc.Brand
         gameItem.["ImgKey"] <- v2.ConvertToEntry quiz.Dsc.ImgKey
         gameItem.["StartTime"] <- entryOfOption quiz.Dsc.StartTime
         gameItem.["Status"] <- v2.ConvertToEntry <| quiz.Dsc.Status.ToString()
         gameItem.["WelcomeText"] <- v2.ConvertToEntry quiz.Dsc.WelcomeText
         gameItem.["FarewellText"] <- v2.ConvertToEntry quiz.Dsc.FarewellText
-        gameItem.["IsPrivate"] <- v2.ConvertToEntry quiz.Dsc.IsPrivate
         gameItem.["WithPremoderation"] <- v2.ConvertToEntry quiz.Dsc.WithPremoderation
         gameItem.["ListenToken"] <- v2.ConvertToEntry quiz.Dsc.ListenToken
         gameItem.["AdminToken"] <- v2.ConvertToEntry quiz.Dsc.AdminToken
@@ -348,12 +346,10 @@ module Quizzes =
             QuizId = doc.["Id"].AsInt()
             Producer = stringOfDoc doc "Producer"
             StartTime = optionOfEntry doc "StartTime"
-            Brand = stringOfDoc doc "Brand"
             Name = stringOfDoc doc "Name"
-            Status = defaultArg (fromString (doc.["Status"].AsString())) Draft
+            Status = doc.["Status"].AsString() |> fromString |> Option.defaultValue Setup
             WelcomeText = stringOfDoc doc "WelcomeText"
             FarewellText = stringOfDoc doc "FarewellText"
-            IsPrivate = boolOfDoc doc "IsPrivate"
             ImgKey = stringOfDoc doc "ImgKey"
             AdminToken = stringOfDoc doc "AdminToken"
             ListenToken = stringOfDoc doc "ListenToken"

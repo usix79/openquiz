@@ -136,11 +136,9 @@ module Packages =
                }|> Ok
 
 type QuizStatus =
-    | Draft
-    | Published
+    | Setup
     | Live
     | Finished
-    | Archived
 
 type QuizTourStatus =
     | Announcing
@@ -177,12 +175,10 @@ type QuizDescriptor = {
     QuizId : int
     Producer : string
     StartTime : DateTime option
-    Brand : string
     Name : string
     Status : QuizStatus
     WelcomeText : string
     FarewellText : string
-    IsPrivate : bool
     ImgKey : string
     WithPremoderation : bool
     ListenToken : string
@@ -213,13 +209,11 @@ module Quizzes =
                 QuizId = quizId
                 Producer = producerId
                 StartTime = None
-                Brand = ""
                 ImgKey = ""
                 Name = sprintf "QUIZ-%i" quizId
-                Status = Draft
+                Status = Setup
                 WelcomeText = ""
                 FarewellText = ""
-                IsPrivate = false
                 WithPremoderation = false
                 ListenToken = Common.generateRandomToken()
                 AdminToken = Common.generateRandomToken()
@@ -233,15 +227,10 @@ module Quizzes =
             Version = 0
         }
 
-    let isPubQuiz (quiz:QuizDescriptor) =
-        match quiz.Status with
-        | Published | Live | Finished when not quiz.IsPrivate -> true
-        | _ -> false
-
     let getDescription (quiz:QuizDescriptor) =
         match quiz.Status with
-            | Draft | Published | Live -> quiz.WelcomeText
-            | Finished | Archived -> quiz.FarewellText
+            | Setup | Live -> quiz.WelcomeText
+            | Finished -> quiz.FarewellText
 
     let setPackageId (packageId : int option) (quiz : Quiz) =
         if (quiz.Dsc.PkgId <> packageId) then {quiz with Dsc = {quiz.Dsc with PkgId = packageId; PkgSlipIdx = None}}
@@ -409,8 +398,8 @@ module Teams =
         let teamName = teamName.Trim()
         match isNewTeam with
         | _ when String.IsNullOrWhiteSpace (teamName) -> Some "Empty name is not allowed"
-        | true when quiz.Status <> Published && quiz.Status <> Live -> Some  "Registration is not allowed"
-        | false when quiz.Status <> Published -> Some  "Changing name is not allowed"
+        | true when quiz.Status <> Setup && quiz.Status <> Live -> Some  "Registration is not allowed"
+        | false when quiz.Status <> Setup -> Some  "Changing name is not allowed"
         | _ when teamsInQuiz |> List.exists (fun t -> t.Name.Equals(teamName, StringComparison.InvariantCultureIgnoreCase)) -> Some "Team with such name is alreay registered"
         | _ -> None
 

@@ -5,19 +5,15 @@ open Domain
 
 let quizStatus (status : QuizStatus) : Shared.QuizStatus=
     match status with
-    | Draft -> Shared.QuizStatus.Draft
-    | Published -> Shared.QuizStatus.Published
+    | Setup -> Shared.QuizStatus.Setup
     | Live -> Shared.QuizStatus.Live
     | Finished -> Shared.QuizStatus.Finished
-    | Archived -> Shared.QuizStatus.Archived
 
 let quizStatusToDomain (status : Shared.QuizStatus) =
     match status with
-    | Shared.Draft -> Draft
-    | Shared.Published -> Published
+    | Shared.Setup -> Setup
     | Shared.Live -> Live
     | Shared.Finished -> Finished
-    | Shared.Archived -> Archived
 
 let tourStatus (status : QuizTourStatus) : Shared.TourStatus=
     match status with
@@ -183,26 +179,25 @@ let history (team : Team) =
 
 module Main =
 
-    let quizPubRecord (quiz:QuizDescriptor) : MainModels.QuizPubRecord =
+    let quizRegRecord (quiz:QuizDescriptor) (team: TeamDescriptor option) : MainModels.QuizRegRecord =
         {
             QuizId = quiz.QuizId
             StartTime = quiz.StartTime
-            Brand = quiz.Brand
             Name = quiz.Name
             Status = quizStatus quiz.Status
             Description =
                 match quiz.Status with
-                | Draft | Published | Live -> quiz.WelcomeText
-                | Finished | Archived -> quiz.FarewellText
+                | Setup | Live -> quiz.WelcomeText
+                | Finished -> quiz.FarewellText
             ImgKey = quiz.ImgKey
             EventPage = quiz.EventPage
+            Comp = team |> Option.map expertCompetition
         }
 
     let quizProdRecord (quiz:QuizDescriptor) : MainModels.QuizProdRecord =
         {
             QuizId = quiz.QuizId
             StartTime = quiz.StartTime
-            Brand = quiz.Brand
             Name = quiz.Name
             Status = quizStatus quiz.Status
             AdminToken = quiz.AdminToken
@@ -212,16 +207,13 @@ module Main =
         {
             QuizId = quiz.Dsc.QuizId
             StartTime = quiz.Dsc.StartTime
-            Brand = quiz.Dsc.Brand
             Name = quiz.Dsc.Name
-            Status = quizStatus quiz.Dsc.Status
             ImgKey = quiz.Dsc.ImgKey
             ListenToken = quiz.Dsc.ListenToken
             AdminToken = quiz.Dsc.AdminToken
             RegToken = quiz.Dsc.RegToken
             WelcomeText = quiz.Dsc.WelcomeText
             FarewellText = quiz.Dsc.FarewellText
-            IsPrivate = quiz.Dsc.IsPrivate
             WithPremoderation = quiz.Dsc.WithPremoderation
             EventPage = quiz.Dsc.EventPage
             MixlrCode = quiz.Dsc.MixlrCode
@@ -370,13 +362,12 @@ module Reg =
         {
             QuizId = quiz.QuizId
             StartTime = quiz.StartTime
-            Brand = quiz.Brand
             Name = quiz.Name
             Status = quizStatus quiz.Status
             Description =
                 match quiz.Status with
-                | Draft | Published | Live -> quiz.WelcomeText
-                | Finished | Archived -> quiz.FarewellText
+                | Setup | Live -> quiz.WelcomeText
+                | Finished -> quiz.FarewellText
             ImgKey = quiz.ImgKey
             EventPage = quiz.EventPage
         }

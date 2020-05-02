@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.9.0 - 2020-05-02
+
+* Eliminated concept of 'public' quizzes
+* Change number of quiz' statuses to (setup->live->finished)
+
 ## 0.8.0 - 2020-05-01
 
 * Added points value for a question

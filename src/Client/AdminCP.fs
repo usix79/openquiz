@@ -149,7 +149,7 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
     | DeleteError id -> cm |> delError id |> noCmd
     | QuizCardResp {Value = Ok res; ST = st } -> cm |> setCard api res st |> scheduleTick
-    | ChangeStatus txt -> cm |> loading |> apiCmd api.changeQuizStatus {|QuizStatus = (defaultArg (fromString txt) Draft)|} QuizCardResp Exn
+    | ChangeStatus txt -> cm |> loading |> apiCmd api.changeQuizStatus {|QuizStatus = (defaultArg (fromString txt) Setup)|} QuizCardResp Exn
     | PackagesClick -> cm |> uploadPackages api
     | PackagesResp {Value = Ok pkgs} -> {cm with AvailablePackages = Some pkgs} |> editing |> noCmd
     | SelectPackage txt -> cm |> setPackage api txt

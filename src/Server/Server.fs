@@ -67,14 +67,6 @@ let imgHandler (dir,key) : HttpHandler =
             return! ctx.WriteStreamAsync true data.Body None None
         }
 
-let indexHandler =
-    warbler (fun _ ->
-        Data.Quizzes.getDescriptors()
-        |> List.filter Domain.Quizzes.isPubQuiz
-        |> Index.layout
-        |> htmlView
-    )
-
 let gameChangedSse = Sse.SseService<QuizChangedEvent>()
 
 CommonService.DomainEvents.subscribeOnQuizChanges (fun evt ->
@@ -131,7 +123,6 @@ let sseHandler _next (ctx: HttpContext)  =
 
 let appRouter =
     choose [
-        route "/" >=> indexHandler
         route "/index.html" >=> redirectTo false "/"
         route "/default.html" >=> redirectTo false "/"
         route "/login" >=> loginHandler

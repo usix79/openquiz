@@ -44,12 +44,12 @@ let inputModal dispatch title txt changeMsg okMsg cancelMsg =
         ]
     ]
 
-let imgArea tag disabled changeMsg clearMsg imgKey defaultImg clearText =
+let imgArea' style tag disabled changeMsg clearMsg imgKey defaultImg clearText =
     [
         if not (System.String.IsNullOrWhiteSpace imgKey) then
-            figure [Class "image"; Style[MaxWidth "320px"]][ img [Shared.Infra.urlForImg imgKey |> Src]]
+            figure [classList ["image", true; style, true]; Style[MaxWidth "320px"]][ img [Shared.Infra.urlForImg imgKey |> Src]]
         else if not (System.String.IsNullOrWhiteSpace defaultImg) then
-            figure [Class "image"; Style[MaxWidth "320px"]][ img [defaultImg |> Src]]
+            figure [classList ["image", true; style, true]; Style[MaxWidth "320px"]][ img [defaultImg |> Src]]
 
         div [Class "file"; Style [MarginTop "8px"]][
             label [Class "file-label"][
@@ -62,6 +62,13 @@ let imgArea tag disabled changeMsg clearMsg imgKey defaultImg clearText =
             button [Class "button"; Disabled disabled; Style [MarginLeft "5px"]; OnClick (fun _ -> clearMsg())] [str clearText]
         ]
     ]
+
+let imgArea tag disabled changeMsg clearMsg imgKey defaultImg clearText =
+    imgArea' "" tag disabled changeMsg clearMsg imgKey defaultImg clearText
+
+let imgArea128 tag disabled changeMsg clearMsg imgKey defaultImg clearText =
+    imgArea' "is-128x128" tag disabled changeMsg clearMsg imgKey defaultImg clearText
+
 
 let imgEl imgKey =
     seq {
@@ -130,8 +137,8 @@ let playQuiz status msg =
     div [Class "notification is-white"][
         p [Class "subtitle is-5"][
             match status with
-            | Shared.Draft | Shared.Published -> str "Coming soon ..."
-            | Shared.Finished | Shared.Archived -> str "Finished"
+            | Shared.Setup -> str "Coming soon ..."
+            | Shared.Finished -> str "Finished"
             | _ -> ()
         ]
         p [] (splitByLines msg)

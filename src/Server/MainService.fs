@@ -36,8 +36,8 @@ let api (context:HttpContext) : IMainApi =
         SecurityService.execute logger proc <| SecurityService.authorizeExpert secret (ff f)
 
     let api : IMainApi = {
-        becomeProducer = ex  "becomeProducer" becomeProducer
-        getPubModel = ex "getPubModel" getPubModel
+        becomeProducer = ex "becomeProducer" becomeProducer
+        getRegModel = ex "getRegModel" getRegModel
         registerTeam = ex "registerTeam" registerTeam
         createQuiz = exPublisher  "createQuiz" createQuiz
         getProdQuizzes = exPublisher "getProdQuizzes" getProdQuizzes
@@ -95,8 +95,8 @@ let updateProdQuizCard expert card =
         match quiz with
         | _ when quiz.Dsc.Producer <> expert.Id -> Error "Quiz is produced by someone else"
         | _ ->
-            let dsc = { quiz.Dsc with Brand = card.Brand; Name = card.Name; StartTime = card.StartTime; Status = quizStatusToDomain card.Status;
-                                    ImgKey = card.ImgKey; WelcomeText = card.WelcomeText; FarewellText = card.FarewellText; IsPrivate = card.IsPrivate;
+            let dsc = { quiz.Dsc with Name = card.Name; StartTime = card.StartTime;
+                                    ImgKey = card.ImgKey; WelcomeText = card.WelcomeText; FarewellText = card.FarewellText;
                                     WithPremoderation = card.WithPremoderation; EventPage = card.EventPage; MixlrCode = card.MixlrCode}
 
             Ok { quiz with Dsc = dsc}
@@ -111,58 +111,37 @@ let updateProdQuizCard expert card =
 let uploadFile bucketName _ req =
     Bucket.uploadFile  bucketName req.Cat req.FileType req.FileBody
 
-let getPubModel expId username quizId _ =
-    let comps =
-        match Data.Experts.get expId with
-        | Some exp -> exp.Competitions
-        | None -> Map.empty
+let getRegModel expId username quizId _ =
+    result{
+        let! quizId = quizId, "Quiz not defined"
+        let! quiz = (Data.Quizzes.getDescriptor quizId), "Quiz not found"
+        let team =
+            Data.Experts.get expId
+            |> Option.bind (fun exp -> exp.Competitions.TryFind quizId)
+            |> Option.bind (Data.Teams.getDescriptor quizId)
 
-    let quizzes =
-        match quizId with
-        | Some id ->
-            match Data.Quizzes.getDescriptor id with
-            | Some quiz -> [quiz]
-            | None -> []
-        | None ->
-            Data.Quizzes.getDescriptors()
-            |> List.filter Domain.Quizzes.isPubQuiz
-        |> List.map Presenter.Main.quizPubRecord
-
-    let competitions =
-        quizzes
-        |> List.map (fun q -> (comps.TryGetValue q.QuizId), q.QuizId)
-        |> List.filter (fun ((found, _), _) -> found)
-        |> List.map (fun ((_,teamId),quizId) -> quizId, Data.Teams.getDescriptor quizId teamId)
-        |> List.filter (fun (_,dsc) -> dsc.IsSome)
-        |> List.map (fun (quizId,dsc) -> quizId,Presenter.Main.expertCompetition dsc.Value)
-        |> Map.ofList
-
-    Ok {|Profile = {Competitions = competitions}; Quizzes = quizzes|}
+        return Main.quizRegRecord quiz team
+    }
 
 let registerTeam expId username quizId req =
     let expCreator _ = Domain.Experts.createNew expId username |> Ok
 
     result {
+        let! quizId = quizId, "Quiz not defined"
+        let! quiz = (Data.Quizzes.getDescriptor quizId), "Quiz not found"
 
         let! exp = CommonService.updateOrCreateExpert expId expCreator Ok
 
-        let! quiz = ((Data.Quizzes.getDescriptor req.QuizId), "Quiz not found")
-
-        do! match quizId with
-            | Some id when id <> quiz.QuizId -> Error "Wrong quiz id"
-            | None when quiz.IsPrivate -> Error "Public registration is now allowed"
-            | _ -> Ok ()
-
         let teamName = req.TeamName.Trim()
         let! team =
-            match Domain.Experts.getComp req.QuizId exp with
+            match Domain.Experts.getComp quizId exp with
             | Some teamId ->
-                match Data.Teams.get req.QuizId teamId with
+                match Data.Teams.get quizId teamId with
                 | Some team -> updateTeam quiz team teamName
                 | None -> createTeam exp quiz teamName
             | None -> createTeam exp quiz teamName
 
-        return Presenter.Main.expertCompetition team.Dsc
+        return Main.quizRegRecord quiz (Some team.Dsc)
     }
 
 let private createTeam exp quiz teamName : Result<Domain.Team,string> =

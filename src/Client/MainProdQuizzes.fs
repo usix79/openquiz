@@ -21,15 +21,12 @@ type Msg =
     | DeleteError of string
     | ToggleCard of int // quizId
     | GetCardResp of RESP<QuizProdCard>
-    | UpdateBrand of string
     | UpdateStartTime of System.DateTime
     | UpdateName of string
     | UpdateMixlrCode of string
     | UpdateEventPage of string
-    | UpdateStatus of string
     | UpdateWelcomeTxt of string
     | UpdateFarewellTxt of string
-    | UpdateIsPrivat of bool
     | UpdateIsPremoderated of bool
     | CancelCard
     | SubmitCard
@@ -88,7 +85,7 @@ let validateStartTime dt =
     | None -> "Start Time is required"
 
 let validate card =
-    [validateBrand card.Brand; validateName card.Name; validateStartTime card.StartTime]
+    [validateName card.Name; validateStartTime card.StartTime]
     |> List.filter (fun s -> s <> "")
 
 let submitCard api model =
@@ -136,15 +133,12 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | GetQuizzesResp {Value = Ok res } -> {cm with Quizzes = res} |> noCmd
     | ToggleCard quizId -> cm |> toggleCard api quizId
     | GetCardResp {Value = Ok res } -> {cm with Card = Some res} |> editing |> noCmd
-    | UpdateBrand txt -> cm |> updateCard (fun c -> {c with Brand = txt.ToUpper()}) |> noCmd
     | UpdateStartTime dt -> cm |> updateCard (fun c -> {c with StartTime = Some dt}) |> noCmd
     | UpdateName txt -> cm |> updateCard (fun c -> {c with Name = txt}) |> noCmd
-    | UpdateStatus txt -> cm |> updateCard (fun c -> {c with Status = defaultArg (fromString txt) Draft}) |> noCmd
     | UpdateEventPage txt -> cm |> updateCard (fun c -> {c with EventPage = txt}) |> noCmd
     | UpdateMixlrCode txt -> cm |> updateMixlrCode txt |> noCmd
     | UpdateWelcomeTxt txt -> cm |> updateCard (fun c -> {c with WelcomeText = txt}) |> noCmd
     | UpdateFarewellTxt txt -> cm |> updateCard (fun c -> {c with FarewellText = txt}) |> noCmd
-    | UpdateIsPrivat b -> cm |> updateCard (fun c -> {c with IsPrivate = b}) |> noCmd
     | UpdateIsPremoderated b -> cm |> updateCard (fun c -> {c with WithPremoderation = b}) |> noCmd
     | CancelCard -> {cm with Card = None} |> noCmd
     | SubmitCard -> cm |> submitCard api
@@ -185,7 +179,6 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
             thead[][
                 tr[][
                     th [Style[Width "30px"]][str ""]
-                    th [Style[Width "120px"]][str "Brand"]
                     th [Style[Width "120px"]][str "Start Time"]
                     th [][str "Name"]
                     th [Style[Width "30px"]][str "Status"]
@@ -203,7 +196,6 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                                 str <| if hasCard then "-" else "+"
                             ]
                         ]
-                        th [] [str quiz.Brand]
                         th [] [str <| match quiz.StartTime with Some st -> st.ToString("dd/MM HH:mm") | None -> "???"]
                         td [] [str quiz.Name]
                         td [] [str <| quiz.Status.ToString()]
@@ -228,16 +220,6 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) (form : Delet
         div [Class "columns"][
             div [Class "column"][
                 div [Class "field"][
-                    label [Class "label"][str "Brand"; span [Class "has-text-danger"][str "*"]]
-                    let error = validateBrand card.Brand
-                    div [Class "control"][
-                        input [classList ["input", true; "is-danger", error <> ""]; Type "text"; Placeholder "Your brand"; MaxLength 12.0;
-                            valueOrDefault card.Brand;
-                            OnChange (fun ev -> dispatch <| UpdateBrand ev.Value)]
-                    ]
-                    p [Class "help is-danger"][str error]
-                ]
-                div [Class "field"][
                     label [Class "label"][str "Quiz Name"; span [Class "has-text-danger"][str "*"]]
                     let error = validateName card.Name
                     div [Class "control"][
@@ -259,16 +241,6 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) (form : Delet
                         Flatpickr.flatpickr opts
 
                         p [Class "help is-danger"][str error]
-                    ]
-
-                    div [Class "control"][
-                        label [Class "label"][str "Status"]
-                        div [Class "select"][
-                            select[valueOrDefault card.Status; OnChange (fun ev -> dispatch <| UpdateStatus ev.Value )][
-                                for case in Reflection.FSharpType.GetUnionCases typeof<QuizStatus> do
-                                    option [][str case.Name]
-                            ]
-                        ]
                     ]
                 ]
 
@@ -302,7 +274,7 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) (form : Delet
                 ]
 
                 div [Class "field"][
-                    label [Class "label"][str "Mixler User Id"]
+                    label [Class "label"][str "Mixlr User Id"]
                     div [Class "control"][
                         input [Class "input"; Type "number"; Placeholder ""; MaxLength 128.0;
                             valueOrDefault card.MixlrCode;
@@ -318,9 +290,9 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) (form : Delet
                 ]
 
                 div [Class "field"][
-                    label [Class "label"][str "Quiz picture (128x128)"]
+                    label [Class "label"][str "Quiz picture (128x128) 128K size max"]
 
-                    yield! MainTemplates.imgArea card.QuizId isLoading (QuizImgChanged>>dispatch) (QuizImgClear>>dispatch) card.ImgKey "/logo256.png" "Reset to default"
+                    yield! MainTemplates.imgArea128 card.QuizId isLoading (QuizImgChanged>>dispatch) (QuizImgClear>>dispatch) card.ImgKey "/logo256.png" "Reset to default"
                 ]
 
                 div [Class "field"][
@@ -334,14 +306,6 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) (form : Delet
                             urlForAdmin card.QuizId card.AdminToken |> link "Admin"
                             urlForReg card.QuizId card.RegToken |> link "Registration"
                             urlForAud card.QuizId card.ListenToken |> link "Audience"
-                        ]
-                    ]
-                ]
-                div [Class "field" ] [
-                    div [Class "control"][
-                        label [Class "checkbox"][
-                            input [Type "checkbox"; Checked card.IsPrivate; OnChange (fun ev -> dispatch <| UpdateIsPrivat ev.Checked)]
-                            str " the quiz is private (will not be displayed on the main page)"
                         ]
                     ]
                 ]

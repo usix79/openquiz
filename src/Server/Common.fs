@@ -207,8 +207,11 @@ module Sse =
 
         let writeMessage (resp:HttpResponse) (msg : string) =
             async {
-                do! resp.WriteAsync msg |> Async.AwaitTask
-                do! resp.Body.FlushAsync() |> Async.AwaitTask
+                try
+                    do! resp.WriteAsync msg |> Async.AwaitTask
+                    do! resp.Body.FlushAsync() |> Async.AwaitTask
+                with
+                | ex -> Log.Error ("{@Proc} {@Step} {@Exn}", "SSE", "writeMessage", ex)
             }
 
         let agent = MailboxProcessor<AgentCommand<'msg>>.Start(fun inbox ->
