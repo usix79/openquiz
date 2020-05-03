@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.1.0 - 2020-05-03
+
+* This is final version!
+* Added user manual
+
 ## 0.9.0 - 2020-05-02
 
 * Eliminated concept of 'public' quizzes

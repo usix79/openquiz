@@ -1,0 +1,434 @@
+<html>
+    <head>
+        <meta content="text/html; charset=UTF-8" http-equiv="content-type">
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="Free service for producing online quizzes.">
+        <meta name="keywords"
+            content="quiz, quizzes, www, online quizzes, free quizzes, quizzes service, quizzes platform, квиз, чгк, что где когда, программа для чгк, онлайн-чгк, вопросы чгк, платформа для квизов, обработка ответов чгк">
+        <meta name="author" content="Serhii Sabirov">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="Open Quiz">
+        <meta property="og:description" content="Free service for producing online quizzes.">
+        <meta property="og:image" content="https://www.open-quiz.com/logo-card.png">
+        <meta property="og:url" content="https://www.open-quiz.com">
+        <meta property="og:site_name" content="Open Quiz">
+        <meta name="twitter:image:alt" content="Open Quiz Logo">
+        <meta property="fb:app_id" content="538011207113822" />
+        <title>Open Quiz</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.8.0/css/bulma.min.css">
+        <link rel="icon" href="favicon.png" sizes="32x32" type="image/png">
+
+        <style type="text/css">ol.lst-kix_v200j9rrmfq5-3{list-style-type:none}.lst-kix_u55wq1eprzs4-0>li:before{content:"\0025cf  "}ol.lst-kix_v200j9rrmfq5-4{list-style-type:none}ol.lst-kix_v200j9rrmfq5-5{list-style-type:none}ol.lst-kix_v200j9rrmfq5-6{list-style-type:none}.lst-kix_u55wq1eprzs4-2>li:before{content:"\0025a0  "}ol.lst-kix_v200j9rrmfq5-0{list-style-type:none}ol.lst-kix_v200j9rrmfq5-1{list-style-type:none}.lst-kix_u55wq1eprzs4-3>li:before{content:"\0025cf  "}ol.lst-kix_v200j9rrmfq5-2{list-style-type:none}ol.lst-kix_v200j9rrmfq5-7{list-style-type:none}ol.lst-kix_v200j9rrmfq5-8{list-style-type:none}ul.lst-kix_80i1aog082ia-8{list-style-type:none}.lst-kix_u55wq1eprzs4-1>li:before{content:"\0025cb  "}ul.lst-kix_80i1aog082ia-6{list-style-type:none}.lst-kix_u55wq1eprzs4-8>li:before{content:"\0025a0  "}ul.lst-kix_80i1aog082ia-7{list-style-type:none}ul.lst-kix_80i1aog082ia-4{list-style-type:none}ul.lst-kix_80i1aog082ia-5{list-style-type:none}ul.lst-kix_80i1aog082ia-2{list-style-type:none}.lst-kix_u55wq1eprzs4-6>li:before{content:"\0025cf  "}ul.lst-kix_80i1aog082ia-3{list-style-type:none}ul.lst-kix_80i1aog082ia-0{list-style-type:none}.lst-kix_u55wq1eprzs4-7>li:before{content:"\0025cb  "}ul.lst-kix_80i1aog082ia-1{list-style-type:none}.lst-kix_u55wq1eprzs4-4>li:before{content:"\0025cb  "}.lst-kix_u55wq1eprzs4-5>li:before{content:"\0025a0  "}.lst-kix_ixctali3daeq-1>li{counter-increment:lst-ctn-kix_ixctali3daeq-1}ol.lst-kix_ixctali3daeq-6.start{counter-reset:lst-ctn-kix_ixctali3daeq-6 0}.lst-kix_80i1aog082ia-7>li:before{content:"\0025cb  "}.lst-kix_80i1aog082ia-8>li:before{content:"\0025a0  "}.lst-kix_v200j9rrmfq5-1>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-1}ol.lst-kix_stlthlqvwps6-5.start{counter-reset:lst-ctn-kix_stlthlqvwps6-5 0}.lst-kix_v200j9rrmfq5-8>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-8}ol.lst-kix_ixctali3daeq-1.start{counter-reset:lst-ctn-kix_ixctali3daeq-1 0}.lst-kix_odfwaah4vgxt-6>li:before{content:"\0025cf  "}ol.lst-kix_v200j9rrmfq5-4.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-4 0}.lst-kix_v200j9rrmfq5-4>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-4}.lst-kix_odfwaah4vgxt-0>li:before{content:"\0025cf  "}.lst-kix_odfwaah4vgxt-8>li:before{content:"\0025a0  "}.lst-kix_stlthlqvwps6-2>li{counter-increment:lst-ctn-kix_stlthlqvwps6-2}.lst-kix_odfwaah4vgxt-2>li:before{content:"\0025a0  "}ol.lst-kix_stlthlqvwps6-8.start{counter-reset:lst-ctn-kix_stlthlqvwps6-8 0}.lst-kix_odfwaah4vgxt-4>li:before{content:"\0025cb  "}ol.lst-kix_mg1w4twwuh06-0.start{counter-reset:lst-ctn-kix_mg1w4twwuh06-0 0}.lst-kix_uwdzswms202y-8>li:before{content:"\0025a0  "}.lst-kix_2j7lekxqnkpt-3>li:before{content:"\0025cf  "}.lst-kix_2j7lekxqnkpt-5>li:before{content:"\0025a0  "}.lst-kix_2j7lekxqnkpt-7>li:before{content:"\0025cb  "}ol.lst-kix_v200j9rrmfq5-2.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-2 0}.lst-kix_xvzjmbyy0we4-1>li:before{content:"\0025cb  "}.lst-kix_dudpda2stflo-1>li:before{content:"\0025cb  "}.lst-kix_80i1aog082ia-6>li:before{content:"\0025cf  "}.lst-kix_dudpda2stflo-3>li:before{content:"\0025cf  "}.lst-kix_80i1aog082ia-4>li:before{content:"\0025cb  "}.lst-kix_xvzjmbyy0we4-7>li:before{content:"\0025cb  "}.lst-kix_80i1aog082ia-2>li:before{content:"\0025a0  "}.lst-kix_dudpda2stflo-7>li:before{content:"\0025cb  "}.lst-kix_xvzjmbyy0we4-5>li:before{content:"\0025a0  "}.lst-kix_dudpda2stflo-5>li:before{content:"\0025a0  "}.lst-kix_r4w1dj9n68ox-4>li:before{content:"\0025cb  "}.lst-kix_r4w1dj9n68ox-8>li:before{content:"\0025a0  "}.lst-kix_ixctali3daeq-7>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-7,lower-latin) ". "}.lst-kix_xvzjmbyy0we4-3>li:before{content:"\0025cf  "}.lst-kix_80i1aog082ia-0>li:before{content:"\0025cf  "}.lst-kix_r4w1dj9n68ox-6>li:before{content:"\0025cf  "}.lst-kix_ixctali3daeq-1>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-1,lower-latin) ". "}.lst-kix_r4w1dj9n68ox-0>li:before{content:"\0025cf  "}.lst-kix_ixctali3daeq-3>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-3,decimal) ". "}.lst-kix_ixctali3daeq-2>li{counter-increment:lst-ctn-kix_ixctali3daeq-2}.lst-kix_ixctali3daeq-8>li{counter-increment:lst-ctn-kix_ixctali3daeq-8}.lst-kix_stlthlqvwps6-3>li{counter-increment:lst-ctn-kix_stlthlqvwps6-3}.lst-kix_2j7lekxqnkpt-1>li:before{content:"\0025cb  "}.lst-kix_r4w1dj9n68ox-2>li:before{content:"\0025a0  "}.lst-kix_ixctali3daeq-5>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-5,lower-roman) ". "}ul.lst-kix_2j7lekxqnkpt-3{list-style-type:none}.lst-kix_d233mkpjizqz-8>li:before{content:"\0025a0  "}ul.lst-kix_2j7lekxqnkpt-2{list-style-type:none}ul.lst-kix_2j7lekxqnkpt-1{list-style-type:none}ul.lst-kix_2j7lekxqnkpt-0{list-style-type:none}.lst-kix_d233mkpjizqz-4>li:before{content:"\0025cb  "}.lst-kix_d233mkpjizqz-5>li:before{content:"\0025a0  "}ul.lst-kix_2j7lekxqnkpt-8{list-style-type:none}ul.lst-kix_2j7lekxqnkpt-7{list-style-type:none}ul.lst-kix_2j7lekxqnkpt-6{list-style-type:none}ul.lst-kix_2j7lekxqnkpt-5{list-style-type:none}ul.lst-kix_2j7lekxqnkpt-4{list-style-type:none}.lst-kix_jjw0mj9bl986-3>li:before{content:"\0025cf  "}.lst-kix_jjw0mj9bl986-4>li:before{content:"\0025cb  "}.lst-kix_stlthlqvwps6-7>li{counter-increment:lst-ctn-kix_stlthlqvwps6-7}ol.lst-kix_v200j9rrmfq5-5.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-5 0}.lst-kix_jjw0mj9bl986-0>li:before{content:"\0025cf  "}.lst-kix_irqb6ojtjg93-0>li:before{content:"\0025cf  "}.lst-kix_uwdzswms202y-6>li:before{content:"\0025cf  "}.lst-kix_irqb6ojtjg93-4>li:before{content:"\0025cb  "}.lst-kix_v200j9rrmfq5-6>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-6,decimal) ". "}ol.lst-kix_v200j9rrmfq5-6.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-6 0}.lst-kix_uwdzswms202y-5>li:before{content:"\0025a0  "}.lst-kix_v200j9rrmfq5-5>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-5,lower-roman) ". "}.lst-kix_uwdzswms202y-2>li:before{content:"\0025a0  "}.lst-kix_v200j9rrmfq5-2>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-2,lower-roman) ". "}.lst-kix_irqb6ojtjg93-3>li:before{content:"\0025cf  "}.lst-kix_uwdzswms202y-1>li:before{content:"\0025cb  "}.lst-kix_v200j9rrmfq5-1>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-1,lower-latin) ". "}.lst-kix_irqb6ojtjg93-8>li:before{content:"\0025a0  "}.lst-kix_stlthlqvwps6-5>li{counter-increment:lst-ctn-kix_stlthlqvwps6-5}.lst-kix_irqb6ojtjg93-7>li:before{content:"\0025cb  "}.lst-kix_ixctali3daeq-0>li{counter-increment:lst-ctn-kix_ixctali3daeq-0}ul.lst-kix_7i8jafwfr1xc-4{list-style-type:none}.lst-kix_4csw9e9n5p3y-6>li:before{content:"\0025cf  "}ul.lst-kix_7i8jafwfr1xc-3{list-style-type:none}ul.lst-kix_7i8jafwfr1xc-6{list-style-type:none}.lst-kix_4csw9e9n5p3y-7>li:before{content:"\0025cb  "}ul.lst-kix_7i8jafwfr1xc-5{list-style-type:none}ul.lst-kix_7i8jafwfr1xc-0{list-style-type:none}.lst-kix_mg1w4twwuh06-2>li:before{content:"\0025a0  "}ul.lst-kix_7i8jafwfr1xc-2{list-style-type:none}ul.lst-kix_7i8jafwfr1xc-1{list-style-type:none}.lst-kix_d233mkpjizqz-0>li:before{content:"\0025cf  "}.lst-kix_d233mkpjizqz-1>li:before{content:"\0025cb  "}.lst-kix_4csw9e9n5p3y-3>li:before{content:"\0025cf  "}.lst-kix_mg1w4twwuh06-7>li:before{content:"\0025cb  "}ul.lst-kix_7i8jafwfr1xc-8{list-style-type:none}ul.lst-kix_7i8jafwfr1xc-7{list-style-type:none}.lst-kix_v200j9rrmfq5-5>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-5}.lst-kix_v200j9rrmfq5-2>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-2}.lst-kix_mg1w4twwuh06-6>li:before{content:"\0025cf  "}.lst-kix_mg1w4twwuh06-3>li:before{content:"\0025cf  "}.lst-kix_7i8jafwfr1xc-3>li:before{content:"\0025cf  "}.lst-kix_odfwaah4vgxt-5>li:before{content:"\0025a0  "}.lst-kix_odfwaah4vgxt-1>li:before{content:"\0025cb  "}ol.lst-kix_v200j9rrmfq5-7.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-7 0}.lst-kix_9jetks4mgv9w-4>li:before{content:"\0025cb  "}.lst-kix_9jetks4mgv9w-8>li:before{content:"\0025a0  "}.lst-kix_stlthlqvwps6-5>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-5,lower-roman) ". "}.lst-kix_7i8jafwfr1xc-7>li:before{content:"\0025cb  "}.lst-kix_v200j9rrmfq5-7>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-7}.lst-kix_2j7lekxqnkpt-6>li:before{content:"\0025cf  "}ul.lst-kix_odfwaah4vgxt-2{list-style-type:none}ul.lst-kix_odfwaah4vgxt-3{list-style-type:none}.lst-kix_dudpda2stflo-0>li:before{content:"\0025cf  "}ul.lst-kix_odfwaah4vgxt-4{list-style-type:none}ul.lst-kix_odfwaah4vgxt-5{list-style-type:none}ul.lst-kix_odfwaah4vgxt-6{list-style-type:none}ul.lst-kix_odfwaah4vgxt-7{list-style-type:none}ul.lst-kix_odfwaah4vgxt-8{list-style-type:none}.lst-kix_dudpda2stflo-4>li:before{content:"\0025cb  "}.lst-kix_80i1aog082ia-5>li:before{content:"\0025a0  "}.lst-kix_dudpda2stflo-8>li:before{content:"\0025a0  "}.lst-kix_xvzjmbyy0we4-6>li:before{content:"\0025cf  "}.lst-kix_v200j9rrmfq5-0>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-0}.lst-kix_r4w1dj9n68ox-5>li:before{content:"\0025a0  "}.lst-kix_ixctali3daeq-6>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-6,decimal) ". "}.lst-kix_xvzjmbyy0we4-2>li:before{content:"\0025a0  "}.lst-kix_9jetks4mgv9w-0>li:before{content:"\0025cf  "}.lst-kix_80i1aog082ia-1>li:before{content:"\0025cb  "}.lst-kix_jjw0mj9bl986-7>li:before{content:"\0025cb  "}ul.lst-kix_odfwaah4vgxt-0{list-style-type:none}ul.lst-kix_odfwaah4vgxt-1{list-style-type:none}.lst-kix_r4w1dj9n68ox-1>li:before{content:"\0025cb  "}.lst-kix_ixctali3daeq-2>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-2,lower-roman) ". "}.lst-kix_2j7lekxqnkpt-2>li:before{content:"\0025a0  "}.lst-kix_stlthlqvwps6-0>li{counter-increment:lst-ctn-kix_stlthlqvwps6-0}.lst-kix_ixctali3daeq-5>li{counter-increment:lst-ctn-kix_ixctali3daeq-5}ol.lst-kix_stlthlqvwps6-4.start{counter-reset:lst-ctn-kix_stlthlqvwps6-4 0}.lst-kix_stlthlqvwps6-8>li{counter-increment:lst-ctn-kix_stlthlqvwps6-8}ol.lst-kix_ixctali3daeq-0.start{counter-reset:lst-ctn-kix_ixctali3daeq-0 0}.lst-kix_ixctali3daeq-3>li{counter-increment:lst-ctn-kix_ixctali3daeq-3}ul.lst-kix_9jetks4mgv9w-0{list-style-type:none}ul.lst-kix_9jetks4mgv9w-1{list-style-type:none}ul.lst-kix_9jetks4mgv9w-2{list-style-type:none}ol.lst-kix_v200j9rrmfq5-8.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-8 0}ul.lst-kix_9jetks4mgv9w-7{list-style-type:none}ul.lst-kix_9jetks4mgv9w-8{list-style-type:none}ul.lst-kix_9jetks4mgv9w-3{list-style-type:none}ul.lst-kix_9jetks4mgv9w-4{list-style-type:none}ul.lst-kix_9jetks4mgv9w-5{list-style-type:none}ul.lst-kix_9jetks4mgv9w-6{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-0{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-2{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-1{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-4{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-3{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-6{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-5{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-8{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-7{list-style-type:none}.lst-kix_stlthlqvwps6-1>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-1,lower-latin) ". "}.lst-kix_stlthlqvwps6-0>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-0,decimal) ". "}.lst-kix_lf90vqm16i4x-6>li:before{content:"\0025cf  "}.lst-kix_lf90vqm16i4x-5>li:before{content:"\0025a0  "}.lst-kix_lf90vqm16i4x-2>li:before{content:"\0025a0  "}.lst-kix_lf90vqm16i4x-3>li:before{content:"\0025cf  "}.lst-kix_lf90vqm16i4x-4>li:before{content:"\0025cb  "}.lst-kix_lf90vqm16i4x-1>li:before{content:"\0025cb  "}ul.lst-kix_uwdzswms202y-0{list-style-type:none}ul.lst-kix_uwdzswms202y-1{list-style-type:none}ul.lst-kix_uwdzswms202y-2{list-style-type:none}ul.lst-kix_uwdzswms202y-3{list-style-type:none}ul.lst-kix_uwdzswms202y-4{list-style-type:none}ul.lst-kix_uwdzswms202y-5{list-style-type:none}ul.lst-kix_uwdzswms202y-6{list-style-type:none}ul.lst-kix_uwdzswms202y-7{list-style-type:none}.lst-kix_lf90vqm16i4x-0>li:before{content:"\0025cf  "}ul.lst-kix_uwdzswms202y-8{list-style-type:none}.lst-kix_7i8jafwfr1xc-2>li:before{content:"\0025a0  "}ol.lst-kix_v200j9rrmfq5-1.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-1 0}.lst-kix_7i8jafwfr1xc-4>li:before{content:"\0025cb  "}.lst-kix_4csw9e9n5p3y-2>li:before{content:"\0025a0  "}.lst-kix_7i8jafwfr1xc-0>li:before{content:"\0025cf  "}.lst-kix_4csw9e9n5p3y-0>li:before{content:"\0025cf  "}.lst-kix_v200j9rrmfq5-3>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-3}.lst-kix_lf90vqm16i4x-7>li:before{content:"\0025cb  "}.lst-kix_stlthlqvwps6-4>li{counter-increment:lst-ctn-kix_stlthlqvwps6-4}.lst-kix_ixctali3daeq-7>li{counter-increment:lst-ctn-kix_ixctali3daeq-7}ul.lst-kix_4csw9e9n5p3y-3{list-style-type:none}ul.lst-kix_4csw9e9n5p3y-2{list-style-type:none}ul.lst-kix_4csw9e9n5p3y-1{list-style-type:none}.lst-kix_9jetks4mgv9w-5>li:before{content:"\0025a0  "}ul.lst-kix_4csw9e9n5p3y-0{list-style-type:none}ul.lst-kix_4csw9e9n5p3y-7{list-style-type:none}ul.lst-kix_4csw9e9n5p3y-6{list-style-type:none}ul.lst-kix_4csw9e9n5p3y-5{list-style-type:none}ul.lst-kix_4csw9e9n5p3y-4{list-style-type:none}.lst-kix_stlthlqvwps6-2>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-2,lower-roman) ". "}.lst-kix_9jetks4mgv9w-7>li:before{content:"\0025cb  "}ul.lst-kix_4csw9e9n5p3y-8{list-style-type:none}.lst-kix_stlthlqvwps6-4>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-4,lower-latin) ". "}.lst-kix_7i8jafwfr1xc-6>li:before{content:"\0025cf  "}.lst-kix_stlthlqvwps6-8>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-8,lower-roman) ". "}.lst-kix_7i8jafwfr1xc-8>li:before{content:"\0025a0  "}.lst-kix_stlthlqvwps6-6>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-6,decimal) ". "}.lst-kix_v200j9rrmfq5-8>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-8,lower-roman) ". "}ul.lst-kix_dudpda2stflo-8{list-style-type:none}ul.lst-kix_dudpda2stflo-7{list-style-type:none}ul.lst-kix_dudpda2stflo-6{list-style-type:none}ul.lst-kix_dudpda2stflo-5{list-style-type:none}ul.lst-kix_dudpda2stflo-4{list-style-type:none}ul.lst-kix_dudpda2stflo-3{list-style-type:none}ul.lst-kix_dudpda2stflo-2{list-style-type:none}ul.lst-kix_dudpda2stflo-1{list-style-type:none}ul.lst-kix_dudpda2stflo-0{list-style-type:none}ol.lst-kix_ixctali3daeq-5{list-style-type:none}ol.lst-kix_ixctali3daeq-6{list-style-type:none}ol.lst-kix_ixctali3daeq-7{list-style-type:none}ol.lst-kix_ixctali3daeq-8{list-style-type:none}ol.lst-kix_ixctali3daeq-1{list-style-type:none}ol.lst-kix_ixctali3daeq-2{list-style-type:none}ol.lst-kix_ixctali3daeq-3{list-style-type:none}ol.lst-kix_ixctali3daeq-4{list-style-type:none}ol.lst-kix_ixctali3daeq-0{list-style-type:none}.lst-kix_9jetks4mgv9w-3>li:before{content:"\0025cf  "}.lst-kix_9jetks4mgv9w-1>li:before{content:"\0025cb  "}.lst-kix_jjw0mj9bl986-6>li:before{content:"\0025cf  "}.lst-kix_jjw0mj9bl986-8>li:before{content:"\0025a0  "}ol.lst-kix_stlthlqvwps6-3{list-style-type:none}ol.lst-kix_stlthlqvwps6-4{list-style-type:none}ol.lst-kix_stlthlqvwps6-1{list-style-type:none}ol.lst-kix_v200j9rrmfq5-3.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-3 0}ol.lst-kix_stlthlqvwps6-2{list-style-type:none}ol.lst-kix_stlthlqvwps6-7{list-style-type:none}ol.lst-kix_stlthlqvwps6-8{list-style-type:none}ol.lst-kix_stlthlqvwps6-5{list-style-type:none}ol.lst-kix_stlthlqvwps6-6{list-style-type:none}ol.lst-kix_stlthlqvwps6-0{list-style-type:none}.lst-kix_mg1w4twwuh06-0>li{counter-increment:lst-ctn-kix_mg1w4twwuh06-0}ol.lst-kix_ixctali3daeq-3.start{counter-reset:lst-ctn-kix_ixctali3daeq-3 0}.lst-kix_d233mkpjizqz-3>li:before{content:"\0025cf  "}.lst-kix_jjw0mj9bl986-5>li:before{content:"\0025a0  "}.lst-kix_d233mkpjizqz-7>li:before{content:"\0025cb  "}.lst-kix_d233mkpjizqz-6>li:before{content:"\0025cf  "}.lst-kix_ixctali3daeq-4>li{counter-increment:lst-ctn-kix_ixctali3daeq-4}.lst-kix_jjw0mj9bl986-1>li:before{content:"\0025cb  "}.lst-kix_jjw0mj9bl986-2>li:before{content:"\0025a0  "}ol.lst-kix_stlthlqvwps6-7.start{counter-reset:lst-ctn-kix_stlthlqvwps6-7 0}ol.lst-kix_stlthlqvwps6-1.start{counter-reset:lst-ctn-kix_stlthlqvwps6-1 0}ul.lst-kix_d233mkpjizqz-7{list-style-type:none}ul.lst-kix_d233mkpjizqz-8{list-style-type:none}ul.lst-kix_d233mkpjizqz-5{list-style-type:none}ul.lst-kix_d233mkpjizqz-6{list-style-type:none}ul.lst-kix_d233mkpjizqz-3{list-style-type:none}ul.lst-kix_d233mkpjizqz-4{list-style-type:none}ul.lst-kix_d233mkpjizqz-1{list-style-type:none}ul.lst-kix_d233mkpjizqz-2{list-style-type:none}ul.lst-kix_d233mkpjizqz-0{list-style-type:none}.lst-kix_uwdzswms202y-4>li:before{content:"\0025cb  "}.lst-kix_irqb6ojtjg93-2>li:before{content:"\0025a0  "}.lst-kix_irqb6ojtjg93-1>li:before{content:"\0025cb  "}.lst-kix_irqb6ojtjg93-5>li:before{content:"\0025a0  "}.lst-kix_v200j9rrmfq5-4>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-4,lower-latin) ". "}ol.lst-kix_stlthlqvwps6-6.start{counter-reset:lst-ctn-kix_stlthlqvwps6-6 0}.lst-kix_uwdzswms202y-3>li:before{content:"\0025cf  "}.lst-kix_v200j9rrmfq5-3>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-3,decimal) ". "}ul.lst-kix_irqb6ojtjg93-5{list-style-type:none}ul.lst-kix_irqb6ojtjg93-6{list-style-type:none}ul.lst-kix_irqb6ojtjg93-7{list-style-type:none}ol.lst-kix_ixctali3daeq-2.start{counter-reset:lst-ctn-kix_ixctali3daeq-2 0}ul.lst-kix_irqb6ojtjg93-8{list-style-type:none}.lst-kix_v200j9rrmfq5-0>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-0,decimal) ". "}.lst-kix_ixctali3daeq-6>li{counter-increment:lst-ctn-kix_ixctali3daeq-6}ol.lst-kix_ixctali3daeq-8.start{counter-reset:lst-ctn-kix_ixctali3daeq-8 0}.lst-kix_uwdzswms202y-0>li:before{content:"\0025cf  "}ul.lst-kix_irqb6ojtjg93-0{list-style-type:none}.lst-kix_irqb6ojtjg93-6>li:before{content:"\0025cf  "}ul.lst-kix_irqb6ojtjg93-1{list-style-type:none}ul.lst-kix_irqb6ojtjg93-2{list-style-type:none}ul.lst-kix_irqb6ojtjg93-3{list-style-type:none}ul.lst-kix_irqb6ojtjg93-4{list-style-type:none}.lst-kix_mg1w4twwuh06-1>li:before{content:"\0025cb  "}.lst-kix_4csw9e9n5p3y-5>li:before{content:"\0025a0  "}ol.lst-kix_v200j9rrmfq5-0.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-0 0}.lst-kix_d233mkpjizqz-2>li:before{content:"\0025a0  "}.lst-kix_4csw9e9n5p3y-4>li:before{content:"\0025cb  "}.lst-kix_mg1w4twwuh06-0>li:before{content:"" counter(lst-ctn-kix_mg1w4twwuh06-0,decimal) ". "}.lst-kix_mg1w4twwuh06-8>li:before{content:"\0025a0  "}ol.lst-kix_mg1w4twwuh06-0{list-style-type:none}.lst-kix_mg1w4twwuh06-5>li:before{content:"\0025a0  "}.lst-kix_4csw9e9n5p3y-8>li:before{content:"\0025a0  "}.lst-kix_mg1w4twwuh06-4>li:before{content:"\0025cb  "}ul.lst-kix_u55wq1eprzs4-8{list-style-type:none}.lst-kix_odfwaah4vgxt-7>li:before{content:"\0025cb  "}ul.lst-kix_u55wq1eprzs4-7{list-style-type:none}.lst-kix_7i8jafwfr1xc-1>li:before{content:"\0025cb  "}ul.lst-kix_jjw0mj9bl986-8{list-style-type:none}ul.lst-kix_u55wq1eprzs4-4{list-style-type:none}ul.lst-kix_jjw0mj9bl986-7{list-style-type:none}ul.lst-kix_u55wq1eprzs4-3{list-style-type:none}ul.lst-kix_u55wq1eprzs4-6{list-style-type:none}ul.lst-kix_u55wq1eprzs4-5{list-style-type:none}ul.lst-kix_u55wq1eprzs4-0{list-style-type:none}.lst-kix_7i8jafwfr1xc-5>li:before{content:"\0025a0  "}ul.lst-kix_u55wq1eprzs4-2{list-style-type:none}ul.lst-kix_u55wq1eprzs4-1{list-style-type:none}ol.lst-kix_ixctali3daeq-7.start{counter-reset:lst-ctn-kix_ixctali3daeq-7 0}ul.lst-kix_mg1w4twwuh06-4{list-style-type:none}ul.lst-kix_mg1w4twwuh06-5{list-style-type:none}ul.lst-kix_mg1w4twwuh06-6{list-style-type:none}ul.lst-kix_mg1w4twwuh06-7{list-style-type:none}ul.lst-kix_mg1w4twwuh06-1{list-style-type:none}ul.lst-kix_mg1w4twwuh06-2{list-style-type:none}ul.lst-kix_mg1w4twwuh06-3{list-style-type:none}ul.lst-kix_jjw0mj9bl986-4{list-style-type:none}.lst-kix_odfwaah4vgxt-3>li:before{content:"\0025cf  "}ul.lst-kix_jjw0mj9bl986-3{list-style-type:none}ul.lst-kix_jjw0mj9bl986-6{list-style-type:none}.lst-kix_4csw9e9n5p3y-1>li:before{content:"\0025cb  "}ul.lst-kix_jjw0mj9bl986-5{list-style-type:none}.lst-kix_lf90vqm16i4x-8>li:before{content:"\0025a0  "}ul.lst-kix_jjw0mj9bl986-0{list-style-type:none}ol.lst-kix_stlthlqvwps6-0.start{counter-reset:lst-ctn-kix_stlthlqvwps6-0 0}ul.lst-kix_jjw0mj9bl986-2{list-style-type:none}ul.lst-kix_jjw0mj9bl986-1{list-style-type:none}.lst-kix_stlthlqvwps6-1>li{counter-increment:lst-ctn-kix_stlthlqvwps6-1}.lst-kix_9jetks4mgv9w-6>li:before{content:"\0025cf  "}ul.lst-kix_xvzjmbyy0we4-2{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-3{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-0{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-1{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-6{list-style-type:none}ul.lst-kix_mg1w4twwuh06-8{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-7{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-4{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-5{list-style-type:none}ul.lst-kix_lf90vqm16i4x-6{list-style-type:none}ul.lst-kix_lf90vqm16i4x-7{list-style-type:none}.lst-kix_stlthlqvwps6-3>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-3,decimal) ". "}ul.lst-kix_lf90vqm16i4x-8{list-style-type:none}ul.lst-kix_lf90vqm16i4x-2{list-style-type:none}ul.lst-kix_lf90vqm16i4x-3{list-style-type:none}ul.lst-kix_lf90vqm16i4x-4{list-style-type:none}ul.lst-kix_lf90vqm16i4x-5{list-style-type:none}.lst-kix_stlthlqvwps6-7>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-7,lower-latin) ". "}ul.lst-kix_lf90vqm16i4x-0{list-style-type:none}ul.lst-kix_lf90vqm16i4x-1{list-style-type:none}.lst-kix_uwdzswms202y-7>li:before{content:"\0025cb  "}.lst-kix_v200j9rrmfq5-7>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-7,lower-latin) ". "}ol.lst-kix_ixctali3daeq-5.start{counter-reset:lst-ctn-kix_ixctali3daeq-5 0}.lst-kix_2j7lekxqnkpt-4>li:before{content:"\0025cb  "}ol.lst-kix_stlthlqvwps6-2.start{counter-reset:lst-ctn-kix_stlthlqvwps6-2 0}.lst-kix_ixctali3daeq-0>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-0,decimal) ". "}.lst-kix_xvzjmbyy0we4-0>li:before{content:"\0025cf  "}ul.lst-kix_xvzjmbyy0we4-8{list-style-type:none}.lst-kix_dudpda2stflo-2>li:before{content:"\0025a0  "}.lst-kix_v200j9rrmfq5-6>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-6}.lst-kix_9jetks4mgv9w-2>li:before{content:"\0025a0  "}.lst-kix_2j7lekxqnkpt-8>li:before{content:"\0025a0  "}.lst-kix_r4w1dj9n68ox-7>li:before{content:"\0025cb  "}.lst-kix_ixctali3daeq-8>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-8,lower-roman) ". "}.lst-kix_80i1aog082ia-3>li:before{content:"\0025cf  "}.lst-kix_xvzjmbyy0we4-8>li:before{content:"\0025a0  "}ol.lst-kix_ixctali3daeq-4.start{counter-reset:lst-ctn-kix_ixctali3daeq-4 0}.lst-kix_dudpda2stflo-6>li:before{content:"\0025cf  "}ol.lst-kix_stlthlqvwps6-3.start{counter-reset:lst-ctn-kix_stlthlqvwps6-3 0}.lst-kix_xvzjmbyy0we4-4>li:before{content:"\0025cb  "}.lst-kix_stlthlqvwps6-6>li{counter-increment:lst-ctn-kix_stlthlqvwps6-6}.lst-kix_r4w1dj9n68ox-3>li:before{content:"\0025cf  "}.lst-kix_ixctali3daeq-4>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-4,lower-latin) ". "}.lst-kix_2j7lekxqnkpt-0>li:before{content:"\0025cf  "}ol{margin:0;padding:0}table td,table th{padding:0}.c0{margin-left:36pt;padding-top:0pt;padding-left:0pt;padding-bottom:0pt;line-height:1.15;orphans:2;widows:2;text-align:left}.c13{color:#000000;font-weight:400;text-decoration:none;vertical-align:baseline;font-size:26pt;font-family:"Arial";font-style:normal}.c14{padding-top:0pt;padding-bottom:3pt;line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}.c2{color:#000000;font-weight:400;text-decoration:none;vertical-align:baseline;font-size:11pt;font-family:"Arial";font-style:normal}.c10{padding-top:18pt;padding-bottom:6pt;line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}.c9{color:#000000;font-weight:400;text-decoration:none;vertical-align:baseline;font-size:16pt;font-family:"Arial";font-style:normal}.c1{padding-top:0pt;padding-bottom:0pt;line-height:1.15;orphans:2;widows:2;text-align:left;height:11pt}.c11{padding-top:20pt;padding-bottom:6pt;line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}.c12{color:#000000;font-weight:400;text-decoration:none;vertical-align:baseline;font-size:11pt;font-family:"Arial";font-style:italic}.c5{color:#000000;font-weight:400;text-decoration:none;vertical-align:baseline;font-size:20pt;font-family:"Arial";font-style:normal}.c3{padding-top:0pt;padding-bottom:0pt;line-height:1.15;orphans:2;widows:2;text-align:left}.c7{color:#000000;text-decoration:none;vertical-align:baseline;font-size:11pt;font-family:"Arial";font-style:normal}.c8{background-color:#ffffff;max-width:468pt;padding:72pt 72pt 72pt 72pt}.c6{padding:0;margin:0}.c4{font-weight:700}.title{padding-top:0pt;color:#000000;font-size:26pt;padding-bottom:3pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}.subtitle{padding-top:0pt;color:#666666;font-size:15pt;padding-bottom:16pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}li{color:#000000;font-size:11pt;font-family:"Arial"}p{margin:0;color:#000000;font-size:11pt;font-family:"Arial"}h1{padding-top:20pt;color:#000000;font-size:20pt;padding-bottom:6pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}h2{padding-top:18pt;color:#000000;font-size:16pt;padding-bottom:6pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}h3{padding-top:16pt;color:#434343;font-size:14pt;padding-bottom:4pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}h4{padding-top:14pt;color:#666666;font-size:12pt;padding-bottom:4pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}h5{padding-top:12pt;color:#666666;font-size:11pt;padding-bottom:4pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}h6{padding-top:12pt;color:#666666;font-size:11pt;padding-bottom:4pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;font-style:italic;orphans:2;widows:2;text-align:left}</style>
+    </head>
+    <body>
+        <div id="fb-root"></div>
+        <script async defer crossorigin="anonymous"
+            src="https://connect.facebook.net/en_GB/sdk.js#xfbml=1&autoLogAppEvents=1&version=v6.0&appId=538011207113822"></script>
+        <section class="hero is-shadowless is-fullheight">
+            <div class="hero-head">
+                <div class="container">
+                    <nav class="navbar is-transparent is-spaced">
+                        <div class="navbar-brand"><a href="/" class="navbar-item navbar-logo" style="margin-right: auto;">
+                                <figure class="image is-128x128"><img src="/logo.png" alt="logo"
+                                        style="height: 128px; width: 128px; max-height: 128px"></figure>
+                            </a><a href="/login" class="navbar-item button thickbox is-uppercase is-hidden-desktop"
+                                style="margin: 20px" target="_self">Login</a></div>
+                        <div class="navbar-menu">
+                            <div class="navbar-end">
+                                <div class="navbar-item is-hidden-touch"><a href="/login"
+                                        class="button thickbox is-uppercase" target="_self">Login To Production Area</a></div>
+                            </div>
+                        </div>
+                        <div class="navber-item" style="display: flex; align-items: center; margin-left: 5px;">
+                            <div class="fb-like" data-href="https://www.open-quiz.com" data-width=""
+                                data-layout="button_count" data-action="like" data-size="large" data-share="true"
+                                data-colorscheme="light"></div>
+                        </div>
+                    </nav>
+                </div>
+            </div>
+            <div class="hero-body">
+                <div class="container" style="margin-bottom: auto">
+
+        <p class="c14 title" id="h.c38qwry31k2p"><span class="c13">Open-Quiz User Manual</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <a name="p1"></a><h1 class="c11" id="h.ukgme2gxsjkv"><span class="c5">1 Overview</span></h1>
+        <p class="c3"><span class="c2">Open-Quiz is a web platform for producing online quizzes. It supports regulations of
+                <a href="https://en.wikipedia.org/wiki/What%3F_Where%3F_When%3F">What Where When</a>,
+                <a href="https://en.wikipedia.org/wiki/Jeopardy!">Jeopardy!</a> and
+                <a href="https://en.wikipedia.org/wiki/Trivia">Trivia Quizzes</a> with free form of answers. Questions may contain images. Integration
+                with <a href="https://mixlr.com/">Mixlr</a> is implemented. There are no limitations on the number of participants!</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">Please <a href="/login">login to the production area</a> to start producing quizzes.</span></p>
+        <a name="p2"></a>
+        <h1 class="c11" id="h.ledmzmrqu976"><span class="c5">2 Setup Quiz</span></h1>
+        <p class="c3"><span>Select &ldquo;Quizzes&rdquo; </span><span class="c4">(1)</span><span class="c2">&nbsp;on the left
+                menu to open Quizzes Page</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 624.00px; height: 120.00px;"><img
+                    alt="" src="images/image15.png"
+                    style="width: 624.00px; height: 120.00px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig 2.1 Quizzes Page</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span>Here you can &ldquo;Create New Quiz&rdquo; </span><span class="c4">(2)</span><span>&nbsp;or open an
+                existing quiz by clicking the &ldquo;plus&rdquo; sign in the table </span><span class="c4">(3)</span><span
+                class="c2">.</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">Quiz editing form will be opened.</span></p>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 624.00px; height: 357.33px;"><img
+                    alt="" src="images/image12.png"
+                    style="width: 624.00px; height: 357.33px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig 2.2 Quiz Edit Form</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">Here you set up:</span></p>
+        <ul class="c6 lst-kix_r4w1dj9n68ox-0 start">
+            <li class="c0"><span class="c4">Name</span><span class="c2">&nbsp;of the quiz.</span></li>
+            <li class="c0"><span class="c4">Start Time</span><span class="c2">&nbsp;- in local time of your device.</span></li>
+            <li class="c0"><span class="c4">Welcome Message</span><span class="c2">&nbsp;- the message is displayed to users
+                    before the quiz starts.</span></li>
+            <li class="c0"><span class="c4">Farewell Message</span><span class="c2">&nbsp;- &nbsp;the message is displayed to
+                    users after the quiz finishes.</span></li>
+            <li class="c0"><span class="c4">Event Page</span><span class="c2">&nbsp;- link to the external page with information
+                    about the quiz. It is displayed on the registration page.</span></li>
+            <li class="c0"><span class="c4">Mixlr User Id</span><span class="c2">&nbsp;- id of your Mixlr account. Keep it blank
+                    if you are not going to use Mixlr.</span></li>
+            <li class="c0"><span class="c4">Quiz picture</span><span class="c2">&nbsp;- an image that users see during the quiz.
+                    Usually it is your logo.</span></li>
+            <li class="c0"><span class="c4">Registration is moderated </span><span class="c2">- this option prevents a team from
+                    participating in a quiz until you admit its registration.</span></li>
+        </ul>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">Don&rsquo;t forget to click the &ldquo;Submit&rdquo; button to save changes.</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">The Quiz Edit From also contains:</span></p>
+        <ul class="c6 lst-kix_9jetks4mgv9w-0 start">
+            <li class="c0"><span class="c4">Admin link</span><span class="c2">&nbsp;- link to the admin app for operating the
+                    quiz.</span></li>
+            <li class="c0"><span class="c4">Registration link</span><span class="c2">&nbsp;- link to the registration
+                    page.</span></li>
+            <li class="c0"><span class="c4">Audience link</span><span class="c2">&nbsp;- link to read-only view of the
+                    quiz.</span></li>
+        </ul>
+        <a name="p3"></a>
+        <h1 class="c11" id="h.7hzlny5aj3cn"><span class="c5">3 Managing Question&rsquo;s Packages</span></h1>
+        <p class="c3"><span>Select &ldquo;Questions&rdquo; </span><span class="c4">(1)</span><span class="c2">&nbsp;on the left
+                menu to open Questions Page</span></p>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 624.00px; height: 150.67px;"><img
+                    alt="" src="images/image4.png"
+                    style="width: 624.00px; height: 150.67px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig 3.1 Questions Page</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span>Here you can &ldquo;Create New Package&rdquo; </span><span class="c4">(2)</span><span>&nbsp;or open
+                an existing package by clicking the &ldquo;plus&rdquo; sign in the table </span><span
+                class="c4">(3)</span><span>. Also you can &ldquo;Aquire Package&rdquo; </span><span class="c4">(4)</span><span
+                class="c2">&nbsp;from another account.</span></p>
+        <h2 class="c10" id="h.d0pd52bmxn3n"><span class="c9">3.1 Editing Packages</span></h2>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 624.00px; height: 657.33px;"><img
+                    alt="" src="images/image11.png"
+                    style="width: 624.00px; height: 657.33px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig 3.2 Package Edit Form</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">Fields in the form:</span></p>
+        <ul class="c6 lst-kix_uwdzswms202y-0 start">
+            <li class="c0"><span class="c7 c4">Package Name</span></li>
+            <li class="c0"><span class="c4">Transfer Token</span><span class="c2">&nbsp;- used in acquiring scenarios.</span>
+            </li>
+        </ul>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">A package consists of the slips. Supported slip kinds:</span></p>
+        <ul class="c6 lst-kix_lf90vqm16i4x-0 start">
+            <li class="c0"><span class="c4">Single</span><span class="c2">&nbsp;- one question, one answer.</span></li>
+            <li class="c0"><span class="c4">Doublet</span><span class="c2">&nbsp;- two questions, followed by a single
+                    answer.</span></li>
+            <li class="c0"><span class="c4">Blitz</span><span class="c2">&nbsp;- three questions, followed by a single
+                    answer.</span></li>
+            <li class="c0"><span class="c4">Multiple</span><span class="c2">&nbsp;- slip with a set of single questions, answers
+                    are collected at the same time.</span></li>
+        </ul>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">Each question has such fields:</span></p>
+        <ul class="c6 lst-kix_7i8jafwfr1xc-0 start">
+            <li class="c0"><span class="c4">Question</span><span>&nbsp;or </span><span class="c4">List of Questions</span><span
+                    class="c2">&nbsp;- text of the question, displayed to players during discussion.</span></li>
+            <li class="c0"><span class="c4">Question picture</span><span class="c2">&nbsp;- graphical information, displayed to
+                    players during discussion.</span></li>
+            <li class="c0"><span class="c4">Answer</span><span class="c2">&nbsp;- correct answer, used for automatic settling of
+                    the results, first answer is displayed to players after a question is settled.</span></li>
+            <li class="c0"><span class="c4">Comment</span><span class="c2">&nbsp;- additional information regarding a question,
+                    displayed after the question is settled.</span></li>
+            <li class="c0"><span class="c4">Comment picture</span><span class="c2">&nbsp;- graphical information, related to
+                    comment.</span></li>
+            <li class="c0"><span class="c4">Points</span><span class="c2">&nbsp;- default number of points a team gets is case
+                    of correct answer.</span></li>
+            <li class="c0"><span class="c4">Jeopardy flag</span><span class="c2">&nbsp;- if checked, a team loses points in case
+                    of wrong answer.</span></li>
+        </ul>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">Rules of automatic answers checking algorithm:</span></p>
+        <ul class="c6 lst-kix_jjw0mj9bl986-0 start">
+            <li class="c0"><span class="c2">If a question has several correct answers. Each of those should be placed in a
+                    separate row.</span></li>
+            <li class="c0"><span>If an answer has a non necessary part it could be placed within square brackets. Example:
+                </span><span class="c12">&lsquo;Red [Sea]&rsquo;.</span></li>
+            <li class="c0"><span>If an answer has a choice part it could be placed in square brackets and separated with slash.
+                    Example </span><span class="c12">&lsquo;[mr/mrs] Smith&rsquo;.</span></li>
+            <li class="c0"><span class="c2">Al is case insensitive.</span></li>
+            <li class="c0"><span class="c2">Allowed characters - letters, numbers, dot &lsquo;.&rsquo;, plus &lsquo;+&rsquo;,
+                    minus &lsquo;-&rsquo;. All other characters are considered as separators of words.</span></li>
+            <li class="c0"><span class="c2">The algorithm is insensitive to order of words. (&ldquo;Pushkin,Lermontov&rdquo; and
+                    &ldquo;Lermontov,Pushkin&rdquo; are the same answers)</span></li>
+            <li class="c0"><span class="c2">The algorithm is tolerated to one typo in a word if the word&rsquo;s size is more
+                    than 4 symbols.</span></li>
+        </ul>
+        <h2 class="c10" id="h.wnngq1gquvrm"><span class="c9">3.1 Acquiring Packages</span></h2>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 624.00px; height: 38.67px;"><img
+                    alt="" src="images/image5.png"
+                    style="width: 624.00px; height: 38.67px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig 3.3 Acquiring Form</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">To acquire a package from another account you should get the package&#39;s Id and
+                Transfer Token from its owner. After transfering you will be able to see the package in your package&rsquo;s
+                list. Transfer token is changed.</span></p>
+        <a name="p4"></a>
+        <h1 class="c11" id="h.wtoxedsxr7sc"><span class="c5">4 Administration App</span></h1>
+        <p class="c3"><span class="c2">You may open the quiz administration application by &ldquo;admin link&rdquo; in your
+                quizzes page.</span></p>
+        <p class="c3"><span class="c2">Using &ldquo;admin link&rdquo; several persons may operate with same quiz
+                simultaneously.</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 560.00px; height: 96.00px;"><img
+                    alt="" src="images/image1.png"
+                    style="width: 560.00px; height: 96.00px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig 4.1 Admin Menu</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">Administration application consist of</span></p>
+        <ul class="c6 lst-kix_odfwaah4vgxt-0 start">
+            <li class="c0"><span class="c4">Teams Page</span><span class="c2">&nbsp;- list of registered teams</span></li>
+            <li class="c0"><span class="c4">Control Panel</span><span class="c2">&nbsp;- &nbsp;managing questions flow</span>
+            </li>
+            <li class="c0"><span class="c4">Answers</span><span class="c2">&nbsp;- managing answers</span></li>
+            <li class="c0"><span class="c4">Results</span><span class="c2">&nbsp;- results table</span></li>
+        </ul>
+        <a name="p4.1"></a>
+        <h2 class="c10" id="h.cnrl46jh4il4"><span class="c9">4.1 Managing Teams</span></h2>
+        <p class="c3"><span class="c2">There are two way how a team could be registered on a quiz</span></p>
+        <ol class="c6 lst-kix_ixctali3daeq-0 start" start="1">
+            <li class="c0"><span class="c2">Registration by &ldquo;registration link&rdquo; - you publish &ldquo;registration
+                    link&rdquo; from Quiz Edit Form. Captains of the teams perform registration.</span></li>
+            <li class="c0"><span>Manual registration - you &ldquo;Create New Team&rdquo; </span><span class="c4">(1)</span><span
+                    class="c2">&nbsp;on Teams Page of administration application.</span></li>
+        </ol>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 624.00px; height: 238.67px;"><img
+                    alt="" src="images/image9.png"
+                    style="width: 624.00px; height: 238.67px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig 4.2 Teams Page</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span>In case of moderate registration. You should Admit or Reject </span><span class="c4">(2)</span><span
+                class="c2">&nbsp;the registration manually.</span></p>
+        <p class="c3"><span class="c2">In any time you could change the name of a team and its status using Tram Edit
+                Form.</span></p>
+        <p class="c3"><span class="c2">Entry token is used for creation of Entry URL - unique link where team&rsquo;s captain
+                may enter answers. An entry url can be used only from one device at the same time.</span></p>
+        <a name="p4.2"></a>
+        <h2 class="c10" id="h.icyb49n60h1t"><span class="c9">4.2 Control Panel</span></h2>
+        <p class="c3"><span class="c2">From the Control Panel you manage live quiz flow. </span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 383.25px; height: 177.50px;"><img
+                    alt="" src="images/image14.png"
+                    style="width: 383.25px; height: 177.50px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig 4.3. Control Panel before live</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">Two steps you should perform to go live:</span></p>
+        <ul class="c6 lst-kix_u55wq1eprzs4-0 start">
+            <li class="c0"><span class="c2">Select Questions Package</span></li>
+            <li class="c0"><span class="c2">Change Status to Live</span></li>
+        </ul>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">After that you will see a Control Panel with information on the Current Question.</span>
+        </p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">Also you may not select a package and enter text of the questions manually.</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">General Control Flow:</span></p>
+        <ol class="c6 lst-kix_mg1w4twwuh06-0 start" start="1">
+            <li class="c0"><span>Select a </span><span class="c7 c4">Questions Package</span></li>
+            <li class="c0"><span>Change Status to </span><span class="c7 c4">Live</span></li>
+            <li class="c0"><span class="c2">Announce a question</span></li>
+            <li class="c0"><span class="c7 c4">Start Countdown</span></li>
+            <li class="c0"><span class="c2">Wait until time runs out</span></li>
+            <li class="c0"><span class="c4">Show Answer</span><span class="c2">&nbsp;and announce it</span></li>
+            <li class="c0"><span>Go to </span><span class="c4 c7">Next Slip</span></li>
+            <li class="c0"><span class="c2">Repeat from point 3 until last question</span></li>
+            <li class="c0"><span class="c7 c4">Finish Quiz</span></li>
+        </ol>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 288.30px; height: 563.50px;"><img
+                    alt="" src="images/image13.png"
+                    style="width: 288.30px; height: 563.50px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig 4.4 Quiz Control Panel Live</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">You may perform &ldquo;last minute&rdquo; change in the question:</span></p>
+        <ul class="c6 lst-kix_irqb6ojtjg93-0 start">
+            <li class="c0"><span>Set question number </span><span class="c4">(1) </span><span>- you</span><span
+                    class="c4">&nbsp;</span><span class="c2">may change numeration or add a prefix (e.g &ldquo;play-off
+                    1&rdquo;)</span></li>
+            <li class="c0"><span class="c2">Seconds of countdown</span></li>
+            <li class="c0"><span class="c2">Points for the question</span></li>
+            <li class="c0"><span class="c2">Jeopardy flag</span></li>
+            <li class="c0"><span class="c2">Question&rsquo;s text and picture</span></li>
+            <li class="c0"><span class="c2">Answert&rsquo;s text</span></li>
+            <li class="c0"><span class="c2">Commment&rsquo;s text and picture</span></li>
+        </ul>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">You control quiz flow by sending such commands:</span></p>
+        <ul class="c6 lst-kix_2j7lekxqnkpt-0 start">
+            <li class="c0"><span class="c4">Start Countdown</span><span class="c2">&nbsp;- after announcing a question</span>
+            </li>
+            <li class="c0"><span class="c4">Reset Countdown</span><span class="c2">&nbsp;- if you start countdown
+                    mistakenly</span></li>
+            <li class="c0"><span class="c4">Show Answer</span><span class="c2">&nbsp;- to show answer on team&rsquo;s devices
+                    and check correct answer automatically</span></li>
+            <li class="c0"><span class="c4">Next Slip</span><span class="c2">&nbsp;- go to the next quesion&rsquo;s slip</span>
+            </li>
+        </ul>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span>In case of doublets or blitzes your have extra commands before starting countdown</span></p>
+        <ul class="c6 lst-kix_xvzjmbyy0we4-0 start">
+            <li class="c0"><span class="c7 c4">Show Question Part 1</span></li>
+            <li class="c0"><span class="c4">Show Question Part 2</span><span class="c2">&nbsp;- for blitzes only</span></li>
+        </ul>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 278.37px; height: 548.50px;"><img
+                    alt="" src="images/image3.png"
+                    style="width: 278.37px; height: 548.50px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig 4.5 Control Panel during a blitz</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">In case of a multi answers slip you command to show each question successively.</span>
+        </p>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 331.52px; height: 526.50px;"><img
+                    alt="" src="images/image6.png"
+                    style="width: 331.52px; height: 526.50px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig 4.6 Control panel with muli question slip</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">After last slip in the package, you may choose to</span></p>
+        <ul class="c6 lst-kix_d233mkpjizqz-0 start">
+            <li class="c0"><span class="c4">Finish</span><span class="c2">&nbsp;the quiz</span></li>
+            <li class="c0"><span class="c4">Select another package</span><span class="c2">&nbsp;(e.g.play-off) and
+                    continue</span></li>
+        </ul>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">You can change the package or selected question from the package anytime when the quiz is
+                live.</span></p>
+        <h2 class="c10" id="h.8doi224oau32"><span class="c9">4.3 Answers</span></h2>
+        <p class="c3"><span class="c2">Answers page allows to set teams results for each question. </span></p>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 624.00px; height: 234.67px;"><img
+                    alt="" src="images/image2.png"
+                    style="width: 624.00px; height: 234.67px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig 4.7 Answers Page</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">You navigate between questions with the help of the left menu.</span></p>
+        <p class="c3"><span class="c2">&nbsp;</span></p>
+        <p class="c3"><span class="c2">You may</span></p>
+        <ul class="c6 lst-kix_dudpda2stflo-0 start">
+            <li class="c0"><span>Give a team default number of points by clicking </span><span class="c7 c4">&ldquo;plus&rdquo;
+                    button</span></li>
+            <li class="c0"><span>Clear point by clicking</span><span class="c7 c4">&nbsp;&ldquo;zero&rdquo; button</span></li>
+            <li class="c0"><span>Take points from a team by clicking </span><span class="c4">&ldquo;minus&rdquo;
+                    button</span><span class="c2">&nbsp;(only for jeopardy questions)</span></li>
+            <li class="c0"><span class="c2">You may Give any value of point by entering it manually</span></li>
+        </ul>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">If you change points for a team, it set the points for rest teams with the same
+                answer.</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">Time column displays seconds from the start of the countdown when the answer was
+                received.</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span>Usually you wait until autochecking of the answers is completed (button </span><span class="c4">Show
+                Answer</span><span>&nbsp;is clicked on the </span><span class="c4">Control Panel</span><span class="c2">) and
+                then process the rest of the answers.</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <h2 class="c10" id="h.ixv8e1iivmaa"><span class="c9">4.4 Results</span></h2>
+        <p class="c3"><span class="c2">Here you can see current results</span></p>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 624.00px; height: 168.00px;"><img
+                    alt="" src="images/image7.png"
+                    style="width: 624.00px; height: 168.00px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig &nbsp;4.8 Results Page</span></p>
+        <a name="p5"></a>
+        <h1 class="c11" id="h.whez9fx6mge"><span class="c5">5 Team App</span></h1>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">Each team has a unique link for a quiz. The link can be found on the registration page or
+                directly obtained from the quiz&rsquo; administration.</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">Only one device can open the link at the same time. So this is a good idea to give the
+                link to the team&rsquo;s captain.</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 357.58px; height: 635.50px;"><img
+                    alt="" src="images/image8.png"
+                    style="width: 357.58px; height: 635.50px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></p>
+        <p class="c3"><span class="c2">Fig 5.1 Team&rsquo;s application</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">The application consists of</span></p>
+        <ul class="c6 lst-kix_80i1aog082ia-0 start">
+            <li class="c0"><span class="c2">Question Page - where questions are displayed and answers are entered. (There is no
+                    &ldquo;Send&rdquo; button in the app) An answer is sent automatically after the countdown.</span></li>
+            <li class="c0"><span class="c2">History Page - history of the team&rsquo;s answers and correct answers</span></li>
+            <li class="c0"><span class="c2">Results Page - current results</span></li>
+        </ul>
+        <p class="c1"><span class="c2"></span></p>
+        <p class="c3"><span class="c2">On the top of the application Mixlr player is embedded in case appropriate id is provided
+                in the Quiz Edit Form.</span></p>
+        <a name="p6"></a>
+        <h1 class="c11" id="h.gxn0ozgt00nu"><span class="c5">6 Audience App</span></h1>
+        <p class="c3"><span class="c2">Audience application provides read-only access to the quiz&rsquo; content. It is a good
+                idea to share a link to the application to the rest team&rsquo;s members. The could be found in the Quiz Edit
+                Form.</span></p>
+        <p class="c1"><span class="c2"></span></p>
+        <h1 class="c11" id="h.illb28z26hd9"><span
+                style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 241.50px; height: 426.71px;"><img
+                    alt="" src="images/image10.png"
+                    style="width: 241.50px; height: 426.71px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);"
+                    title=""></span></h1>
+        <p class="c3"><span class="c2">Fig 6.1 Audience Application</span></p>
+    </div>
+        </div>
+        <div class="hero-foot has-background-dark has-text-grey-light">
+            <div class="container" style="text-align: center">&#169;<span class="is-hidden-touch"> Serhii Sabirov</span>
+                2020 - <a href="/terms.html" class="has-text-grey-light">Terms</a> - <a href="/disclaimer.html"
+                    class="has-text-grey-light">Disclaimer</a> - <a href="/privacy-policy-en.html"
+                    class="has-text-grey-light">Privacy</a> - <a href="https://t.me/open_quiz"
+                    class="has-text-grey-light">Contact</a></div>
+        </div>
+        </section>
+
+    </body>
+</html>
