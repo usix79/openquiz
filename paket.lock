@@ -787,6 +787,31 @@ NUGET
       Fable.Core (>= 3.0)
       FSharp.Core (>= 4.6.2)
 
+GROUP PTests
+STORAGE: NONE
+RESTRICTION: == netcoreapp3.1
+NUGET
+  remote: https://api.nuget.org/v3/index.json
+    Fable.Remoting.DotnetClient (2.8)
+      Fable.Remoting.Json (>= 2.6)
+      FSharp.Core (>= 4.6.2)
+    Fable.Remoting.Json (2.6)
+      FSharp.Core (>= 4.6.2)
+      Newtonsoft.Json (>= 12.0.2)
+    FSharp.Control.AsyncSeq (2.0.23)
+      FSharp.Core (>= 4.3.2)
+    FSharp.Control.Reactive (4.2)
+      FSharp.Core (>= 4.2.3)
+      System.Reactive (>= 4.0)
+    FSharp.Core (4.7.1)
+    FSharpx.Async (1.14.1)
+      FSharp.Control.AsyncSeq (>= 2.0.21)
+      FSharp.Core (>= 4.6.2)
+    Newtonsoft.Json (12.0.3)
+    System.Reactive (4.4.1)
+GITHUB
+  remote: deapsquatter/FSharp.SSEClient
+    src/SSEClient.fs (8242236730a29db6e812264689f20410367dd7aa)
 GROUP Server
 STORAGE: NONE
 RESTRICTION: == netcoreapp3.1

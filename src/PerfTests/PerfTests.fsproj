@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\paket-files\ptests\deapsquatter\FSharp.SSEClient\src\SSEClient.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/SSEClient.fs</Link>
+    </Compile>
+    <Compile Include="../Shared/Shared.fs" />
+    <Compile Include="Common.fs" />
+    <Compile Include="Setup.fs" />
+    <Compile Include="Teams.fs" />
+    <Compile Include="Audience.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>

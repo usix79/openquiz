@@ -539,6 +539,7 @@ type IAdminApi = {
     getAnswers : REQ<unit> -> ARESP<AdminModels.AnswersBundle>
     updateResults : REQ<{|TeamId: int; QwKey: QwKey; Res: decimal option |} list> -> ARESP<unit>
     getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
+    getListenToken : REQ<unit> -> ARESP<string>
 }
 
 type ITeamApi = {

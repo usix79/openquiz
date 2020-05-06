@@ -53,6 +53,7 @@ let api (context:HttpContext) : IAdminApi =
         getAnswers = ex "getAnswers" getAnswers
         updateResults = ex "updateResults" updateResults
         getResults = ex "getResults" getResults
+        getListenToken = ex "getListenToken" getListenToken
     }
 
     api
@@ -296,3 +297,6 @@ let getResults quiz _ =
 
         return {|Teams = teams |> teamResults true; Questions = questionResults quiz|}
     }
+
+let getListenToken quiz _ =
+    quiz.ListenToken |> Ok

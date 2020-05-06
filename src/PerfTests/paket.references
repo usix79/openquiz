@@ -1,0 +1,5 @@
+group PTests
+Fable.Remoting.DotnetClient
+FSharp.Control.Reactive
+FSharpx.Async
+File:SSEClient.fs

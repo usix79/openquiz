@@ -21,6 +21,7 @@ let clientDeployPath = Path.combine clientPath "deploy"
 let clientPublicPath = Path.combine clientPath "public"
 let deployDir = Path.getFullName "./deploy"
 let bundleDir = Path.getFullName "./bundle"
+let ptestsPath = Path.getFullName "./src/PerfTests"
 
 let release = ReleaseNotes.load "RELEASE_NOTES.md"
 
@@ -46,6 +47,11 @@ let runTool cmd args workingDir =
     |> CreateProcess.ensureExitCode
     |> Proc.run
     |> ignore
+
+let runDotNetWithArgs cmd workingDir (args:string list)=
+    let result =
+        DotNet.exec (DotNet.Options.withWorkingDirectory workingDir) cmd (System.String.Join (" ", args))
+    if result.ExitCode <> 0 then failwithf "'dotnet %s' failed in %s" cmd workingDir
 
 let runDotNet cmd workingDir =
     let result =
@@ -78,6 +84,8 @@ Target.create "InstallClient" (fun _ ->
 
 Target.create "Build" (fun _ ->
     runDotNet "build" serverPath
+    runDotNet "build" ptestsPath
+
     Shell.regexReplaceInFileWithEncoding
         "let app = \".+\""
        ("let app = \"" + release.NugetVersion + "\"")
@@ -130,6 +138,10 @@ Target.create "Bundle" (fun _ ->
 
     Shell.rm bundleFile
     ZipFile.CreateFromDirectory (bundleInputDir, bundleFile)
+)
+
+Target.create "PTests" (fun p ->
+    runDotNetWithArgs "run -c Release" ptestsPath p.Context.Arguments
 )
 
 open Fake.Core.TargetOperators

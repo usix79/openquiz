@@ -17,6 +17,15 @@ nuget Serilog.Sinks.Console
 nuget String.Similarity 3.0.0
 nuget System.IdentityModel.Tokens.Jwt
 
+group PTests
+    source https://api.nuget.org/v3/index.json
+    framework: netcoreapp3.1
+    storage: none
+nuget Fable.Remoting.DotnetClient
+nuget FSharp.Control.Reactive
+nuget FSharpx.Async
+github deapsquatter/FSharp.SSEClient /src/SSEClient.fs
+
 group Client
     source https://api.nuget.org/v3/index.json
     framework: netstandard2.0

@@ -396,6 +396,7 @@ module Infra =
                 getAnswers = x.Wrap adminApi.getAnswers
                 updateResults = x.Wrap adminApi.updateResults
                 getResults = x.Wrap adminApi.getResults
+                getListenToken = x.Wrap adminApi.getListenToken
             }
 
         member x.CreateTeamApi () =
