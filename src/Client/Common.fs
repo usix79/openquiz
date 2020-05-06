@@ -117,6 +117,11 @@ let trimMiddle n suffix (str:string) =
     else
        str.Substring(0, n / 2) + suffix + str.Substring(str.Length - (n / 2), n / 2)
 
+let secondLeftText = function
+    | seconds when seconds > 10 -> sprintf "%i + 10" (seconds - 10)
+    | seconds when seconds > 0 -> seconds.ToString()
+    | _ -> "0"
+
 let inline (|Err|_|) (msg:'msg) : string option =
 
     let pi = FSharpType.GetRecordFields typeof<RESP<_>> |> Array.tryFind (fun pi -> pi.Name = "Value")
@@ -173,6 +178,9 @@ module Infra =
 
     [<Emit("window.location.origin")>]
     let locationOrign : string = jsNative
+
+    [<Emit("(new Audio($0)).play();")>]
+    let play (fileName: string) = jsNative
 
     let locationFullPath () =
         locationOrign + virtualPath

@@ -108,9 +108,9 @@ let playFooter dispatch history questions results current isCountdownActive seco
                     li [classList ["has-text-weight-bold", current = history] ] [
                         a [OnClick (fun _ -> dispatch history)] [ str "History" ]
                     ]
-                    li [classList ["has-text-weight-bold", current = questions; "has-background-danger", isCountdownActive && secondsLeft < 10]] [
+                    li [classList ["has-text-weight-bold", current = questions; "has-background-danger", isCountdownActive && secondsLeft <= 10]] [
                         a [OnClick (fun _ -> dispatch questions)] [
-                            if isCountdownActive then str (secondsLeft.ToString()) else str "Question"
+                            if isCountdownActive then str (secondLeftText secondsLeft) else str "Question"
                         ]
                     ]
                     li [classList ["has-text-weight-bold", current = results ] ] [
@@ -118,7 +118,10 @@ let playFooter dispatch history questions results current isCountdownActive seco
                     ]
                 ]
             ]
-       ]
+            if secondsLeft = 10 then Infra.play "/countdown.wav"
+            if secondsLeft = 1 then Infra.play "/zero.wav"
+        ]
+
 let playTitle quizName quizImg isConnectionOk showImg =
     div [][
         if isConnectionOk then

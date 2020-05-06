@@ -135,7 +135,7 @@ type TourCard = {
     member x.SecondsLeft now =
         match x.ST with
         | Some st ->
-            match  x.Sec - int((now - st).TotalSeconds) with
+            match  (x.Sec + 10) - int((now - st).TotalSeconds) with
             | seconds when seconds > 0 -> seconds
             | _ -> 0
         | _ -> x.Sec
@@ -355,7 +355,7 @@ module AdminModels =
         member x.SecondsLeft now =
             match x.StartTime with
             | Some st ->
-                match  x.Seconds - int((now - st).TotalSeconds) with
+                match  (x.Seconds + 10) - int((now - st).TotalSeconds) with
                 | seconds when seconds > 0 -> seconds
                 | _ -> 0
             | _ -> x.Seconds

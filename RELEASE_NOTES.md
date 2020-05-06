@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.1.0 - 2020-05-06
+
+* Added extra 10 seconds for writing answers
+
 ## 1.0.0 - 2020-05-03
 
 * Added user manual

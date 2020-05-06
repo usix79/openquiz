@@ -261,6 +261,6 @@ let answersRow dispatch team (qw:QuestionRecord) (aw:Answer) (lastReview:DateTim
             | None -> None
 
         match timeSpent with
-        | Some seconds -> td [] [ span [classList ["has-text-danger", ((int)seconds > (qw.Sec + 5))]][str (int(seconds).ToString())]]
+        | Some seconds -> td [] [ span [classList ["has-text-danger", ((int)seconds > (qw.Sec + 20))]][str (int(seconds).ToString())]]
         | None -> td[][]
    ]
