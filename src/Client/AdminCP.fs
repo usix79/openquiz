@@ -29,7 +29,8 @@ type Msg =
     | UpdateQwAnswer of key:QwKey * txt:string
     | UpdateQwComment of key:QwKey * txt:string
     | UpdateQwPoints of key:QwKey * txt:string
-    | UpdateQwJeopardy of key:QwKey * bool
+    | UpdateQwJpdPoints of key:QwKey * txt:string
+    | UpdateQwWithChoice of key:QwKey * bool
     | QwImgChanged of {|Type:string; Body:byte[]; Tag:QwKey|}
     | QwImgClear of key:QwKey
     | UploadQwImgResp of TRESP<QwKey, {|BucketKey:string|}>
@@ -163,7 +164,8 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | UpdateQwAnswer (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Answer = txt}) |> noCmd
     | UpdateQwComment (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Comment = txt}) |> noCmd
     | UpdateQwPoints (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Points = System.Decimal.Parse(txt)}) |> noCmd
-    | UpdateQwJeopardy (key,v) -> cm |> updateSlip key (fun slip -> {slip with Jeopardy = v}) |> noCmd
+    | UpdateQwJpdPoints (key,txt) -> cm |> updateSlip key (fun slip -> {slip with JeopardyPoints = ofDecimal (Some txt) }) |> noCmd
+    | UpdateQwWithChoice (key,v) -> cm |> updateSlip key (fun slip -> {slip with WithChoice = v}) |> noCmd
     | QwImgClear key -> cm |> updateSlip key (fun slip -> {slip with ImgKey = ""}) |> noCmd
     | QwImgChanged res -> cm |> uploadFile api (taggedMsg UploadQwImgResp res.Tag) res.Type res.Body
     | UploadQwImgResp {Tag = key; Rsp = {Value = Ok res}} -> cm |> editing |> updateSlip key (fun slip -> {slip with ImgKey = res.BucketKey}) |> noCmd
@@ -321,15 +323,19 @@ let singleSlipEl dispatch status (qwIdx:int) (slip:SingleAwSlip) nextQwPartIdx i
     let key = {TourIdx = -1; QwIdx = qwIdx}
     div [][
 
-        label [Class "label"][str "Points"]
         div [Class "field is-grouped"][
             div [Class "control"][
+                label [Class "label"][str "Points"]
                 input [Class "input"; Style[Width "80px"]; Type "number"; Disabled isReadOnly; valueOrDefault slip.Points; OnChange (fun ev -> dispatch <| UpdateQwPoints (key,ev.Value) )]
+            ]
+            div [Class "control"][
+                label [Class "label"][str "Jeopardy"]
+                input [Class "input"; Style[Width "80px"]; Type "number"; Disabled isReadOnly; valueOrDefault slip.JeopardyPoints; OnChange (fun ev -> dispatch <| UpdateQwJpdPoints (key,ev.Value) )]
             ]
             label [Class "checkbox"][
                 input [Type "checkbox";
-                    Checked slip.Jeopardy; Disabled isReadOnly; OnChange (fun ev -> UpdateQwJeopardy (key, (ev.Checked)) |> dispatch)]
-                str " with jeopardy"
+                    Checked slip.WithChoice; Disabled isReadOnly; OnChange (fun ev -> UpdateQwWithChoice (key, (ev.Checked)) |> dispatch)]
+                str " with choice"
             ]
         ]
 

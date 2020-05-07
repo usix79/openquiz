@@ -38,7 +38,8 @@ type Msg =
     | QwAnswerChanged of key:QwKey * string
     | QwCommentChanged of key:QwKey * string
     | QwPointsChanged of key:QwKey * txt:string
-    | QwJeopardyChanged of key:QwKey * bool
+    | QwJpdPointsChanged of key:QwKey * txt:string
+    | QwWithChoiceChanged of key:QwKey * bool
     | QwImgChanged of {|Type:string; Body:byte[]; Tag:PkgQwKey|}
     | QwImgClear of key:QwKey
     | UploadQwImgResp of TRESP<QwKey, {|BucketKey:string|}>
@@ -183,7 +184,8 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | QwAnswerChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Answer = txt}) |> noCmd
     | QwCommentChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Comment = txt}) |> noCmd
     | QwPointsChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Points = System.Decimal.Parse(txt)}) |> noCmd
-    | QwJeopardyChanged (key,v) -> cm |> updateSlip key (fun slip -> {slip with Jeopardy = v}) |> noCmd
+    | QwJpdPointsChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with JeopardyPoints = ofDecimal (Some txt)}) |> noCmd
+    | QwWithChoiceChanged (key,v) -> cm |> updateSlip key (fun slip -> {slip with WithChoice = v}) |> noCmd
     | QwImgChanged res -> cm |> uploadFile res.Tag.PackageId api (taggedMsg UploadQwImgResp res.Tag.Key) res.Type res.Body
     | QwImgClear key -> cm |> updateSlip key (fun slip -> {slip with ImgKey = ""}) |> noCmd
     | UploadQwImgResp {Tag = key; Rsp = {Value = Ok res}} -> cm |> editing |> updateSlip key (fun slip -> {slip with ImgKey = res.BucketKey}) |> noCmd
@@ -435,10 +437,15 @@ let singleSlipRow dispatch isLoading pkgId tourIdx qwIdx (slip: SingleAwSlip) =
                 input [Class "input"; Type "number";
                     valueOrDefault slip.Points; MaxLength 4.; ReadOnly isLoading; OnChange (fun ev -> QwPointsChanged (packageKey.Key,ev.Value) |> dispatch)]
             ]
+            str "Jeopardy"
+            div [Class "control"][
+                input [Class "input"; Type "number";
+                    valueOrDefault slip.JeopardyPoints; MaxLength 4.; ReadOnly isLoading; OnChange (fun ev -> QwJpdPointsChanged (packageKey.Key,ev.Value) |> dispatch)]
+            ]
             label [Class "checkbox"][
-                str "jeopardy"
                 input [Type "checkbox";
-                    Checked slip.Jeopardy; ReadOnly isLoading; OnChange (fun ev -> QwJeopardyChanged (packageKey.Key, (ev.Checked)) |> dispatch)]
+                    Checked slip.WithChoice; ReadOnly isLoading; OnChange (fun ev -> QwWithChoiceChanged (packageKey.Key, (ev.Checked)) |> dispatch)]
+                str " with choice"
             ]
         ]
         match qwIdx with

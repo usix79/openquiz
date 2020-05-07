@@ -80,7 +80,8 @@ let singleAwSlip (slip:SingleAwSlip) : Shared.SingleAwSlip =
         Comment = slip.Comment
         CommentImgKey = slip.CommentImgKey
         Points = slip.Points
-        Jeopardy = slip.Jeopardy
+        JeopardyPoints = slip.JeopardyPoints
+        WithChoice = slip.WithChoice
     }
 
 let slip (domainSlip : Slip) : Shared.Slip =
@@ -96,8 +97,9 @@ let singleAwSlipToDomain (slip:Shared.SingleAwSlip) =
         Comment = slip.Comment
         CommentImgKey = slip.CommentImgKey
         Points = slip.Points
-        Jeopardy = slip.Jeopardy
-    }
+        JeopardyPoints = slip.JeopardyPoints
+        WithChoice = slip.WithChoice
+    } : Domain.SingleAwSlip
 let slipToDomain (slip : Shared.Slip) : Slip =
     match slip with
     | Shared.Single slip -> singleAwSlipToDomain slip |> Single
@@ -129,9 +131,9 @@ let qwText nextQwPartIdx = function
 let slipSingleCard status qwPartIdx (slip:SingleAwSlip) : SingleSlipCard =
     match status with
     | Announcing when qwPartIdx = 0 -> X3
-    | Announcing -> {Txt=slip.Question |> qwText qwPartIdx; Img=slip.ImgKey} |> QW
-    | Countdown -> {Txt=slip.Question |> qwText slip.QuestionsCount; Img=slip.ImgKey} |> QW
-    | Settled -> {Txt=slip.Answer; Com = slip.Comment;  Img=slip.CommentImgKey} |> AW
+    | Announcing -> {Txt=slip.Question |> qwText qwPartIdx; Img=slip.ImgKey; Ch = slip.WithChoice} |> QW
+    | Countdown -> {Txt=slip.Question |> qwText slip.QuestionsCount; Img=slip.ImgKey; Ch = slip.WithChoice} |> QW
+    | Settled -> {Txt=slip.Answer; Com = slip.Comment;  Img=slip.CommentImgKey; Ch = slip.WithChoice} |> AW
 
 let slipCard status qwIdx qwPartIdx (slip:Slip) : SlipCard =
     match slip with
@@ -273,7 +275,13 @@ module Admin =
                 |> Map.toList
                 |> List.map (fun (key,aw) ->
                     let key = qwKey key
-                    let v = {RT = aw.RecieveTime; Txt = aw.Text; Res = aw.Result; IsA = aw.IsAutoResult; UT = aw.UpdateTime} : AdminModels.Answer
+                    let v =
+                        {RT = aw.RecieveTime
+                         Txt = aw.Text
+                         Jpd = aw.Jeopardy
+                         Res = aw.Result
+                         IsA = aw.IsAutoResult
+                         UT = aw.UpdateTime} : AdminModels.Answer
                     (key,v)
                 )|> Map.ofList
         }
@@ -286,7 +294,8 @@ module Admin =
             TS = tourStatus tour.Status
             ST = tour.StartTime
             Pt = slip.Points
-            Jpd = slip.Jeopardy
+            JpdPt = slip.JeopardyPoints
+            Ch = slip.WithChoice
         }
 
     let questionRecords  (quiz:Quiz) : AdminModels.QuestionRecord list =
@@ -320,7 +329,7 @@ module Teams =
                 | _ -> None
             Aw =
                 match quiz.Dsc.Status with
-                | Live -> team.SelectAnswers quiz.CurrentTourIndex |> List.map (fun (key,aw) -> (key.QwIdx,aw.Text)) |> Map.ofList
+                | Live -> team.SelectAnswers quiz.CurrentTourIndex |> List.map (fun (key,aw) -> (key.QwIdx,(aw.Text,aw.Jeopardy))) |> Map.ofList
                 | _ -> Map.empty
 
             LT = quiz.Dsc.ListenToken
@@ -347,15 +356,15 @@ module Teams =
                             else
                                 aw
                         AwTxt = None
+                        AwJpd = false
                         Result = None
                     } :  TeamModels.TeamHistoryRecord
 
                 match team.GetAnswer key with
-                | Some aw -> {r with AwTxt = Some aw.Text; Result = aw.Result}
+                | Some aw -> {r with AwTxt = Some aw.Text; AwJpd = aw.Jeopardy; Result = aw.Result}
                 | None -> r
             )
         ) |> List.concat
-
 
 module Reg =
     let quizRecord (quiz:QuizDescriptor) : RegModels.QuizRecord =

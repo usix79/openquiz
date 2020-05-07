@@ -231,7 +231,8 @@ type SettleItem = {
     Idx : Domain.QwKey
     Jury : string -> bool
     Points: decimal
-    Jeopardy: bool
+    JeopardyPoints: decimal option
+    WithChoice: bool
 }
 
 let settleAnswers (quiz : Domain.Quiz) =
@@ -239,13 +240,13 @@ let settleAnswers (quiz : Domain.Quiz) =
     let logic (items: SettleItem list) (team : Domain.Team) =
         let now = DateTime.UtcNow
         items
-        |> List.fold (fun team item -> team |> Domain.Teams.settleAnswer item.Idx item.Jury item.Points item.Jeopardy now) team
+        |> List.fold (fun team item -> team |> Domain.Teams.settleAnswer item.Idx item.Jury item.Points item.JeopardyPoints item.WithChoice now) team
         |> Ok
 
     let createItem (slip:Domain.SingleAwSlip) qwIdx =
         if not (String.IsNullOrWhiteSpace slip.Answer) then
             let key = {Domain.QwKey.TourIdx = quiz.CurrentTourIndex; Domain.QwKey.QwIdx = qwIdx}
-            Some {Idx = key ; Jury = (Jury.jury slip.Answer); Points = slip.Points; Jeopardy = slip.Jeopardy}
+            Some {Idx = key ; Jury = (Jury.jury slip.Answer); Points = slip.Points; JeopardyPoints = slip.JeopardyPoints; WithChoice = slip.WithChoice}
         else
             None
 

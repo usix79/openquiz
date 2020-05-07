@@ -18,12 +18,12 @@ type AnswersStatus = Input | Sending | Sent | Failed
 type AnswersSlip = {
     TourIdx : int
     Status : AnswersStatus
-    Values : Map<int, string>
+    Values : Map<int, (string*bool)>
 } with
-    member x.GetText qwIdx =
+    member x.Get qwIdx =
         match x.Values.TryGetValue qwIdx with
-        | true, txt -> txt
-        | _ -> ""
+        | true, x -> x
+        | _ -> "",false
 
 type Msg =
     | QuizCardResp of RESP<QuizCard>
@@ -31,6 +31,7 @@ type Msg =
     | Reactivate
     | ChangeTab of Tab
     | UpdateAnswer of qwIdx:int*txt:string
+    | ToggleJeopardy of qwIdx:int
     | CountdownTick of {|QwIndex: int|}
     | QuizChanged of QuizChangedEvent
     | SourceError of string
@@ -144,7 +145,16 @@ let answerStatus satus model =
 
 let answerText qwIdx txt model =
     match model.Answers with
-    | Some aw when aw.Status = Input -> {model with Answers = Some {aw with Values = aw.Values.Add(qwIdx,txt)}}
+    | Some aw when aw.Status = Input ->
+        let (_,jpd) = aw.Get qwIdx
+        {model with Answers = Some {aw with Values = aw.Values.Add(qwIdx,(txt,jpd))}}
+    | _ -> model
+
+let toggleJpd qwIdx model =
+    match model.Answers with
+    | Some aw when aw.Status = Input ->
+        let (txt, jpd) = aw.Get qwIdx
+        {model with Answers = Some {aw with Values = aw.Values.Add(qwIdx,(txt, not jpd))}}
     | _ -> model
 
 let sendAnswer api (model : Model) =
@@ -154,7 +164,7 @@ let sendAnswer api (model : Model) =
             let req =
                 aw.Values
                 |> Map.toList
-                |> List.choose (fun (qwIdx,txt) -> if not (String.IsNullOrEmpty txt) then Some ({TourIdx = aw.TourIdx; QwIdx = qwIdx}, txt) else None)
+                |> List.choose (fun (qwIdx,(txt, jpd)) -> if not (String.IsNullOrEmpty txt) then Some ({TourIdx = aw.TourIdx; QwIdx = qwIdx}, (txt, jpd)) else None)
                 |> Map.ofList
             if req.Count > 0 then model |> answerStatus Sending |> apiCmd api.answers req AnswerResponse Exn
             else model |> answerStatus Sent |> noCmd
@@ -199,6 +209,7 @@ let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) : Model * Cmd
     | AnswerResponse {Value = Ok _} -> cm |> deleteAnswer user |> answerStatus Sent |> ok |> noCmd
     | SourceError _ -> cm |> connection false |> noCmd
     | UpdateAnswer (qwIdx,txt) -> cm |> answerText qwIdx txt |> saveAnswer user |> noCmd
+    | ToggleJeopardy qwIdx -> cm |> toggleJpd qwIdx |> saveAnswer user |> noCmd
     | Heartbeat -> cm |> connection true |> noCmd
     | ChangeTab Question -> {cm with ActiveTab = Question} |> noCmd
     | ChangeTab History -> {cm with ActiveTab = History} |> apiCmd api.getHistory () GetHistoryResp Exn
@@ -291,48 +302,70 @@ let answerStatusIcon status txt =
         ]
     ]
 
+let awArea dispatch aw jpd status withChoice readOnly =
+    div [Class "control has-icons-right"][
+        if withChoice then
+            p [Class "control"][
+                a [classList ["button", true; "has-text-grey-light", not jpd; "has-text-danger", jpd];
+                 Title "Jeopardy!"; ReadOnly readOnly; OnClick (fun _ -> dispatch <| ToggleJeopardy 0)][Fa.i [ Fa.Solid.Paw] [str " Jeopardy!" ]]
+            ]
+
+        textarea [ Class "textarea"; MaxLength 64.0;
+            ReadOnly readOnly; valueOrDefault aw;
+            OnChange (fun ev -> dispatch <| UpdateAnswer (0,ev.Value) )][]
+        answerStatusIcon status aw
+    ]
+
 let singleQwView dispatch tour slip answers isCountdownFinished =
     div[][
         MainTemplates.singleTourInfo tour.Name slip
 
+        let (txt,jpd) = answers.Get 0
+
         match slip with
         | X3 -> ()
-        | _ ->
-            let txt = answers.GetText 0
+        | QW slip ->
             label [Class "label"][str "Your answer"]
-            div [Class "control has-icons-right"][
-                textarea [ Class "textarea"; MaxLength 64.0;
-                    ReadOnly isCountdownFinished; valueOrDefault txt;
-                    OnChange (fun ev -> dispatch <| UpdateAnswer (0,ev.Value) )][]
-                answerStatusIcon answers.Status txt
+            awArea dispatch txt jpd answers.Status slip.Ch isCountdownFinished
+        | AW slip ->
+            label [Class "label"][str "Your answer"]
+            awArea dispatch txt jpd answers.Status slip.Ch true
+    ]
+
+let awInput dispatch idx aw jpd status withChoice readOnly =
+    div [Style [MaxWidth "320px"; Display DisplayOptions.InlineBlock]][
+        div [Class "field has-addons"][
+            if (withChoice) then
+                p [Class "control"][
+                    a [classList ["button", true; "has-text-grey-light", not jpd; "has-text-danger", jpd];
+                     Title "Jeopardy!"; ReadOnly readOnly; OnClick (fun _ -> dispatch <| ToggleJeopardy idx)][Fa.i [ Fa.Solid.Paw] [ ]]
+                ]
+            p [Class "control has-icons-right"][
+                input [Class "input"; Type "text"; MaxLength 64.0; Placeholder "Your Answer";
+                    ReadOnly readOnly; valueOrDefault aw; OnChange (fun ev -> dispatch <| UpdateAnswer (idx,ev.Value) )]
+
+                answerStatusIcon status aw
             ]
+        ]
     ]
 
 let multipleQwView dispatch tour name slips answers isCountdownFinished =
     div [][
         h5 [Class "subtitle is-5"] [str name]
         for (idx,slip) in slips |> List.indexed do
-            let aw = answers.GetText idx
+            let (aw, jpd) = answers.Get idx
             match slip with
             | QW slip ->
                 p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
                 yield! MainTemplates.imgEl slip.Img
                 p [] (splitByLines slip.Txt)
-                div [Class "control has-icons-right"; Style [MaxWidth "320px"; Display DisplayOptions.InlineBlock]][
-                    input [Class "input"; Type "text"; MaxLength 64.0; Placeholder "Your Answer";
-                        ReadOnly isCountdownFinished; valueOrDefault aw; OnChange (fun ev -> dispatch <| UpdateAnswer (idx,ev.Value) )]
-                    answerStatusIcon answers.Status aw
-                ]
+                awInput dispatch idx aw jpd answers.Status slip.Ch isCountdownFinished
                 br[]
                 br[]
 
             | AW slip ->
                 p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
-                div [Class "control has-icons-right"; Style [MaxWidth "320px"; Display DisplayOptions.InlineBlock]][
-                    input [Class "input"; Type "text"; MaxLength 64.0; Placeholder "Your Answer";
-                        ReadOnly isCountdownFinished; valueOrDefault aw; OnChange (fun ev -> dispatch <| UpdateAnswer (idx,ev.Value) )]
-                    answerStatusIcon answers.Status aw
-                ]
+                awInput dispatch idx aw jpd answers.Status slip.Ch isCountdownFinished
                 p [Class "has-text-weight-light is-family-secondary is-size-6"][
                     str "correct answer: "
                     str (slip.Txt.Split('\n').[0])
@@ -364,7 +397,10 @@ let historyView dispatch model =
 
                 tr [ ][
                     td [] [p [classList modifiers][str aw.QwName]]
-                    td [] [p [classList modifiers][str (defaultArg aw.AwTxt "")]]
+                    td [] [p [classList modifiers][
+                        if aw.AwJpd then Fa.i [Fa.Solid.Paw; Fa.PullRight][]
+                        str (defaultArg aw.AwTxt "")]
+                    ]
                     td [] [
                         let txt =
                             match aw.Result with

@@ -30,6 +30,12 @@ type Model = {
     SessionStart : DateTime
 }
 
+let getActualPoints (jpd:bool) (qw:QuestionRecord) =
+    match qw.JpdPt with
+    | Some pt when not qw.Ch -> pt
+    | Some pt when qw.Ch && jpd -> pt
+    | _ -> qw.Pt
+
 let addError txt model =
     {model with Errors = model.Errors.Add(Guid.NewGuid().ToString(),txt)}
 
@@ -89,7 +95,7 @@ let setResults (api:IAdminApi) (teamId:int) (key:QwKey) (v :string) (model:Model
     | Some bundle ->
         match bundle.GetAw teamId key with
         | Some aw ->
-            let answersToResult = bundle.FindAnswers key aw.Txt
+            let answersToResult = bundle.FindAnswers key aw.Txt aw.Jpd
             let answersToUpdate =
                 answersToResult
                 |> List.map (fun (teamId,aw) -> teamId, {aw with Res = res; IsA = false; UT = Some <| serverTime model.TimeDiff })
@@ -232,11 +238,17 @@ let answersRow dispatch team (qw:QuestionRecord) (aw:Answer) (lastReview:DateTim
     tr [ ][
         td [] [span [classList modifiers] [str (team.Id.ToString())]]
         td [] [span [classList modifiers] [str team.Nm]]
-        td [] [span [classList modifiers] [str aw.Txt]]
         td [] [
+            span [classList modifiers] [
+                if aw.Jpd then Fa.i [Fa.Solid.Paw; Fa.PullRight][]
+                str aw.Txt
+            ]
+        ]
+        td [] [
+            let points = getActualPoints aw.Jpd qw
             div [Class "field has-addons"][
                 a [Class "button is-small is-success is-inverted";
-                    OnClick (fun _ -> dispatch (ResultChanged (team.Id, qw.Key, (qw.Pt.ToString()))))][
+                    OnClick (fun _ -> dispatch (ResultChanged (team.Id, qw.Key, points.ToString())))][
                     span [Class "icon"][ Fa.i [ Fa.Solid.PlusSquare; Fa.Size Fa.Fa2x ] [] ]
                 ]
                 input [Class "input is-small"; Type "number"; Style [ Width "50px" ];
@@ -246,9 +258,9 @@ let answersRow dispatch team (qw:QuestionRecord) (aw:Answer) (lastReview:DateTim
                     OnClick (fun _ -> dispatch (ResultChanged (team.Id, qw.Key,"")))][
                     span [Class "icon"][ Fa.i [ Fa.Regular.Circle; Fa.Size Fa.FaExtraSmall ] [] ]
                 ]
-                if (qw.Jpd) then
+                if (qw.JpdPt.IsSome) then
                     a [Class "button is-small is-danger is-inverted";
-                        OnClick (fun _ -> dispatch (ResultChanged (team.Id, qw.Key, ((-qw.Pt).ToString()))))][
+                        OnClick (fun _ -> dispatch (ResultChanged (team.Id, qw.Key, ((-points).ToString()))))][
                         span [Class "icon"][ Fa.i [ Fa.Solid.MinusSquare; Fa.Size Fa.Fa2x ] [] ]
                 ]
 

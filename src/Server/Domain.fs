@@ -94,7 +94,8 @@ type SingleAwSlip = {
     Comment : string
     CommentImgKey : string
     Points : decimal
-    Jeopardy : bool
+    JeopardyPoints : decimal option
+    WithChoice : bool
 } with
     member x.QuestionsCount =
         match x.Question with
@@ -111,7 +112,8 @@ type SingleAwSlip = {
             Comment=""
             CommentImgKey=""
             Points = 1m
-            Jeopardy = false
+            JeopardyPoints = None
+            WithChoice = false
         }
 
 
@@ -334,6 +336,7 @@ type TeamAnswer = {
     Result : decimal option
     IsAutoResult : bool
     UpdateTime : DateTime option
+    Jeopardy : bool
 }
 
 type TeamKey = {
@@ -414,14 +417,21 @@ module Teams =
         | Some aw -> {team with Answers = team.Answers |> Map.add qwIdx (f aw)}
         | None -> team
 
-    let settleAnswer qwIdx (jury : string -> bool) points jeopardy now (team: Team) =
+    let settleAnswer qwIdx (jury : string -> bool) points jpdPoints withChoice now (team: Team) =
         team |> updateAnswer qwIdx (fun aw ->
             if (aw.IsAutoResult || aw.Result.IsNone) then
                 let result =
                     match jury aw.Text with
-                    | true -> Some points
-                    | false when jeopardy -> Some (-points)
-                    | false -> None
+                    | true ->
+                        match jpdPoints, withChoice with
+                        | Some jpdPoints, false -> Some jpdPoints
+                        | Some jpdPoints, true when aw.Jeopardy -> Some jpdPoints
+                        | _ -> Some points
+                    | false ->
+                        match jpdPoints, withChoice with
+                        | Some jpdPoints, false -> Some (-jpdPoints)
+                        | Some jpdPoints, true when aw.Jeopardy -> Some (-jpdPoints)
+                        | _ -> None
                 match result with
                 | Some _ ->
                     {aw with
@@ -433,14 +443,14 @@ module Teams =
             else aw
         )
 
-    let registerAnswer qwIndex awText now (team:Team) =
+    let registerAnswer qwIndex awText jeopardy now (team:Team) =
         if String.IsNullOrWhiteSpace awText then Error "Answer is empty"
         else
             let awText = if awText.Length <= 256 then awText else awText.Substring(0, 256)
 
             match team.Answers.TryFind qwIndex with
             | None ->
-                Ok {team with Answers = team.Answers.Add (qwIndex, {Text = awText; RecieveTime = now; Result = None; IsAutoResult = false; UpdateTime = Some now})}
+                Ok {team with Answers = team.Answers.Add (qwIndex, {Text = awText; Jeopardy = jeopardy; RecieveTime = now; Result = None; IsAutoResult = false; UpdateTime = Some now})}
             | Some aw -> Error <| "Answer is alredy registered: " + aw.Text
 
     let updateResult qwIdx res now (team:Team) =

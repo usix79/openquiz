@@ -59,7 +59,7 @@ let answers team req =
     let logic (team:Domain.Team) =
         let now = DateTime.UtcNow
         req |> Map.toList
-        |> List.fold (fun team (qwKey,aw) -> team |> Result.bind (Domain.Teams.registerAnswer (qwKeyToDomain qwKey) aw now)) (Ok team)
+        |> List.fold (fun team (qwKey,(aw,jpd)) -> team |> Result.bind (Domain.Teams.registerAnswer (qwKeyToDomain qwKey) aw jpd now)) (Ok team)
 
     match team.Status with
     | Domain.Admitted ->

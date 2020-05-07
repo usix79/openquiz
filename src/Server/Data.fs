@@ -113,7 +113,8 @@ let documentOfSingleSlip (slip : SingleAwSlip) =
     slipDoc.["Comment"] <- v2.ConvertToEntry slip.Comment
     slipDoc.["CommentImgKey"] <- v2.ConvertToEntry slip.CommentImgKey
     slipDoc.["Points"] <- v2.ConvertToEntry slip.Points
-    slipDoc.["Jeopardy"] <- v2.ConvertToEntry slip.Jeopardy
+    slipDoc.["JpdPoints"] <- entryOfOption slip.JeopardyPoints
+    slipDoc.["Choiсe"] <- v2.ConvertToEntry slip.WithChoice
 
     slipDoc
 
@@ -145,7 +146,8 @@ let singleSlipOfDocument (slipDoc:Document) : SingleAwSlip =
         Comment = stringOfDoc slipDoc "Comment"
         CommentImgKey = stringOfDoc slipDoc "CommentImgKey"
         Points = decimalOfDoc slipDoc "Points" |> Option.defaultValue 1m
-        Jeopardy = boolOfDoc slipDoc "Jeopardy"
+        JeopardyPoints = optionOfEntry slipDoc "JpdPoints"
+        WithChoice = boolOfDoc slipDoc "Choiсe"
     }
 //#endregion
 
@@ -387,7 +389,6 @@ module Quizzes =
         }
 
 //#endregion
-
 module Teams =
     let getMaxId quizId =
         let descriptors = getDescriptors quizId
@@ -487,6 +488,7 @@ module Teams =
         for index,aw in team.Answers |> Seq.map (fun pair -> pair.Key,pair.Value) do
              let awItem = Document()
              awItem.["Text"] <- v2.ConvertToEntry aw.Text
+             awItem.["Jpd"] <- v2.ConvertToEntry aw.Jeopardy
              awItem.["RecieveTime"] <- v2.ConvertToEntry aw.RecieveTime
              awItem.["Result"] <- entryOfOption aw.Result
              awItem.["IsAutoResult"] <- v2.ConvertToEntry aw.IsAutoResult
@@ -529,13 +531,12 @@ module Teams =
             | true, en -> en.AsString()
             | _ -> ""
 
-        let awText = if awDoc.ContainsKey "Text" then awDoc.["Text"].AsString() else ""
-        let awRecieveTime = awDoc.["RecieveTime"].AsDateTime()
-        let awResult = optionOfEntry awDoc "Result"
-        let awUpdateTime = optionOfEntry awDoc "UpdateTime"
-        let awIsAutoResult = boolOfDoc awDoc "IsAutoResult"
-
-        {Text = awText; RecieveTime = awRecieveTime; Result = awResult; IsAutoResult = awIsAutoResult; UpdateTime = awUpdateTime}
+        { Text = if awDoc.ContainsKey "Text" then awDoc.["Text"].AsString() else ""
+          Jeopardy = boolOfDoc awDoc "Jpd"
+          RecieveTime = awDoc.["RecieveTime"].AsDateTime()
+          Result = optionOfEntry awDoc "Result"
+          IsAutoResult = boolOfDoc awDoc "IsAutoResult"
+          UpdateTime = optionOfEntry awDoc "UpdateTime" }
 
     let private qwKeyOfString (str:string) : QwKey =
         match str.StartsWith "qw" with

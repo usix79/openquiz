@@ -107,6 +107,14 @@ let ofInt (value : string option) : int option =
         | _ -> None
     | None -> None
 
+let ofDecimal (value: string option) : decimal option =
+    match value with
+    | Some v ->
+        match System.Decimal.TryParse(v) with
+        | true, i -> Some i
+        | _ -> None
+    | None -> None
+
 let trimEnd n suffix (str:string) =
     if str.Length < n then str
     else

@@ -52,7 +52,7 @@ let startAgent (team:AdminModels.TeamRecord) (teamFacade:TeamFacade) (initModel:
 
         let sendAnswer (tourIdx:int) (answer:string) =
             printfn "team %i sending answer %i" team.TeamId tourIdx
-            apiCall inbox (teamFacade.Answer {TourIdx = tourIdx; QwIdx = 0}) answer AnswerResponse Exn
+            apiCall inbox (teamFacade.Answer {TourIdx = tourIdx; QwIdx = 0}) (answer,false) AnswerResponse Exn
 
         let rec loop model =
             async {

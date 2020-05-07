@@ -98,12 +98,14 @@ type TourStatus =
 type SlipQwCard = {
     Txt : string
     Img : string
+    Ch : bool
 }
 
 type SlipAwCard = {
     Txt : string
     Img : string
     Com : string
+    Ch : bool
 }
 type SingleSlipCard =
     | X3
@@ -200,7 +202,8 @@ type SingleAwSlip = {
     Comment : string
     CommentImgKey : string
     Points : decimal
-    Jeopardy : bool
+    JeopardyPoints : decimal option
+    WithChoice : bool
 } with
     member x.SetQwText idx txt =
         {x with
@@ -223,12 +226,13 @@ type SingleAwSlip = {
                 match qwCount with
                 | 1 -> Solid ""
                 | n -> List.init n (fun i -> "") |> Split
-            ImgKey=""
-            Answer=""
-            Comment=""
-            CommentImgKey=""
+            ImgKey = ""
+            Answer = ""
+            Comment = ""
+            CommentImgKey = ""
             Points = 1m
-            Jeopardy = false
+            JeopardyPoints = None
+            WithChoice = false
         }
 
 
@@ -379,6 +383,7 @@ module AdminModels =
 
     type Answer = {
         Txt : string
+        Jpd : bool
         RT : System.DateTime
         Res : decimal option
         IsA : bool
@@ -392,7 +397,8 @@ module AdminModels =
         TS : TourStatus
         ST : System.DateTime option
         Pt : decimal
-        Jpd : bool
+        JpdPt : decimal option
+        Ch : bool
     }
 
     type TeamAnswersRecord = {
@@ -417,10 +423,10 @@ module AdminModels =
             match x.Teams |> List.tryFind (fun t -> t.Id = teamId) with
             | Some team -> team.GetAw idx
             | None -> None
-        member x.FindAnswers idx txt =
+        member x.FindAnswers idx txt jpd =
             x.Teams
             |> List.map (fun t -> t.Id, (t.GetAw idx))
-            |> List.filter (fun (_,a) -> a.IsSome && a.Value.Txt = txt)
+            |> List.filter (fun (_,a) -> a.IsSome && a.Value.Txt = txt && a.Value.Jpd = jpd)
             |> List.map (fun (teamId,a) -> teamId,a.Value)
         member x.UpdateAnswers idx (answersToUpdate : Map<int,Answer>) =
             { x with
@@ -439,7 +445,7 @@ module TeamModels =
         Wcm : string
         Fwl : string
         TC : TourCard option
-        Aw : Map<int,string>
+        Aw : Map<int,(string*bool)>
         LT : string
         Mxlr : int option
         V : int
@@ -454,6 +460,7 @@ module TeamModels =
         QwName : string
         QwAw : string
         AwTxt : string option
+        AwJpd : bool
         Result : decimal option
     }
 
@@ -545,7 +552,7 @@ type IAdminApi = {
 type ITeamApi = {
     getState : REQ<unit> -> ARESP<TeamModels.QuizCard>
     takeActiveSession : REQ<unit> -> ARESP<TeamModels.QuizCard>
-    answers : REQ<Map<QwKey,string>> -> ARESP<unit>
+    answers : REQ<Map<QwKey,(string*bool)>> -> ARESP<unit>
     getHistory : REQ<unit> -> ARESP<TeamModels.TeamHistoryRecord list>
     getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
 }
