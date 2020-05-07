@@ -235,6 +235,8 @@ let deleteQuiz expert req =
 
         Data.Quizzes.delete req.QuizId
 
+        CommonService.updateExpertNoReply expert.Id (Domain.Experts.removeQuiz req.QuizId)
+
         return ()
     }
 
@@ -243,6 +245,7 @@ let deletePackage expert req =
         let! _ = (expert.Packages |> List.tryFind ((=) req.PackageId), "Package belongs to another producer")
 
         Data.Packages.delete req.PackageId
+        CommonService.updateExpertNoReply expert.Id (Domain.Experts.removePackage req.PackageId)
 
         return ()
     }

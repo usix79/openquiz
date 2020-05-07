@@ -38,6 +38,9 @@ module Experts =
     let removePackage packageId (expert:Expert)  =
         {expert with Packages = expert.Packages |> List.filter (fun id -> id <> packageId)} |> Ok
 
+    let removeQuiz quizId (expert:Expert)  =
+        {expert with Quizes = expert.Quizes |> List.filter (fun id -> id <> quizId)} |> Ok
+
     let getComp quizId (expert:Expert) =
         match expert.Competitions.TryGetValue quizId with
         | true, teamId -> Some teamId
