@@ -391,7 +391,7 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) ti
             | Countdown, sec when sec > 0 ->
                 div [Class "control"][
                     label [classList ["label", true; "is-large", true; "has-text-danger", sec <= 10]][str "Seconds Left"]
-                    input [classList ["input", true; "is-large", true; "has-text-danger", sec <= 10]; Type "text"; Disabled true; Value (secondLeftText sec)]
+                    input [classList ["input", true; "is-large", true; "has-text-danger", sec <= 10]; Type "text"; Disabled true; Value (sec.ToString())]
                 ]
             | _ ->
                 div [Class "control"; Style [Width "min-content"]][

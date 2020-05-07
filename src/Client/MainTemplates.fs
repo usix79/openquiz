@@ -102,15 +102,24 @@ let footerFixed =
     ]
 
 let playFooter dispatch history questions results current isCountdownActive secondsLeft =
+        let isLastCall = isCountdownActive && secondsLeft <= 10
         div [Style [Position PositionOptions.Fixed; Bottom "0"; Height "62px"; Width "100%"; BackgroundColor "#FFFFFF"; OverflowX OverflowOptions.Hidden]]  [
             div [Class "tabs is-white is-large is-toggle is-fullwidth"] [
                 ul[][
                     li [classList ["has-text-weight-bold", current = history] ] [
                         a [OnClick (fun _ -> dispatch history)] [ str "History" ]
                     ]
-                    li [classList ["has-text-weight-bold", current = questions; "has-background-danger", isCountdownActive && secondsLeft <= 10]] [
-                        a [OnClick (fun _ -> dispatch questions)] [
-                            if isCountdownActive then str (secondLeftText secondsLeft) else str "Question"
+                    li [classList ["has-text-weight-bold", current = questions]; Style [Height "100%"; Width "33%"]] [
+                        a [Style [Height "100%"; JustifyContent (if isLastCall then "left" else "center"); Padding "0"]; OnClick (fun _ -> dispatch questions)] [
+                            if isCountdownActive
+                            then
+                                if secondsLeft > 10 then str <| (secondsLeft - 10).ToString()
+                                else
+                                    div [Class "has-background-danger"; Style[Height "100%"; Width (sprintf "%i%%" ((10 - secondsLeft + 1) * 10))]][
+                                        span [Class "is-overlay has-text-weight-bold"; Style [Padding "12px"]][str "Last Call"]
+                                    ]
+                            else
+                                str "Question"
                         ]
                     ]
                     li [classList ["has-text-weight-bold", current = results ] ] [
@@ -118,8 +127,6 @@ let playFooter dispatch history questions results current isCountdownActive seco
                     ]
                 ]
             ]
-            if secondsLeft = 10 then Infra.play "/countdown.wav"
-            if secondsLeft = 1 then Infra.play "/zero.wav"
         ]
 
 let playTitle quizName quizImg isConnectionOk showImg =
