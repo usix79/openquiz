@@ -14,14 +14,17 @@ type Msg =
     | Logout
     | Quizzes of MainProdQuizzes.Msg
     | Questions of MainProdQuestions.Msg
+    | Settings of MainProdSettings.Msg
     | SwitchToQuizzes
     | SwitchToQuestions
+    | SwitchToSettings
     | Exn of exn
     | DeleteError of string
 
 type Area =
     | Quizzes of MainProdQuizzes.Model
     | Questions of MainProdQuestions.Model
+    | Settings of MainProdSettings.Model
 
 type Model = {
     Area : Area
@@ -47,12 +50,18 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | SwitchToQuestions, _ ->
         let subModel,subCmd = MainProdQuestions.init api user
         {cm with Area = Questions subModel}, Cmd.map Msg.Questions subCmd
+    | SwitchToSettings, _ ->
+        let subModel,subCmd = MainProdSettings.init api user
+        {cm with Area = Settings subModel}, Cmd.map Msg.Settings subCmd
     | Msg.Quizzes subMsg, Quizzes subModel ->
         let subModel,subCmd = MainProdQuizzes.update api user subMsg subModel
         {cm with Area = Quizzes subModel}, Cmd.map Msg.Quizzes subCmd
     | Msg.Questions subMsg, Questions subModel ->
         let subModel,subCmd = MainProdQuestions.update api user subMsg subModel
         {cm with Area = Questions subModel}, Cmd.map Msg.Questions subCmd
+    | Msg.Settings subMsg, Settings subModel ->
+        let subModel,subCmd = MainProdSettings.update api user subMsg subModel
+        {cm with Area = Settings subModel}, Cmd.map Msg.Settings subCmd
     | ToggleBurger, _ -> {cm with IsBurgerOpen = not cm.IsBurgerOpen} |> noCmd
     | Logout, _ ->  Infra.clearUserAndRedirect "/"; cm|> noCmd
     | Err txt, _ -> cm |> addError txt |> noCmd
@@ -63,6 +72,7 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
 let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
     let isQuizzesActive = match model.Area with Quizzes _ -> true | _ -> false
     let isQuestionsActive = match model.Area with Questions _ -> true | _ -> false
+    let isSettingsActive = match model.Area with Settings _ -> true | _ -> false
     let liClasses isActive =
         match isActive with
         | true -> classList ["has-background-light", true; "has-text-grey-dark", true]
@@ -124,6 +134,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                             ul [Class "menu-list"][
                                 li [][a [isQuizzesActive |> liClasses; OnClick (fun _ -> dispatch SwitchToQuizzes)][str "Quizzes"]]
                                 li [][a [isQuestionsActive |> liClasses; OnClick (fun _ -> dispatch SwitchToQuestions)][str "Questions"]]
+                                li [][a [isSettingsActive |> liClasses; OnClick (fun _ -> dispatch SwitchToSettings)][str "Settings"]]
                             ]
                         ]
                     ]
@@ -131,6 +142,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                         match model.Area with
                         | Quizzes subModel -> MainProdQuizzes.view (Msg.Quizzes >> dispatch) user subModel
                         | Questions subModel -> MainProdQuestions.view (Msg.Questions >> dispatch) user subModel
+                        | Settings subModel -> MainProdSettings.view (Msg.Settings >> dispatch) user subModel
                     ]
                 ]
             ]

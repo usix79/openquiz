@@ -329,6 +329,12 @@ module MainModels =
         MixlrCode : int option
     }
 
+    type SettingsCard = {
+        UserId : string
+        DefaultImg : string
+        DefaultMixlr : int option
+    }
+
 module AdminModels =
 
     type TeamRecord = {
@@ -523,6 +529,8 @@ type IMainApi = {
     updateProdPackageCard : REQ<PackageCard> -> ARESP<PackageRecord>
     aquirePackage : REQ<{|PackageId:int; TransferToken:string|}> -> ARESP<PackageRecord>
     deletePackage: REQ<{|PackageId : int|}> -> ARESP<unit>
+    getSettings : REQ<unit> -> ARESP<MainModels.SettingsCard>
+    updateSettings : REQ<MainModels.SettingsCard> -> ARESP<MainModels.SettingsCard>
 }
 
 type IAdminApi = {

@@ -383,6 +383,8 @@ module Infra =
                 aquirePackage = x.Wrap mainApi.aquirePackage
                 deleteQuiz = x.Wrap mainApi.deleteQuiz
                 deletePackage = x.Wrap mainApi.deletePackage
+                getSettings = x.Wrap mainApi.getSettings
+                updateSettings = x.Wrap mainApi.updateSettings
             }
 
         member x.CreateAdminApi () =

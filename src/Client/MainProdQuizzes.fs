@@ -169,11 +169,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
             ]
         ]
 
-        for error in model.Errors do
-            div [Class "notification is-danger is-light"][
-                button [Class "delete"; OnClick (fun _ -> dispatch (DeleteError error.Key))][]
-                str error.Value
-            ]
+        MainTemplates.errors dispatch DeleteError model.Errors
 
         table [Class "table is-fullwidth is-hoverable"][
             thead[][

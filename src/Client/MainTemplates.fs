@@ -246,3 +246,13 @@ let qwCell dispatch key idx txt imgKey isLoading txtChangeMsg imgChangeMsg imgCl
         br[]
         yield! imgArea key isLoading (imgChangeMsg >> dispatch) (fun _ -> imgClearMsg idx |> dispatch) imgKey "" "Clear"
     ]
+
+
+let errors dispatch msg (errors : Map<string,string>) =
+    div[][
+        for error in errors do
+            div [Class "notification is-danger is-light"][
+                button [Class "delete"; OnClick (fun _ -> dispatch (msg error.Key))][]
+                str error.Value
+            ]
+    ]

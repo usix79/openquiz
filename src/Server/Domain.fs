@@ -15,16 +15,19 @@ type RefreshToken = {
 type Expert = {
     Id : string
     Username : string
+    Name : string
     IsProducer : bool
     Competitions : Map<int,int>    // quizId => teamId
     Quizes : int list   // quizId
     Packages : int list   // packageId
+    DefaultImg : string
+    DefaultMixlr : int option
     Version : int
 }
 
 module Experts =
-    let createNew id username =
-        {Id = id; Username = username; IsProducer = false; Competitions = Map.empty; Quizes = []; Packages = []; Version = 0}
+    let createNew id username name =
+        {Id = id; Username = username; Name = name; IsProducer = false; Competitions = Map.empty; Quizes = []; Packages = []; DefaultImg = ""; DefaultMixlr = None; Version = 0}
 
     let becomeProducer (expert:Expert) =
         {expert with IsProducer = true}
@@ -208,13 +211,13 @@ type Quiz = {
         this.Tours |> List.tryItem index
 
 module Quizzes =
-    let createNew quizId producerId : Quiz=
+    let createNew quizId producerId defImg defMixlr: Quiz=
         {
             Dsc = {
                 QuizId = quizId
                 Producer = producerId
                 StartTime = None
-                ImgKey = ""
+                ImgKey = defImg
                 Name = sprintf "QUIZ-%i" quizId
                 Status = Setup
                 WelcomeText = ""
@@ -226,7 +229,7 @@ module Quizzes =
                 PkgId = None
                 PkgSlipIdx = None
                 EventPage = ""
-                MixlrCode = None
+                MixlrCode = defMixlr
             }
             Tours = []
             Version = 0

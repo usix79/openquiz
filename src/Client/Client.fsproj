@@ -13,6 +13,7 @@
     <Compile Include="MainTemplates.fs" />
     <Compile Include="MainProdQuizzes.fs" />
     <Compile Include="MainProdQuestions.fs" />
+    <Compile Include="MainProdSettings.fs" />
     <Compile Include="MainProd.fs" />
     <Compile Include="MainReg.fs" />
     <Compile Include="Main.fs" />

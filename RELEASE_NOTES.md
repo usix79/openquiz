@@ -1,10 +1,14 @@
 # Release Notes
 
+## 1.3.0 - 2020-05-08
+
+* Added setting page for quiz' producers
+
 ## 1.2.0 - 2020-05-07
 
 * Added possibility to setup a question when a player has a choice of jeopardy
 
-## 1.1.0 - 2020-05-07
+## 1.1.0 - 2020-05-06
 
 * Added extra 10 seconds for writing answers (Last Call)
 

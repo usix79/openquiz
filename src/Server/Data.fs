@@ -173,34 +173,34 @@ module RefreshTokens =
 
 module Experts =
     let private expertOfDocument (doc:Document) : Expert option =
-        let id = doc.["Id"].AsString()
-        let username = stringOfDoc doc "Username"
-        let isProducer = boolOfDoc doc "IsProducer"
-        let competitions =
-            doc.["Competitions"].AsDocument()
-            |> Seq.map (fun pair -> Int32.Parse(pair.Key), pair.Value.AsInt())
-            |> Map.ofSeq
-
-        let quizes =
-            listOfDoc doc "Quizzes"
-            |> Seq.map (fun p -> p.AsInt())
-            |> List.ofSeq
-
-        let packages =
-            listOfDoc doc "Packages"
-            |> Seq.map (fun p -> p.AsInt())
-            |> List.ofSeq
-
-        let version = intOfDoc doc "Version"
-
-        Some {Id = id; Username = username; IsProducer = isProducer; Competitions = competitions;
-            Quizes = quizes; Packages = packages; Version = version}
+        {
+            Id = doc.["Id"].AsString()
+            Username = stringOfDoc doc "Username"
+            Name = stringOfDoc doc "Name"
+            IsProducer = boolOfDoc doc "IsProducer"
+            Competitions =
+                doc.["Competitions"].AsDocument()
+                |> Seq.map (fun pair -> Int32.Parse(pair.Key), pair.Value.AsInt())
+                |> Map.ofSeq
+            Quizes =
+                listOfDoc doc "Quizzes"
+                |> Seq.map (fun p -> p.AsInt())
+                |> List.ofSeq
+            Packages =
+                listOfDoc doc "Packages"
+                |> Seq.map (fun p -> p.AsInt())
+                |> List.ofSeq
+            DefaultImg = stringOfDoc doc "DefaultImg"
+            DefaultMixlr = optionOfEntry doc "DefaultMixlr"
+            Version = intOfDoc doc "Version"
+        } |> Some
 
     let private documentOfExpert (exp:Expert) =
         let expItem = Document()
 
         expItem.["Id"] <- v2.ConvertToEntry  (exp.Id.ToString())
         expItem.["Username"] <- v2.ConvertToEntry exp.Username
+        expItem.["Name"] <- v2.ConvertToEntry exp.Name
         expItem.["IsProducer"] <- v2.ConvertToEntry exp.IsProducer
 
         let regsEntry = Document()
@@ -218,6 +218,9 @@ module Experts =
         for packageId in exp.Packages do
             packagesEntry.Add(Primitive.op_Implicit packageId)
         expItem.["Packages"] <- packagesEntry
+
+        expItem.["DefaultImg"] <- v2.ConvertToEntry exp.DefaultImg
+        expItem.["DefaultMixlr"] <- entryOfOption exp.DefaultMixlr
 
         expItem.["Version"] <- v2.ConvertToEntry exp.Version
 

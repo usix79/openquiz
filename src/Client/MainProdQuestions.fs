@@ -160,7 +160,6 @@ let init api user : Model*Cmd<Msg> =
     {Errors = Map.empty; Packages = []; CardIsLoading = None; Card = None; AquiringForm = None; DeleteForm = None} |> apiCmd api.getProdPackages () GetPackagesResp Exn
 
 let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
-
     match msg with
     | DeleteError id -> cm |> delError id |> noCmd
     | GetPackagesResp {Value = Ok res } -> {cm with Packages = res} |> noCmd
@@ -226,11 +225,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
             ]
         ]
 
-        for error in model.Errors do
-            div [Class "notification is-danger is-light"][
-                button [Class "delete"; OnClick (fun _ -> dispatch (DeleteError error.Key))][]
-                str error.Value
-            ]
+        MainTemplates.errors dispatch DeleteError model.Errors
 
         div[][
             match model.AquiringForm with

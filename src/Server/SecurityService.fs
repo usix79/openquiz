@@ -20,7 +20,8 @@ module CustomClaims =
     let TeamId = "teamId"
     let QuizId = "quizId"
     let SessionId = "sessionId"
-    let Username = "username"
+    let UserName = "username"
+    let UserId = "userId"
 
 module CustomRoles =
     let Admin = "admin"
@@ -124,17 +125,18 @@ let authorize secret role (f : ClaimsPrincipal -> 'Arg -> Result<'Value, string>
 
 let authorizeExpert secret (f: string -> string -> 'arg -> Result<'res, string>) =
     authorize secret CustomRoles.Expert <| fun principal req ->
-        let sub = principal.FindFirstValue CustomClaims.Name
-        let username = principal.FindFirstValue CustomClaims.Username
+        let sub = principal.FindFirstValue CustomClaims.UserId
+        let username = principal.FindFirstValue CustomClaims.UserName
         f sub username req
 
-let authorizeExpertCheckPrivateQuiz secret (f: string -> string -> string -> 'arg -> Result<'res, string>) =
+let authorizeExpertCheckPrivateQuiz secret (f: string -> string -> string -> string -> 'arg -> Result<'res, string>) =
     authorize secret CustomRoles.Expert <| fun principal req ->
-        let sub = principal.FindFirstValue CustomClaims.Name
-        let username = principal.FindFirstValue CustomClaims.Username
+        let sub = principal.FindFirstValue CustomClaims.UserId
+        let usernamesys = principal.FindFirstValue CustomClaims.UserName
+        let username = principal.FindFirstValue CustomClaims.Name
         let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
 
-        f sub username quizIdStr req
+        f sub usernamesys username quizIdStr req
 
 let authorizeAdmin secret (f: string -> 'arg -> Result<'res, string>) =
     authorize secret CustomRoles.Admin <| fun principal req ->
@@ -210,7 +212,15 @@ let loginMainUser secret token clientId clientName redirectUrl code =
             match userInfoResult with
             | Ok info ->
                 let privateQuizId = tryExtractPrivateQuizId secret token
-                let isProducer = match Data.Experts.get info.Sub with Some exp -> exp.IsProducer | None -> false
+                let exp = Data.Experts.get info.Sub
+                let isProducer = match exp with Some exp -> exp.IsProducer | None -> false
+
+                // update expert if attributes changed
+                match exp with
+                | Some exp when exp.Username <> info.Username || exp.Name <> info.Name ->
+                    CommonService.updateExpertNoReply exp.Id (fun exp -> {exp with Username = info.Username; Name = info.Name} |> Ok)
+                | _-> ()
+
                 let user = MainUser {
                         Sub = info.Sub;
                         Username = info.Username;
@@ -220,8 +230,9 @@ let loginMainUser secret token clientId clientName redirectUrl code =
                         IsPrivate = privateQuizId.IsSome
                 }
                 let claims = [
-                    Claim(CustomClaims.Name, info.Sub)
-                    Claim(CustomClaims.Username, info.Username)
+                    Claim(CustomClaims.UserId, info.Sub)
+                    Claim(CustomClaims.UserName, info.Username)
+                    Claim(CustomClaims.Name, info.Name)
                     Claim(CustomClaims.Role, CustomRoles.Expert)
                     if (privateQuizId.IsSome) then Claim(CustomClaims.QuizId, privateQuizId.Value.ToString())
                 ]

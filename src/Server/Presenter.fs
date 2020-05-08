@@ -224,6 +224,8 @@ module Main =
     let expertCompetition (team:TeamDescriptor) : MainModels.ExpertCompetition=
         {QuizId = team.QuizId; TeamId = team.TeamId; TeamName = team.Name; TeamStatus = teamStatus team.Status; EntryToken = team.EntryToken}
 
+    let settingsCard (exp:Expert) : MainModels.SettingsCard =
+        {UserId = exp.Id; DefaultImg = exp.DefaultImg; DefaultMixlr = exp.DefaultMixlr}
 
 module Admin =
 

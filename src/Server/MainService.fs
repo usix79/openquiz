@@ -15,9 +15,9 @@ let api (context:HttpContext) : IMainApi =
     let secret = Config.getJwtSecret cfg
 
     let ex proc f =
-        let ff f = (fun expertId username (quizIdStr:string) req ->
+        let ff f = (fun expertId usersysname username (quizIdStr:string) req ->
             let quizId = match System.Int32.TryParse quizIdStr with true, id -> Some id | _ -> None
-            f expertId username quizId req
+            f expertId usersysname username quizId req
         )
 
         SecurityService.execute logger proc <| SecurityService.authorizeExpertCheckPrivateQuiz secret (ff f)
@@ -51,12 +51,14 @@ let api (context:HttpContext) : IMainApi =
         aquirePackage = exPublisher "aquirePackage" aquirePackage
         deleteQuiz = exPublisher "deleteQuiz" deleteQuiz
         deletePackage = exPublisher "deletePackage" deletePackage
+        getSettings = exPublisher "getSettings" getSettings
+        updateSettings = exPublisher "updateSettings" updateSettings
     }
 
     api
 
-let becomeProducer expertId username _ _ =
-    let creator _ = Domain.Experts.createNew expertId username |> Ok
+let becomeProducer expertId usersysname name _ _ =
+    let creator _ = Domain.Experts.createNew expertId usersysname name |> Ok
     let logic expert = expert |> Domain.Experts.becomeProducer |> Ok
 
     CommonService.updateOrCreateExpert expertId creator logic |> ignore
@@ -65,8 +67,7 @@ let becomeProducer expertId username _ _ =
 
 let createQuiz expert _ =
     let creator quizId =
-        Ok <| Domain.Quizzes.createNew quizId expert.Id
-
+        Ok <| Domain.Quizzes.createNew quizId expert.Id expert.DefaultImg expert.DefaultMixlr
 
     result{
         let! quiz = CommonService.createQuiz creator
@@ -111,7 +112,7 @@ let updateProdQuizCard expert card =
 let uploadFile bucketName _ req =
     Bucket.uploadFile  bucketName req.Cat req.FileType req.FileBody
 
-let getRegModel expId username quizId _ =
+let getRegModel expId username name quizId _ =
     result{
         let! quizId = quizId, "Quiz not defined"
         let! quiz = (Data.Quizzes.getDescriptor quizId), "Quiz not found"
@@ -123,8 +124,8 @@ let getRegModel expId username quizId _ =
         return Main.quizRegRecord quiz team
     }
 
-let registerTeam expId username quizId req =
-    let expCreator _ = Domain.Experts.createNew expId username |> Ok
+let registerTeam expId username name quizId req =
+    let expCreator _ = Domain.Experts.createNew expId username name |> Ok
 
     result {
         let! quizId = quizId, "Quiz not defined"
@@ -248,4 +249,16 @@ let deletePackage expert req =
         CommonService.updateExpertNoReply expert.Id (Domain.Experts.removePackage req.PackageId)
 
         return ()
+    }
+
+let getSettings expert req =
+    expert |> Main.settingsCard |> Ok
+
+let updateSettings expert req =
+    let logic (exp:Domain.Expert) =
+        {exp with DefaultImg = req.DefaultImg; DefaultMixlr = req.DefaultMixlr} |> Ok
+
+    result {
+        let! exp = CommonService.updateExpert expert.Id logic
+        return exp |> Main.settingsCard
     }
