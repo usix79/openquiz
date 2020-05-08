@@ -84,7 +84,7 @@ let validateStartTime dt =
     | Some _ -> ""
     | None -> "Start Time is required"
 
-let validate card =
+let validate (card:QuizProdCard) =
     [validateName card.Name; validateStartTime card.StartTime]
     |> List.filter (fun s -> s <> "")
 

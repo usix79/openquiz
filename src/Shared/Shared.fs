@@ -238,20 +238,17 @@ type SingleAwSlip = {
 
 type PackageRecord = {
     PackageId : int
+    Producer : string
     Name : string
 }
 
 type PackageCard = {
     PackageId : int
     Name : string
-    TransferToken : string
     Slips : Slip list
 }
  with
     member x.GetSlip idx = x.Slips |> List.tryItem idx
-    member x.AppendSlip slip = {x with Slips = x.Slips @ [slip]}
-    member x.UpdateSlip idx slip = {x with Slips = x.Slips |> List.mapi (fun i q -> if idx = i then slip else q)}
-    member x.DelSlip idx = {x with Slips = x.Slips |> List.indexed |> List.choose (fun (i, s) -> if idx = i then None else Some s) }
 
 type TeamResult = {
     TeamId : int
@@ -334,6 +331,24 @@ module MainModels =
         DefaultImg : string
         DefaultMixlr : int option
     }
+
+    type ExpertRecord = {
+        Id : string
+        Name : string
+    }
+    type PackageCard = {
+        PackageId : int
+        Producer : string
+        Name : string
+        TransferToken : string
+        SharedWith : ExpertRecord list
+        Slips : Slip list
+    }
+     with
+        member x.GetSlip idx = x.Slips |> List.tryItem idx
+        member x.AppendSlip slip = {x with Slips = x.Slips @ [slip]}
+        member x.UpdateSlip idx slip = {x with Slips = x.Slips |> List.mapi (fun i q -> if idx = i then slip else q)}
+        member x.DelSlip idx = {x with Slips = x.Slips |> List.indexed |> List.choose (fun (i, s) -> if idx = i then None else Some s) }
 
 module AdminModels =
 
@@ -524,13 +539,15 @@ type IMainApi = {
     getRegModel : REQ<unit> -> ARESP<MainModels.QuizRegRecord>
     registerTeam : REQ<{|TeamName: string|}> -> ARESP<MainModels.QuizRegRecord>
     getProdPackages : REQ<unit> -> ARESP<PackageRecord list>
-    getProdPackageCard : REQ<{|PackageId : int|}> -> ARESP<PackageCard>
-    createPackage : REQ<unit> -> ARESP<{|Record : PackageRecord; Card: PackageCard|}>
-    updateProdPackageCard : REQ<PackageCard> -> ARESP<PackageRecord>
+    getProdPackageCard : REQ<{|PackageId : int|}> -> ARESP<MainModels.PackageCard>
+    createPackage : REQ<unit> -> ARESP<{|Record : PackageRecord; Card: MainModels.PackageCard|}>
+    updateProdPackageCard : REQ<MainModels.PackageCard> -> ARESP<PackageRecord>
     aquirePackage : REQ<{|PackageId:int; TransferToken:string|}> -> ARESP<PackageRecord>
     deletePackage: REQ<{|PackageId : int|}> -> ARESP<unit>
     getSettings : REQ<unit> -> ARESP<MainModels.SettingsCard>
     updateSettings : REQ<MainModels.SettingsCard> -> ARESP<MainModels.SettingsCard>
+    sharePackage : REQ<{|PackageId : int; UserId:string|}> -> ARESP<MainModels.ExpertRecord>
+    removePackageShare : REQ<{|PackageId : int; UserId:string|}> -> ARESP<unit>
 }
 
 type IAdminApi = {

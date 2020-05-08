@@ -130,7 +130,7 @@ let getPackages quiz req =
         let! exp = (Data.Experts.get quiz.Producer, "Producer Not Found")
 
         return
-            exp.Packages
+            exp.AllPackages
             |> List.map Data.Packages.getDescriptor
             |> List.filter (fun p -> p.IsSome)
             |> List.map (fun p -> packageRecord p.Value)
@@ -145,11 +145,8 @@ let setPackage quiz req =
 
         do!
             match req.PackageId with
-            | Some id ->
-                match exp.Packages |> List.tryFind ((=) id) with
-                | Some _ -> Ok ()
-                | None -> Error "Package is not produced by quiz producer"
-            | None -> Ok ()
+            | Some id when not <| Domain.Experts.isAuthorizedForPackage id exp  -> Error "You are not autorized to access the package"
+            | _ -> Ok ()
 
         let! quiz = CommonService.updateQuiz quiz.QuizId logic
 
@@ -160,7 +157,9 @@ let getPackageCard quiz req =
     result {
         let! exp = (Data.Experts.get quiz.Producer, "Producer Not Found")
 
-        let! _ = (exp.Packages |> List.tryFind ((=) req.PackageId), "Package is not produced by quiz producer")
+        do!
+            if not <| Domain.Experts.isAuthorizedForPackage req.PackageId exp then Error "You are not autorized to access the package"
+            else Ok ()
 
         return
             match Data.Packages.get req.PackageId with

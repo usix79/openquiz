@@ -385,6 +385,8 @@ module Infra =
                 deletePackage = x.Wrap mainApi.deletePackage
                 getSettings = x.Wrap mainApi.getSettings
                 updateSettings = x.Wrap mainApi.updateSettings
+                sharePackage = x.Wrap mainApi.sharePackage
+                removePackageShare = x.Wrap mainApi.removePackageShare
             }
 
         member x.CreateAdminApi () =

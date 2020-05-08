@@ -48,14 +48,15 @@ let qwKeyToDomain (qwKey : Shared.QwKey) : QwKey =
 let packageRecord (package:PackageDescriptor) : PackageRecord =
     {
         PackageId = package.PackageId
+        Producer = package.Producer
         Name = package.Name
+
     }
 
 let packageCard (package: Package) : PackageCard =
     {
         PackageId = package.Dsc.PackageId
         Name = package.Dsc.Name
-        TransferToken = package.TransferToken
         Slips = package.Slips |> List.map slip
     }
 
@@ -226,6 +227,19 @@ module Main =
 
     let settingsCard (exp:Expert) : MainModels.SettingsCard =
         {UserId = exp.Id; DefaultImg = exp.DefaultImg; DefaultMixlr = exp.DefaultMixlr}
+
+    let packageCard expertId (package: Package) (expertsProvider:Provider<string,Expert>) : MainModels.PackageCard =
+        {
+            PackageId = package.Dsc.PackageId
+            Producer = package.Dsc.Producer
+            Name = package.Dsc.Name
+            TransferToken = if package.Dsc.Producer = expertId then package.TransferToken else ""
+            SharedWith = package.SharedWith |> List.choose expertsProvider |> List.map expertRecord
+            Slips = package.Slips |> List.map slip
+        }
+
+    let expertRecord (exp:Expert) : MainModels.ExpertRecord =
+        {Id = exp.Id; Name = exp.Name}
 
 module Admin =
 

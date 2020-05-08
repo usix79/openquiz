@@ -53,6 +53,8 @@ let api (context:HttpContext) : IMainApi =
         deletePackage = exPublisher "deletePackage" deletePackage
         getSettings = exPublisher "getSettings" getSettings
         updateSettings = exPublisher "updateSettings" updateSettings
+        sharePackage = exPublisher "sharePackage" sharePackage
+        removePackageShare = exPublisher "removePackageShare" removePackageShare
     }
 
     api
@@ -107,7 +109,6 @@ let updateProdQuizCard expert card =
 
         return quiz.Dsc |> Main.quizProdRecord
     }
-
 
 let uploadFile bucketName _ req =
     Bucket.uploadFile  bucketName req.Cat req.FileType req.FileBody
@@ -178,17 +179,18 @@ let private updateTeam quiz team teamName : Result<Domain.Team,string> =
         CommonService.updateTeam team.Key logic
 
 let getProdPackages expert _ =
-    expert.Packages
+    expert.AllPackages
     |> List.map Data.Packages.getDescriptor
     |> List.filter (fun p -> p.IsSome)
     |> List.map (fun p -> packageRecord p.Value)
     |> Ok
 
 let getProdPackageCard expert (req : {|PackageId : int|}) =
-    match Data.Packages.get req.PackageId with
-    | Some package when package.Dsc.Producer <> expert.Id -> Error "Package belongs to another producer"
-    | None -> Error "Package not found"
-    | Some package -> Ok <| packageCard package
+    if expert |> Domain.Experts.isAuthorizedForPackage req.PackageId then
+        match Data.Packages.get req.PackageId with
+        | Some package -> Main.packageCard expert.Id package CommonService.expertLoader |> Ok
+        | None -> Error "Package not found"
+    else  Error "You are not authorized to load the package"
 
 let createPackage expert _ =
     let creator = fun id ->
@@ -199,7 +201,7 @@ let createPackage expert _ =
 
         CommonService.updateExpertNoReply expert.Id (Domain.Experts.addPackage package.Dsc.PackageId)
 
-        return {|Record = package.Dsc |> packageRecord; Card = packageCard package; |}
+        return {|Record = package.Dsc |> packageRecord; Card = Main.packageCard expert.Id package CommonService.expertLoader; |}
     }
 
 let updateProdPackageCard expert card =
@@ -245,6 +247,11 @@ let deletePackage expert req =
     result {
         let! _ = (expert.Packages |> List.tryFind ((=) req.PackageId), "Package belongs to another producer")
 
+        let! pkg = Data.Packages.get req.PackageId, "Package not found"
+
+        for userId in pkg.SharedWith do
+            CommonService.updateExpertNoReply userId (Domain.Experts.removeSharedPackage req.PackageId)
+
         Data.Packages.delete req.PackageId
         CommonService.updateExpertNoReply expert.Id (Domain.Experts.removePackage req.PackageId)
 
@@ -261,4 +268,26 @@ let updateSettings expert req =
     result {
         let! exp = CommonService.updateExpert expert.Id logic
         return exp |> Main.settingsCard
+    }
+
+let sharePackage expert req =
+    result{
+        let! _ = (expert.Packages |> List.tryFind ((=) req.PackageId), "Package belongs to another producer")
+        let! exp = Data.Experts.get req.UserId, "User not found"
+
+        let! pgk = CommonService.updatePackage req.PackageId (Domain.Packages.shareWith req.UserId)
+        CommonService.updateExpertNoReply req.UserId (Domain.Experts.addSharedPackage req.PackageId)
+
+        return exp |> Main.expertRecord
+    }
+
+let removePackageShare expert req =
+    result{
+        let! _ = (expert.Packages |> List.tryFind ((=) req.PackageId), "Package belongs to another producer")
+        let! exp = Data.Experts.get req.UserId, "User not found"
+
+        let! pgk = CommonService.updatePackage req.PackageId (Domain.Packages.removeShareWith req.UserId)
+        CommonService.updateExpertNoReply req.UserId (Domain.Experts.removeSharedPackage req.PackageId)
+
+        return ()
     }

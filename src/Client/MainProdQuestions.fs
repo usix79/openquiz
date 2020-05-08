@@ -20,8 +20,8 @@ type Msg =
     | DeleteError of string
     | GetPackagesResp of RESP<PackageRecord list>
     | ToggleCard of int
-    | GetPackageResp of RESP<PackageCard>
-    | CreatePackageResp of RESP<{|Record : PackageRecord; Card:PackageCard|}>
+    | GetPackageResp of RESP<MainModels.PackageCard>
+    | CreatePackageResp of RESP<{|Record : PackageRecord; Card:MainModels.PackageCard|}>
     | UpdateName of string
     | UpdateTransferToken of string
     | CancelCard
@@ -56,6 +56,12 @@ type Msg =
     | DeleteFormUpdateText of string
     | DeletePackage of int
     | DeletePackageResp of TRESP<int,unit>
+    | ToggleShareForm
+    | ShareFormUpdateUserId of string
+    | ShareFormSend of int
+    | ShareRemove of int * string
+    | SharePackageResp of RESP<MainModels.ExpertRecord>
+    | RemoveShareResp of TRESP<string,unit>
 
 type AquireForm = {
     PackageId : int
@@ -63,13 +69,20 @@ type AquireForm = {
     IsSending : bool
 }
 
+type ShareForm = {
+    UserId : string
+    Error : string
+    IsSending : bool
+}
+
 type Model = {
     Packages : PackageRecord list
     Errors : Map<string, string>
     CardIsLoading : int option // packageId
-    Card : PackageCard option
+    Card : MainModels.PackageCard option
     AquiringForm : AquireForm option
     DeleteForm : DeleteForm option
+    ShareForm : ShareForm option
 }
 
 let addError txt model =
@@ -86,8 +99,8 @@ let toggleCard api packageId model =
     | Some _ -> model |> noCmd
     | None ->
         match model.Card with
-        | Some card when card.PackageId = packageId -> {model with Card = None} |> noCmd
-        | _ -> {model with Card = None} |> loading packageId |> apiCmd api.getProdPackageCard {|PackageId = packageId|} GetPackageResp Exn
+        | Some card when card.PackageId = packageId -> {model with Card = None; ShareForm = None} |> noCmd
+        | _ -> {model with Card = None; ShareForm = None} |> loading packageId |> apiCmd api.getProdPackageCard {|PackageId = packageId|} GetPackageResp Exn
 
 let editing model =
     {model with CardIsLoading = None}
@@ -95,7 +108,7 @@ let editing model =
 let validateName txt =
     if System.String.IsNullOrWhiteSpace(txt) then "Name is required" else ""
 
-let validate (card : PackageCard) =
+let validate (card : MainModels.PackageCard) =
     [validateName card.Name]
     |> List.filter (fun s -> s <> "")
 
@@ -154,10 +167,16 @@ let updateDeleteForm (f : DeleteForm -> DeleteForm) model =
     | None -> model
 
 let afterPackageDeletion (packageId:int) model =
-    {model with Card = None; DeleteForm = None; Packages = model.Packages |> List.filter (fun p -> p.PackageId <> packageId)}
+    {model with Card = None; DeleteForm = None; ShareForm = None; Packages = model.Packages |> List.filter (fun p -> p.PackageId <> packageId)}
+
+let updateShareForm (f : ShareForm -> ShareForm) model =
+    match model.ShareForm with
+    | Some form -> {model with ShareForm = Some (f form)}
+    | None -> model
 
 let init api user : Model*Cmd<Msg> =
-    {Errors = Map.empty; Packages = []; CardIsLoading = None; Card = None; AquiringForm = None; DeleteForm = None} |> apiCmd api.getProdPackages () GetPackagesResp Exn
+    {Errors = Map.empty; Packages = []; CardIsLoading = None; Card = None; AquiringForm = None; DeleteForm = None; ShareForm = None}
+        |> apiCmd api.getProdPackages () GetPackagesResp Exn
 
 let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
@@ -169,9 +188,9 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | CreatePackageResp {Value = Ok res} -> {cm with Packages = res.Record :: cm.Packages; Card = Some res.Card} |> noCmd
     | UpdateName txt -> cm |> updateCard (fun c -> {c with Name = txt}) |> noCmd
     | UpdateTransferToken txt -> cm |> updateCard (fun c -> {c with TransferToken = txt}) |> noCmd
-    | CancelCard -> {cm with Card = None} |> noCmd
+    | CancelCard -> {cm with Card = None; ShareForm = None} |> noCmd
     | SubmitCard -> cm |> submitCard api
-    | SubmitCardResp {Value = Ok res } -> {cm with Card = None} |> editing |> replaceRecord res |> noCmd
+    | SubmitCardResp {Value = Ok res } -> {cm with Card = None; ShareForm = None} |> editing |> replaceRecord res |> noCmd
     | AppendSingleSlip qwCount -> cm |> updateCard (fun c -> c.AppendSlip (SingleAwSlip.InitEmpty qwCount |> Single)) |> noCmd
     | AppendMultipleSlip -> cm |> updateCard (fun c -> c.AppendSlip (("",[]) |> Multiple)) |> noCmd
     | DelSlip tourIdx -> cm |> updateCard (fun c -> c.DelSlip tourIdx) |> noCmd
@@ -203,6 +222,14 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | DeletePackage packageId -> cm |> updateDeleteForm (fun form -> {form with IsSending = true}) |> apiCmd api.deletePackage {|PackageId = packageId|} (taggedMsg DeletePackageResp packageId) Exn
     | DeletePackageResp {Tag = quizId; Rsp = {Value = Ok _}} -> cm |> afterPackageDeletion quizId |> noCmd
     | DeletePackageResp {Tag = _; Rsp = {Value = Error txt}} -> cm |> updateDeleteForm (fun form -> {form with IsSending = false; FormError = txt}) |>  noCmd
+    | ToggleShareForm -> {cm with ShareForm = match cm.ShareForm with Some _ -> None | None -> Some {UserId = ""; Error = ""; IsSending = false}} |>  noCmd
+    | ShareFormUpdateUserId txt -> cm |> updateShareForm (fun form -> {form with UserId = txt; Error = ""}) |> noCmd
+    | ShareFormSend pkgId -> cm |> updateShareForm (fun form -> {form with IsSending = true}) |> apiCmd api.sharePackage {|PackageId = pkgId; UserId = cm.ShareForm.Value.UserId|} SharePackageResp Exn
+    | ShareRemove (pkgId, userId) -> cm |> apiCmd api.removePackageShare {|PackageId = pkgId; UserId = userId|} (taggedMsg RemoveShareResp userId) Exn
+    | SharePackageResp {Value = Error txt} -> cm |> updateShareForm (fun form -> {form with IsSending = false; Error = txt}) |> noCmd
+    | SharePackageResp {Value = Ok res} -> {cm with ShareForm = None} |> updateCard (fun c ->{c with SharedWith = res :: c.SharedWith}) |> noCmd
+    | RemoveShareResp {Tag = userId; Rsp = {Value = Ok _ }} -> cm |> updateCard (fun c -> {c with SharedWith = c.SharedWith |> List.filter (fun r -> r.Id <> userId)}) |> noCmd
+    | RemoveShareResp {Tag = _; Rsp = {Value = Error txt }} -> cm |> addError txt |> editing |> noCmd
     | Exn ex -> cm |> addError ex.Message |> editing |> noCmd
     | Err txt -> cm |> addError txt |> editing |> noCmd
     | _ -> cm |> noCmd
@@ -253,12 +280,15 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                             ]
                         ]
                         td [] [str <| package.PackageId.ToString()]
-                        td [] [str package.Name]
+                        td [] [
+                            str package.Name
+                            if package.Producer <> user.Sub then span [Class "tag is-info"][str "shared with me"]
+                        ]
                     ]
                     if hasCard then
                         tr [][
                             th [][]
-                            td [ColSpan 2] [ card dispatch model.Card.Value model.DeleteForm isLoading]
+                            td [ColSpan 2] [ card dispatch user model.Card.Value model.DeleteForm model.ShareForm isLoading]
                         ]
             ]
         ]
@@ -286,62 +316,93 @@ let aquiringForm (dispatch : Msg -> unit) (form : AquireForm) =
         ]
     ]
 
-let card (dispatch : Msg -> unit) (card : PackageCard) (deleteForm : DeleteForm option) isLoading =
+let card (dispatch : Msg -> unit) user (card : MainModels.PackageCard) (deleteForm : DeleteForm option)  (shareForm : ShareForm option) isLoading =
+    let isOwned = user.Sub = card.Producer
     div[][
-        nav [Class "level"][
-            div [Class "level-left"][
-                div [Class "level-item"][
-                    div [Class "field"; Style [Width "320px"]][
-                        label [Class "label"][str "Package Name"; span [Class "has-text-danger"][str "*"]]
-                        let error = validateName card.Name
-                        div [Class "control"][
-                            input [classList ["input", true; "is-danger", error <> ""]; Disabled isLoading; Type "text"; Placeholder "PKG #3"; MaxLength 128.0;
-                                valueOrDefault card.Name;
-                                OnChange (fun ev -> dispatch <| UpdateName ev.Value)]
-                        ]
-                        p [Class "help is-danger"][str error]
-                        label [Class "label"][str "Transfer token"]
-                        div [Class "control"][
-                            input [Class "input"; Disabled isLoading; Type "text"; MaxLength 128.0;
-                                valueOrDefault card.TransferToken;
-                                OnChange (fun ev -> dispatch <| UpdateTransferToken ev.Value)]
-                        ]
-                        br[]
-                        div [Class "field is-grouped"][
-                            div [Class "control"][
-                                button [Class "button "; Disabled isLoading; OnClick (fun _ -> AppendSingleSlip 1 |> dispatch)] [str "Append Question"]
-                            ]
-                            div [Class "control"][
-                                button [Class "button "; Disabled isLoading; OnClick (fun _ -> AppendSingleSlip 2 |> dispatch)] [str "Append Doublet"]
-                            ]
-                            div [Class "control"][
-                                button [Class "button "; Disabled isLoading; OnClick (fun _ -> AppendSingleSlip 3 |> dispatch)] [str "Append Blitz"]
-                            ]
-                            div [Class "control"][
-                                button [Class "button "; Disabled isLoading; OnClick (fun _ -> AppendMultipleSlip |> dispatch)] [str "Append Multiple Slip"]
-                            ]
-                        ]
+        if isOwned then
+            div [Class "columns"][
+                div [Class "column"][
+                    label [Class "label"][str "Package Name"; span [Class "has-text-danger"][str "*"]]
+                    let error = validateName card.Name
+                    div [Class "control"][
+                        input [classList ["input", true; "is-danger", error <> ""]; Disabled isLoading; Type "text"; Placeholder "PKG #3"; MaxLength 128.0;
+                            valueOrDefault card.Name;
+                            OnChange (fun ev -> dispatch <| UpdateName ev.Value)]
+                    ]
+                    p [Class "help is-danger"][str error]
+                    label [Class "label"][str "Transfer token"]
+                    div [Class "control"][
+                        input [Class "input"; Disabled isLoading; Type "text"; MaxLength 128.0;
+                            valueOrDefault card.TransferToken;
+                            OnChange (fun ev -> dispatch <| UpdateTransferToken ev.Value)]
                     ]
                 ]
-            ]
-            div [Class "level-right"][
-                match deleteForm with
-                | Some form ->
-                    MainTemplates.deleteForm dispatch "Type name of the Package to confirm" card.Name form.ConfirmText form.IsSending form.FormError
-                        ToggleDeleteForm DeleteFormUpdateText (DeletePackage card.PackageId)
-                | None ->
-                    div [Class "level-item"][
-                        div [Class "control"][
-                            let hasErrors = not (validate card |> List.isEmpty)
-                            button [Class "button is-dark "; Disabled hasErrors; OnClick (fun _ -> dispatch SubmitCard)] [ str "Submit"]
-                        ]
-                        div [Class "control"; Style [MarginLeft "5px"]][
-                            button [Class "button"; OnClick (fun _ -> dispatch CancelCard)] [ str "Cancel"]
+                div [Class "column"][
+                    label [Class "label"][str "Shared With"]
+                    div [Class "content"][
+                        ul[][
+                            for record in card.SharedWith ->
+                                li [][
+                                    str record.Name
+                                    a [Class "button is-small is-text has-text-danger"; Style [Display DisplayOptions.Inline]; Title "Remove Sharing";
+                                        OnClick (fun _ -> ShareRemove (card.PackageId,record.Id) |> dispatch) ][Fa.span [Fa.Size Fa.FaSmall; Fa.Solid.Times][]]
+                                ]
                         ]
                     ]
-                    button [Class "button is-danger"; OnClick (fun _ -> dispatch ToggleDeleteForm)] [ str "Delete Package"]
+
+                    match shareForm with
+                    | None -> button [Class "button is-small"; OnClick (fun _ -> dispatch ToggleShareForm)][str "Share"]
+                    | Some form ->
+                        div [Class "field has-addons"; Style[PaddingBottom "5px"]][
+                            p [Class "control is-expanded"][
+                                input [Class "input is-small"; Disabled form.IsSending; Type "text"; Placeholder "User Id"; MaxLength 128.0;
+                                    valueOrDefault form.UserId;
+                                    OnChange (fun ev -> dispatch <| ShareFormUpdateUserId ev.Value)]
+                                span [Class "help is-danger"][str form.Error]
+                            ]
+                            p [Class "control"][
+                                button [classList ["button", true; "is-small", true; "is-loading", form.IsSending]; Disabled (form.UserId = "");
+                                  OnClick (fun _ -> dispatch <| ShareFormSend card.PackageId)][str "Share"]
+                            ]
+                            p [Class "control"][
+                                button [Class "button is-small"; OnClick (fun _ -> dispatch ToggleShareForm)][str "Cancel"]
+                            ]
+                        ]
+                ]
+                div [Class "column"][
+                    match deleteForm with
+                    | Some form ->
+                        MainTemplates.deleteForm dispatch "Type name of the Package to confirm" card.Name form.ConfirmText form.IsSending form.FormError
+                            ToggleDeleteForm DeleteFormUpdateText (DeletePackage card.PackageId)
+                    | None ->
+                        div [Class "field is-grouped"][
+                            div [Class "control"][
+                                let hasErrors = not (validate card |> List.isEmpty)
+                                button [Class "button is-dark "; Disabled hasErrors; OnClick (fun _ -> dispatch SubmitCard)] [str "Submit"]
+                            ]
+                            div [Class "control"; Style [MarginLeft "5px"]][
+                                button [Class "button"; OnClick (fun _ -> dispatch CancelCard)] [str "Cancel"]
+                            ]
+                            button [Class "button is-danger"; OnClick (fun _ -> dispatch ToggleDeleteForm)] [str "Delete Package"]
+                        ]
+
+                ]
             ]
-        ]
+
+            div [Class "field is-grouped"][
+                div [Class "control"][
+                    button [Class "button "; Disabled isLoading; OnClick (fun _ -> AppendSingleSlip 1 |> dispatch)] [str "Append Question"]
+                ]
+                div [Class "control"][
+                    button [Class "button "; Disabled isLoading; OnClick (fun _ -> AppendSingleSlip 2 |> dispatch)] [str "Append Doublet"]
+                ]
+                div [Class "control"][
+                    button [Class "button "; Disabled isLoading; OnClick (fun _ -> AppendSingleSlip 3 |> dispatch)] [str "Append Blitz"]
+                ]
+                div [Class "control"][
+                    button [Class "button "; Disabled isLoading; OnClick (fun _ -> AppendMultipleSlip |> dispatch)] [str "Append Multiple Slip"]
+                ]
+            ]
 
         table [Class "table is-fullwidth"][
             thead [][
@@ -358,11 +419,11 @@ let card (dispatch : Msg -> unit) (card : PackageCard) (deleteForm : DeleteForm 
             tbody [][
                 for (slipIdx,slip) in card.Slips |> List.indexed |> List.rev do
                     match slip with
-                    | Single s -> yield singleSlipRow dispatch isLoading card.PackageId slipIdx None s
+                    | Single s -> yield singleSlipRow dispatch isOwned isLoading card.PackageId slipIdx None s
                     | Multiple (name, slips) ->
-                        yield multipleSlipRowHeader dispatch isLoading card.PackageId slipIdx name
+                        yield multipleSlipRowHeader dispatch isOwned isLoading card.PackageId slipIdx name
                         for (qwIdx,slip) in slips |> List.indexed |> List.rev do
-                            yield singleSlipRow dispatch isLoading card.PackageId slipIdx (Some qwIdx) slip
+                            yield singleSlipRow dispatch isOwned isLoading card.PackageId slipIdx (Some qwIdx) slip
             ]
         ]
     ]
@@ -410,7 +471,7 @@ let cmntCell dispatch (key:PkgQwKey) txt imgKey isLoading =
         yield! MainTemplates.imgArea key isLoading (CommentImgChanged >> dispatch) (fun _ -> CommentImgClear key.Key |> dispatch) imgKey "" "Clear"
     ]
 
-let singleSlipRow dispatch isLoading pkgId tourIdx qwIdx (slip: SingleAwSlip) =
+let singleSlipRow dispatch isOwned isLoading pkgId tourIdx qwIdx (slip: SingleAwSlip) =
 
     let packageKey = {PackageId = pkgId; TourIdx=tourIdx; QwIdx = qwIdx |> Option.defaultValue 0}
 
@@ -443,12 +504,13 @@ let singleSlipRow dispatch isLoading pkgId tourIdx qwIdx (slip: SingleAwSlip) =
                 str " with choice"
             ]
         ]
-        match qwIdx with
-        | Some idx -> delQwCell dispatch {TourIdx = tourIdx; QwIdx = idx}
-        | None -> delTourCell dispatch tourIdx
+        if isOwned then
+            match qwIdx with
+            | Some idx -> delQwCell dispatch {TourIdx = tourIdx; QwIdx = idx}
+            | None -> delTourCell dispatch tourIdx
     ]
 
-let multipleSlipRowHeader dispatch isLoading pkgId tourIdx (name:string) =
+let multipleSlipRowHeader dispatch isOwned isLoading pkgId tourIdx (name:string) =
     tr[][
         idxCell tourIdx None
         td[ColSpan 3][

@@ -190,6 +190,10 @@ module Experts =
                 listOfDoc doc "Packages"
                 |> Seq.map (fun p -> p.AsInt())
                 |> List.ofSeq
+            PackagesSharedWithMe =
+                listOfDoc doc "PackagesSWM"
+                |> Seq.map (fun p -> p.AsInt())
+                |> List.ofSeq
             DefaultImg = stringOfDoc doc "DefaultImg"
             DefaultMixlr = optionOfEntry doc "DefaultMixlr"
             Version = intOfDoc doc "Version"
@@ -218,6 +222,11 @@ module Experts =
         for packageId in exp.Packages do
             packagesEntry.Add(Primitive.op_Implicit packageId)
         expItem.["Packages"] <- packagesEntry
+
+        let packagesSWMEntry = PrimitiveList()
+        for packageId in exp.PackagesSharedWithMe do
+            packagesSWMEntry.Add(Primitive.op_Implicit packageId)
+        expItem.["PackagesSWM"] <- packagesSWMEntry
 
         expItem.["DefaultImg"] <- v2.ConvertToEntry exp.DefaultImg
         expItem.["DefaultMixlr"] <- entryOfOption exp.DefaultMixlr
@@ -623,6 +632,12 @@ module Packages =
             |> slipsEntry.Add
 
         packageItem.["Questions"] <- slipsEntry
+
+        let sharedWithEntry = PrimitiveList()
+        for sub in package.SharedWith do
+            sharedWithEntry.Add(Primitive.op_Implicit sub)
+        packageItem.["SharedWith"] <- sharedWithEntry
+
         packageItem.["Version"] <- v2.ConvertToEntry package.Version
 
         packageItem
@@ -635,15 +650,15 @@ module Packages =
         {PackageId = packageId; Producer = producer; Name = name}
 
     let packageOfDocument (doc:Document) =
-        let dsc = descriptorOfDocument doc
-        let transferToken = stringOfDoc doc "TransferToken"
-        let version = doc.["Version"].AsInt()
-
-        let qwList = doc.["Questions"].AsListOfDocument()
-        let questions =
-            qwList
-            |> Seq.map slipOfDocument
-            |> List.ofSeq
-
-        {Dsc = dsc; Version = version; Slips = questions; TransferToken = transferToken}
+        {
+            Dsc = descriptorOfDocument doc
+            TransferToken = stringOfDoc doc "TransferToken"
+            SharedWith = listOfDoc doc "SharedWith"
+                |> Seq.map (fun p -> p.AsString())
+                |> List.ofSeq
+            Slips = doc.["Questions"].AsListOfDocument()
+                |> Seq.map slipOfDocument
+                |> List.ofSeq
+            Version = doc.["Version"].AsInt()
+        }
 

@@ -20,14 +20,26 @@ type Expert = {
     Competitions : Map<int,int>    // quizId => teamId
     Quizes : int list   // quizId
     Packages : int list   // packageId
+    PackagesSharedWithMe : int list
     DefaultImg : string
     DefaultMixlr : int option
     Version : int
-}
+} with
+    member x.AllPackages = x.Packages @ x.PackagesSharedWithMe
 
 module Experts =
     let createNew id username name =
-        {Id = id; Username = username; Name = name; IsProducer = false; Competitions = Map.empty; Quizes = []; Packages = []; DefaultImg = ""; DefaultMixlr = None; Version = 0}
+        {Id = id
+         Username = username
+         Name = name
+         IsProducer = false
+         Competitions = Map.empty
+         Quizes = []
+         Packages = []
+         PackagesSharedWithMe = []
+         DefaultImg = ""
+         DefaultMixlr = None
+         Version = 0}
 
     let becomeProducer (expert:Expert) =
         {expert with IsProducer = true}
@@ -52,6 +64,15 @@ module Experts =
     let addComp quizId teamId (expert:Expert) =
         {expert with Competitions = expert.Competitions.Add(quizId, teamId)}
 
+    let addSharedPackage packageId (expert:Expert) =
+        {expert with PackagesSharedWithMe = (packageId :: expert.PackagesSharedWithMe) |> List.distinct} |> Ok
+
+    let removeSharedPackage packageId (expert:Expert) =
+        {expert with PackagesSharedWithMe = expert.PackagesSharedWithMe |> List.filter (fun id -> id <> packageId)} |> Ok
+
+    let isAuthorizedForPackage packageId (expert:Expert) =
+        expert.AllPackages |> List.contains packageId
+
 type PackageDescriptor = {
     PackageId : int
     Producer : string
@@ -61,6 +82,7 @@ type PackageDescriptor = {
 type Package = {
     Dsc : PackageDescriptor
     TransferToken : string
+    SharedWith : string list
     Slips : Slip list
     Version : int
 } with
@@ -129,6 +151,7 @@ module Packages =
                 Producer = producerId
                 Name = (sprintf "PKG #%i" packageId)
             }
+            SharedWith = List.empty
             TransferToken = generateRandomToken()
             Slips = []
             Version = 0
@@ -142,6 +165,12 @@ module Packages =
                     Dsc = {package.Dsc with Producer = expertId}
                     TransferToken = generateRandomToken()
                }|> Ok
+
+    let shareWith (expertId:string) (package:Package) =
+        {package with SharedWith = (expertId :: package.SharedWith) |> List.distinct} |> Ok
+
+    let removeShareWith (expertId:string) (package:Package) =
+        {package with SharedWith = package.SharedWith |> List.filter ((<>) expertId)} |> Ok
 
 type QuizStatus =
     | Setup

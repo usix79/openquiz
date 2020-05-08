@@ -3,6 +3,7 @@
 ## 1.3.0 - 2020-05-08
 
 * Added setting page for quiz' producers
+* Added ability to share questions packages
 
 ## 1.2.0 - 2020-05-07
 
