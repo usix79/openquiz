@@ -384,6 +384,11 @@ let multipleSlipEl dispatch status (name:string) (slips:SingleAwSlip list) nextQ
         ]
     ]
 
+let secondsLeftToString sec =
+    if sec > 10
+    then (sec - 10).ToString() + " + 10"
+    else sec.ToString()
+
 let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) timeDiff isReadOnly isLoading isLastQw =
 
     div[][
@@ -397,7 +402,7 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) ti
             | Countdown, sec when sec > 0 ->
                 div [Class "control"][
                     label [classList ["label", true; "is-large", true; "has-text-danger", sec <= 10]][str "Seconds Left"]
-                    input [classList ["input", true; "is-large", true; "has-text-danger", sec <= 10]; Type "text"; Disabled true; Value (sec.ToString())]
+                    input [classList ["input", true; "is-large", true; "has-text-danger", sec <= 10]; Type "text"; Disabled true; Value (secondsLeftToString sec)]
                 ]
             | _ ->
                 div [Class "control"; Style [Width "min-content"]][
