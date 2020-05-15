@@ -147,8 +147,8 @@ let playQuiz status msg =
     div [Class "notification is-white"][
         p [Class "subtitle is-5"][
             match status with
-            | Shared.Setup -> str "Coming soon ..."
-            | Shared.Finished -> str "Finished"
+            | Shared.Setup -> str "Quiz is not started"
+            | Shared.Finished -> str "Quiz is finished"
             | _ -> ()
         ]
         p [] (splitByLines msg)

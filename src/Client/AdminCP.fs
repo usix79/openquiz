@@ -415,7 +415,7 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) ti
             button [Class "button is-large is-fullwidth"; Disabled isLoading; OnClick (fun _ -> dispatch msg)][str caption]
 
         match tour.Status, tour.SecondsLeft (serverTime timeDiff) with
-        | Announcing, _  when tour.IsLastQuestionAndPart -> ctrlBtn Start "Start Countdown"
+        | Announcing, _  when tour.IsReadyForCountdown -> ctrlBtn Start "Start Countdown"
         | Announcing, _  when not tour.IsLastPart -> ctrlBtn NextQwPart (sprintf "Show Question Part %i" (tour.QwPartIdx + 1))
         | Announcing, _  -> ctrlBtn NextQw (sprintf "Show Question %i" (tour.QwIdx + 1))
         | Countdown, sec when sec > 0 -> ctrlBtn Pause "Reset Countdown"

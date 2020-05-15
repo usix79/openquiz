@@ -394,6 +394,11 @@ module AdminModels =
         member x.IsLastQuestionAndPart =
             x.QwIdx >= x.Slip.LastQwIdx && x.QwPartIdx >= (x.Slip.LastQwPartIdx x.QwIdx)
 
+        member x.IsReadyForCountdown =
+            match x.Slip with
+            | Single slip -> x.QwPartIdx >= slip.LastPartIdx
+            | Multiple _ -> x.QwIdx > x.Slip.LastQwIdx
+
 
     type QuizControlCard = {
         QuizStatus : QuizStatus

@@ -1,5 +1,10 @@
 # Release Notes
 
+## 1.4.0 - 2020-05-15
+
+* Replaced text "Comming soon..."
+* Changed logic of starting countdown in multi-questions slips. (first last question is displayed, then countdown is started)
+
 ## 1.3.0 - 2020-05-08
 
 * Added setting page for quiz' producers
