@@ -94,6 +94,18 @@ Target.create "Build" (fun _ ->
     runTool yarnTool "webpack-cli -p" __SOURCE_DIRECTORY__
 )
 
+Target.create "BuildDebug" (fun _ ->
+    runDotNet "build -c Debug" serverPath
+    runDotNet "build" ptestsPath
+
+    Shell.regexReplaceInFileWithEncoding
+        "let app = \".+\""
+       ("let app = \"" + release.NugetVersion + "\"")
+        System.Text.Encoding.UTF8
+        (Path.combine clientPath "Version.fs")
+    runTool yarnTool "webpack-cli -p" __SOURCE_DIRECTORY__
+)
+
 Target.create "Run" (fun _ ->
     let server = async {
         runDotNet "watch run" serverPath
@@ -140,8 +152,33 @@ Target.create "Bundle" (fun _ ->
     ZipFile.CreateFromDirectory (bundleInputDir, bundleFile)
 )
 
+Target.create "BundleDockerLocal" (fun _ ->
+    let publicDir = Path.combine deployDir "public"
+    let publishArgs = sprintf "publish -c Debug -o \"%s\"" deployDir
+    runDotNet publishArgs serverPath
+
+    Shell.copyDir publicDir clientPublicPath FileFilter.allFiles
+    Shell.copyDir publicDir clientDeployPath FileFilter.allFiles
+)
+
 Target.create "PTests" (fun p ->
     runDotNetWithArgs "run -c Release" ptestsPath p.Context.Arguments
+)
+
+let buildDocker tag =
+    let args = sprintf "build -t %s ." tag
+    runTool "docker" args __SOURCE_DIRECTORY__
+
+let dockerUser = "usix"
+let dockerImageName = "openquiz"
+let dockerFullName = sprintf "%s/%s" dockerUser dockerImageName
+
+Target.create "Docker" (fun _ ->
+    buildDocker dockerFullName
+)
+
+Target.create "DockerLocal" (fun _ ->
+    buildDocker dockerFullName
 )
 
 open Fake.Core.TargetOperators
@@ -150,7 +187,13 @@ open Fake.Core.TargetOperators
     ==> "InstallClient"
     ==> "Build"
     ==> "Bundle"
+    ==> "Docker"
 
+"Clean"
+    ==> "InstallClient"
+    ==> "BuildDebug"
+    ==> "BundleDockerLocal"
+    ==> "DockerLocal"
 
 "Clean"
     ==> "InstallClient"
