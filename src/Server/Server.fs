@@ -164,9 +164,9 @@ Log.Logger <-
 let configureApp (app : IApplicationBuilder) =
 
 
-#if !DEBUG
-    let app = app.UseRewriter (RewriteOptions().AddRedirectToHttps())
-#endif
+// #if !DEBUG
+//     let app = app.UseRewriter (RewriteOptions().AddRedirectToHttps())
+// #endif
 
     app.UseResponseCompression()
        .UseDefaultFiles()
