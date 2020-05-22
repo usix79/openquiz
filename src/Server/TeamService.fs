@@ -29,7 +29,7 @@ let api (context:HttpContext) : ITeamApi =
     let api : ITeamApi = {
         takeActiveSession = SecurityService.execute logger "takeActiveSession" <| SecurityService.authorizeTeam secret takeActiveSession
         getState = ex "getState" getState
-        answers = ex "answer" answers
+        answers = ex "answers" answers
         getHistory = ex "getHistory" getHistory
         getResults = ex "getResults" getResults
     }
