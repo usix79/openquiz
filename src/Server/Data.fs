@@ -414,6 +414,16 @@ module Teams =
         (table.UpdateItemAsync (teamItem)).Wait()
         team
 
+    let updateAsync (team : Team) =
+        async{
+            let team = {team with Version = team.Version + 1}
+
+            let teamItem = documentOfTeam team
+            let table = loadTable "Teams"
+            let! res = table.UpdateItemAsync (teamItem) |> Async.AwaitTask
+            return team
+        }
+
     let delete (quizId:int) (teamId: int) =
         let table = loadTable "Teams"
         table.DeleteItemAsync(Primitive.op_Implicit quizId, Primitive.op_Implicit teamId).Wait()
@@ -474,6 +484,16 @@ module Teams =
         match task.Result with
         | null -> None
         | doc -> Some (teamOfDocument doc)
+
+    let getAsync (quizId:int) (teamId:int) =
+        async{
+            let table = loadTable "Teams"
+            let! res = table.GetItemAsync(Primitive.op_Implicit quizId, Primitive.op_Implicit teamId) |> Async.AwaitTask
+
+            match res with
+            | null -> return None
+            | doc -> return Some (teamOfDocument doc)
+        }
 
     let getAllInQuiz (quizId:int) : Team list =
         let table = loadTable "Teams"

@@ -94,6 +94,8 @@ let sseHandler _next (ctx: HttpContext)  =
         }
 
     task {
+        printfn "Available Threads: %A" (Threading.ThreadPool.GetAvailableThreads())
+
         match "quiz", "start", "token" with
         | QInt quizId, QInt startVersion, QStr listenToken ->
             match Data.Quizzes.get quizId with
@@ -109,7 +111,8 @@ let sseHandler _next (ctx: HttpContext)  =
 
                 gameChangedSse.Subscribe ctx.TraceIdentifier ctx.Response (fun evt -> evt.Id = quizId)
 
-                ctx.RequestAborted.WaitHandle.WaitOne() |> ignore
+                do! Task.Delay(-1, ctx.RequestAborted).ContinueWith(ignore,TaskContinuationOptions.OnlyOnCanceled)
+                //ctx.RequestAborted.WaitHandle.WaitOne() |> ignore
 
                 gameChangedSse.Unsubscribe ctx.TraceIdentifier
 
@@ -182,6 +185,11 @@ let configureServices (services : IServiceCollection) =
 [<EntryPoint>]
 let main _ =
     printfn "Working directory - %s" (Directory.GetCurrentDirectory())
+
+    //Threading.ThreadPool.SetMinThreads(1024,8) |> ignore
+    let minThreads = Threading.ThreadPool.GetMinThreads()
+    let maxThreads = Threading.ThreadPool.GetMaxThreads()
+    printfn "Threads: Min - %A Max - %A" minThreads maxThreads
 
     WebHost
         .CreateDefaultBuilder()

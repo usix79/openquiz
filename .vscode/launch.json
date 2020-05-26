@@ -6,13 +6,14 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "Build Server",
-            "program": "${workspaceFolder}/src/Server/bin/Debug/netcoreapp2.2/Server.dll",
+            "program": "${workspaceFolder}/src/Server/bin/Debug/netcoreapp3.1/Server.dll",
             "args": [],
             "logging": {
                 "moduleLoad": false
             },
             "stopAtEntry": false,
             "console": "internalConsole",
+            "cwd": "${workspaceFolder}/src/Server",
         },
         {
             "name": "Debug Client",

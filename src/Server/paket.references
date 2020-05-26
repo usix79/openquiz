@@ -12,3 +12,4 @@ Json.Net
 AWSSDK.DynamoDBv2
 AWSSDK.S3
 String.Similarity
+DynamoDb.Ok

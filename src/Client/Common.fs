@@ -258,7 +258,9 @@ module Infra =
 
         let sse = createEmpty<EventSource.EventSource>.Create(url)
 
-        member inline x.OnMessage (subscription: 'msg -> unit) =
+        member x.SSE = sse
+
+        member inline x.OnMessage<'msg> (subscription: 'msg -> unit) =
             sse.onmessage <- (fun evt ->
                 let evt = Json.parseAs<'msg> (sprintf "%A" evt.data)
                 subscription evt
@@ -270,7 +272,6 @@ module Infra =
             )
 
         member x.OnHeartbeat (subscription: unit -> unit) =
-            printfn "AGA - OnHeartbeat"
             sse.addEventListener("heartbeat", (fun _ -> subscription ()))
 
         member x.Close () =

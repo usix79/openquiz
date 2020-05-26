@@ -5,6 +5,7 @@ open Elmish
 open Fable.React
 open Fable.React.Props
 open Fable.FontAwesome
+open Fable.SimpleJson
 open Elmish.React
 
 open Shared
@@ -60,10 +61,16 @@ let subscribe quizId (model:Model) =
         let url = Infra.sseUrl quizId quiz.V quiz.LT
         let source = Infra.SseSource(url)
 
-        let subUpdate dispatch = source.OnMessage (QuizChanged >> dispatch)
+        //let subUpdate dispatch = source.OnMessage (QuizChanged >> dispatch)
+        let subUpdate dispatch =
+            source.SSE.onmessage <- (fun evt ->
+                    let evt = Json.parseAs<QuizChangedEvent> (sprintf "%A" evt.data)
+                    QuizChanged evt |> dispatch
+            )
+
         let subError dispatch = source.OnError (SourceError >> dispatch)
         let heartbeat dispatch = source.OnHeartbeat (fun _ ->  dispatch Heartbeat)
-        {model with SseSource = Some source}, Cmd.batch[Cmd.ofSub subUpdate; Cmd.ofSub subError; Cmd.ofSub heartbeat]
+        {model with SseSource = Some source}, Cmd.batch[(*Cmd.ofSub subUpdate;*) Cmd.ofSub subError; Cmd.ofSub heartbeat]
     | None -> model |> noCmd
 
 let setupCountdown (model : Model, cmd : Cmd<Msg>) =
@@ -143,6 +150,8 @@ let quizView (dispatch : Msg -> unit) (model:Model) (quiz:QuizCard) =
             p [Class "help is-danger"][ str model.Error ]
             div [ Style [Height "66px"]] []
         ]
+
+
 
         MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
     ]

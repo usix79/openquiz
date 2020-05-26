@@ -5,6 +5,7 @@ open Elmish
 open Fable.React
 open Fable.React.Props
 open Fable.FontAwesome
+open Fable.SimpleJson
 open Elmish.React
 
 open Shared
@@ -124,7 +125,13 @@ let subscribe quizId (model:Model, cmd : Cmd<Msg>) =
         let url = Infra.sseUrl quizId quiz.V quiz.LT
         let source = Infra.SseSource(url)
 
-        let subUpdate dispatch = source.OnMessage (QuizChanged >> dispatch)
+        //let subUpdate dispatch = source.OnMessage (QuizChanged >> dispatch)
+        let subUpdate dispatch =
+            source.SSE.onmessage <- (fun evt ->
+                    let evt = Json.parseAs<QuizChangedEvent> (sprintf "%A" evt.data)
+                    QuizChanged evt |> dispatch
+            )
+
         let subError dispatch = source.OnError (SourceError >> dispatch)
         let heartbeat dispatch = source.OnHeartbeat (fun _ ->  dispatch Heartbeat)
         {model with SseSource = Some source}, Cmd.batch[cmd; Cmd.ofSub subUpdate; Cmd.ofSub subError; Cmd.ofSub heartbeat]

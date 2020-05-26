@@ -36,7 +36,7 @@ let private generateToken (secret:string) claims =
     let key = SymmetricSecurityKey <| Encoding.ASCII.GetBytes secret
 
 #if DEBUG
-    let expires = DateTime.UtcNow.AddMinutes 1.0
+    let expires = DateTime.UtcNow.AddMinutes 120.0
 #else
     let expires = DateTime.UtcNow.AddHours 12.0
 #endif

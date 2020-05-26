@@ -12,6 +12,9 @@ type Loader<'TKey, 'T> = 'TKey -> 'T option
 type Saver<'T> = 'T -> 'T
 type Broker<'T> = 'T -> unit
 
+type LoaderAsync<'TKey, 'T> = 'TKey -> Async<'T option>
+type SaverAsync<'T> = 'T -> Async<'T>
+
 module DomainEvents =
 
     let mutable private subscribers = []
@@ -90,6 +93,87 @@ let private createAgent<'PKey,'TKey,'T>
             }
         loop())
 
+let private createAsyncAgent<'PKey,'TKey,'T>
+    (generator : Generator<'PKey,'TKey>)
+    (loader : LoaderAsync<'TKey,'T>)
+    (saver : SaverAsync<'T>)
+    (broker : Broker<'T>) =
+    MailboxProcessor<UpdateCommand<'PKey,'TKey,'T>>.Start (fun inbox ->
+
+        let create' parentKey creator =
+            async{
+                match generator parentKey |> creator with
+                | Ok entity ->
+                    let! en = saver entity
+                    return en |> Ok
+                | Error txt -> return Error txt
+
+            }
+
+        let update' logic entity =
+            async{
+                match logic entity with
+                | Ok entity ->
+                    let! savedEntity = saver entity
+                    broker savedEntity
+                    return savedEntity |> Ok
+                | Error txt -> return Error txt
+            }
+
+        let updateOrCreate pkey key creator logic =
+            async{
+                try
+                    match! loader key with
+                    | Some entity -> return! update' logic entity
+                    | None ->
+                        match! create' pkey creator with
+                        | Ok entity -> return! update' logic entity
+                        | Error txt -> return Error txt
+                with
+                | ex ->
+                    Log.Error ("{Op} {Exeption}", "updateOrCreateAgent", ex)
+                    return Error ex.Message
+
+            }
+
+        let update key logic =
+            async{
+                try
+                    printfn "[%i] loading %A" (System.Threading.Thread.CurrentThread.ManagedThreadId) key
+                    match! loader key with
+                    | Some entity ->
+                        printfn "[%i] update %A" (System.Threading.Thread.CurrentThread.ManagedThreadId) key
+                        let! x = update' logic entity
+                        printfn "[%i] update %A DONE" (System.Threading.Thread.CurrentThread.ManagedThreadId) key
+                        return x
+                    | None -> return Error "Entity Not Found"
+                with
+                | ex ->
+                    Log.Error ("{Op} {Exeption}", "updateAgent", ex)
+                    return Error ex.Message
+
+            }
+
+        let rec loop () =
+            async {
+                try
+                    let! msg = inbox.Receive()
+                    match msg with
+                    | Create (pkey,creator,rch) -> create' pkey creator |> Async.RunSynchronously |> rch.Reply
+                    | Update (key,logic, rch) -> update key logic |> Async.RunSynchronously |> rch.Reply
+                    | UpdateWithoutReply (key,logic) ->
+                        printfn "Update Team Agent %A Threads %A" key (System.Threading.ThreadPool.GetAvailableThreads())
+
+                        let! _ = update key logic
+                        ()
+                    | UpdateOrCreate (pkey,key,creator,logic, rch) -> updateOrCreate pkey key creator logic |> Async.RunSynchronously |> rch.Reply
+                with
+                | ex -> Log.Error ("{Op} {Exeption}", "updateAgentMainLoop!!!", ex)
+
+                return! loop()
+            }
+        loop())
+
 
 let mutable private _teamAgents : Map<TeamKey, MailboxProcessor<UpdateCommand<int,TeamKey,Team>>> = Map.empty
 
@@ -98,12 +182,24 @@ let private teamSaver team = Data.Teams.update team
 let private teamGenerator (quizId:int) : TeamKey =
     {QuizId = quizId; TeamId = (Data.Teams.getMaxId quizId) + 1}
 
+let teamLoaderAsync (key:TeamKey) =
+    printfn "LoadAsync %A" key
+    let t = Data.Teams.getAsync key.QuizId key.TeamId
+    printfn "LoadAsync %A DONE" key
+    t
+
+let private teamSaverAsync team =
+    printfn "AupdateAsync %A" (team.Dsc.Key)
+    let t = Data.Teams.updateAsync team
+    printfn "AupdateAsync %A DONE" (team.Dsc.Key)
+    t
+
 let private getOrCreateTeamAgent key =
     let trans () =
         match Map.tryFind key _teamAgents with
         | Some agent -> agent
         | None ->
-            let agent = createAgent teamGenerator teamLoader teamSaver ignore
+            let agent = createAsyncAgent teamGenerator teamLoaderAsync teamSaverAsync ignore
             _teamAgents <- _teamAgents.Add (key, agent)
             agent
 
