@@ -18,7 +18,7 @@ type Expert = {
     Name : string
     IsProducer : bool
     Competitions : Map<int,int>    // quizId => teamId
-    Quizes : int list   // quizId
+    Quizzes : int list   // quizId
     Packages : int list   // packageId
     PackagesSharedWithMe : int list
     DefaultImg : string
@@ -34,7 +34,7 @@ module Experts =
          Name = name
          IsProducer = false
          Competitions = Map.empty
-         Quizes = []
+         Quizzes = []
          Packages = []
          PackagesSharedWithMe = []
          DefaultImg = ""
@@ -45,7 +45,7 @@ module Experts =
         {expert with IsProducer = true}
 
     let addQuiz quizId (expert:Expert)  =
-        {expert with Quizes = quizId :: expert.Quizes}
+        {expert with Quizzes = quizId :: expert.Quizzes}
 
     let addPackage packageId (expert:Expert)  =
         {expert with Packages = packageId :: expert.Packages} |> Ok
@@ -54,7 +54,7 @@ module Experts =
         {expert with Packages = expert.Packages |> List.filter (fun id -> id <> packageId)} |> Ok
 
     let removeQuiz quizId (expert:Expert)  =
-        {expert with Quizes = expert.Quizes |> List.filter (fun id -> id <> quizId)} |> Ok
+        {expert with Quizzes = expert.Quizzes |> List.filter (fun id -> id <> quizId)} |> Ok
 
     let getComp quizId (expert:Expert) =
         match expert.Competitions.TryGetValue quizId with

@@ -6,7 +6,6 @@ open Amazon.DynamoDBv2.DocumentModel
 open Microsoft.FSharp.Reflection
 
 open Domain
-open Common
 
 let v2 = DynamoDBEntryConversion.V2
 
@@ -150,114 +149,6 @@ let singleSlipOfDocument (slipDoc:Document) : SingleAwSlip =
         WithChoice = boolOfDoc slipDoc "Choiсe"
     }
 //#endregion
-
-module RefreshTokens =
-    let add token =
-        let table = loadTable "RefreshTokens"
-        let refreshTokenItem = Document()
-        refreshTokenItem.["Token"] <- v2.ConvertToEntry  token.Value
-        refreshTokenItem.["Expired"] <- v2.ConvertToEntry token.Expired
-        (table.PutItemAsync (refreshTokenItem)).Wait()
-
-    let get (tokenValue : string) =
-        let table = loadTable "RefreshTokens"
-        let task = table.GetItemAsync(Primitive(tokenValue))
-        match task.Result with
-        | null -> None
-        | doc -> Some {Value = doc.["Token"].AsString(); Expired = doc.["Expired"].AsDateTime()}
-
-    let replace oldToken newToken =
-        let table = loadTable "RefreshTokens"
-        table.DeleteItemAsync(Primitive(oldToken.Value)) |> ignore
-        add newToken
-
-module Experts =
-    let private expertOfDocument (doc:Document) : Expert option =
-        {
-            Id = doc.["Id"].AsString()
-            Username = stringOfDoc doc "Username"
-            Name = stringOfDoc doc "Name"
-            IsProducer = boolOfDoc doc "IsProducer"
-            Competitions =
-                doc.["Competitions"].AsDocument()
-                |> Seq.map (fun pair -> Int32.Parse(pair.Key), pair.Value.AsInt())
-                |> Map.ofSeq
-            Quizes =
-                listOfDoc doc "Quizzes"
-                |> Seq.map (fun p -> p.AsInt())
-                |> List.ofSeq
-            Packages =
-                listOfDoc doc "Packages"
-                |> Seq.map (fun p -> p.AsInt())
-                |> List.ofSeq
-            PackagesSharedWithMe =
-                listOfDoc doc "PackagesSWM"
-                |> Seq.map (fun p -> p.AsInt())
-                |> List.ofSeq
-            DefaultImg = stringOfDoc doc "DefaultImg"
-            DefaultMixlr = optionOfEntry doc "DefaultMixlr"
-            Version = intOfDoc doc "Version"
-        } |> Some
-
-    let private documentOfExpert (exp:Expert) =
-        let expItem = Document()
-
-        expItem.["Id"] <- v2.ConvertToEntry  (exp.Id.ToString())
-        expItem.["Username"] <- v2.ConvertToEntry exp.Username
-        expItem.["Name"] <- v2.ConvertToEntry exp.Name
-        expItem.["IsProducer"] <- v2.ConvertToEntry exp.IsProducer
-
-        let regsEntry = Document()
-        for quizId, competitorId in exp.Competitions |> Seq.map (fun pair -> pair.Key,pair.Value) do
-             regsEntry.[quizId.ToString()] <- v2.ConvertToEntry competitorId
-
-        expItem.["Competitions"] <- regsEntry
-
-        let quizzesEntry = PrimitiveList()
-        for quizId in exp.Quizes do
-            quizzesEntry.Add(Primitive.op_Implicit quizId)
-        expItem.["Quizzes"] <- quizzesEntry
-
-        let packagesEntry = PrimitiveList()
-        for packageId in exp.Packages do
-            packagesEntry.Add(Primitive.op_Implicit packageId)
-        expItem.["Packages"] <- packagesEntry
-
-        let packagesSWMEntry = PrimitiveList()
-        for packageId in exp.PackagesSharedWithMe do
-            packagesSWMEntry.Add(Primitive.op_Implicit packageId)
-        expItem.["PackagesSWM"] <- packagesSWMEntry
-
-        expItem.["DefaultImg"] <- v2.ConvertToEntry exp.DefaultImg
-        expItem.["DefaultMixlr"] <- entryOfOption exp.DefaultMixlr
-
-        expItem.["Version"] <- v2.ConvertToEntry exp.Version
-
-        expItem
-
-    let get (id:string) =
-        async{
-            let table = loadTable "Experts"
-            let! docOrNull = table.GetItemAsync(Primitive.op_Implicit (id.ToString())) |> Async.AwaitTask
-            return
-                match docOrNull with
-                | null -> None
-                | doc -> expertOfDocument doc
-
-        } |> Async.RunSynchronously
-
-    let update (exp:Expert) =
-        async{
-
-            let exp = {exp with Version = exp.Version + 1}
-
-            let doc = documentOfExpert exp
-            let table = loadTable "Experts"
-            let! _ = table.UpdateItemAsync (doc) |> Async.AwaitTask
-
-            return exp
-
-        } |> Async.RunSynchronously
 
 module Quizzes =
 

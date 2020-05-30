@@ -9,7 +9,6 @@ AWS.Logger.SeriLog
 Amazon.Extensions.Configuration.SystemsManager
 System.IdentityModel.Tokens.Jwt
 Json.Net
-AWSSDK.DynamoDBv2
 AWSSDK.S3
 String.Similarity
-DynamoDb.Ok
+AWSSDK.DynamoDBv2

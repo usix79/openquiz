@@ -29,7 +29,7 @@ let api (context:HttpContext) : IRegApi =
                 Error "Wrong Quiz Id"
         )
 
-        SecurityService.execute logger proc <| SecurityService.authorizePrivateReg secret (ff f)
+        SecurityService.exec logger proc <| SecurityService.authorizePrivateReg secret (ff f)
 
     let api : IRegApi = {
         getRecord = ex "getRecord" getRecord

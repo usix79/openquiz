@@ -28,9 +28,10 @@ let api (context:HttpContext) : IAdminApi =
             | _ ->
                 Log.Error ("{Api} {Error} {Quiz}", "admin", "Wrong quiz Id", quizIdStr)
                 Error "Wrong Quiz Id"
+            |> AsyncResult.ret
         )
 
-        SecurityService.execute logger proc <| SecurityService.authorizeAdmin secret (ff f)
+        SecurityService.exec logger proc <| SecurityService.authorizeAdmin secret (ff f)
 
     let api : IAdminApi = {
         getTeams = ex  "getTeams" getTeams
@@ -127,7 +128,7 @@ let changeQuizStatus quiz req =
 
 let getPackages quiz req =
     result {
-        let! exp = (Data.Experts.get quiz.Producer, "Producer Not Found")
+        let! exp = async{ return! Data2.Experts.get quiz.Producer } |> Async.RunSynchronously
 
         return
             exp.AllPackages
@@ -141,7 +142,7 @@ let setPackage quiz req =
         quiz |> Domain.Quizzes.setPackageId req.PackageId |> Ok
 
     result {
-        let! exp = (Data.Experts.get quiz.Producer, "Producer Not Found")
+        let! exp = async{ return! Data2.Experts.get quiz.Producer } |> Async.RunSynchronously
 
         do!
             match req.PackageId with
@@ -155,7 +156,7 @@ let setPackage quiz req =
 
 let getPackageCard quiz req =
     result {
-        let! exp = (Data.Experts.get quiz.Producer, "Producer Not Found")
+        let! exp = async{ return! Data2.Experts.get quiz.Producer } |> Async.RunSynchronously
 
         do!
             if not <| Domain.Experts.isAuthorizedForPackage req.PackageId exp then Error "You are not autorized to access the package"

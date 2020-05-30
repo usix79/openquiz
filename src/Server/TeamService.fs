@@ -22,12 +22,13 @@ let api (context:HttpContext) : ITeamApi =
             | Some team when team.ActiveSessionId = sessionId -> f team req
             | Some _ -> Error Errors.SessionIsNotActive
             | None -> Error "Team not found"
+            |> AsyncResult.ret
         )
 
-        SecurityService.execute logger proc <| SecurityService.authorizeTeam secret (ff f)
+        SecurityService.exec logger proc <| SecurityService.authorizeTeam secret (ff f)
 
     let api : ITeamApi = {
-        takeActiveSession = SecurityService.execute logger "takeActiveSession" <| SecurityService.authorizeTeam secret takeActiveSession
+        takeActiveSession = SecurityService.exec logger "takeActiveSession" <| SecurityService.authorizeTeam secret takeActiveSession
         getState = ex "getState" getState
         answers = ex "answers" answers
         getHistory = ex "getHistory" getHistory
@@ -53,7 +54,7 @@ let takeActiveSession (sessionId:int) (teamKey:Domain.TeamKey) req =
         let! quiz = (Data.Quizzes.get team.Dsc.QuizId, "Quiz not found")
 
         return Teams.quizCard quiz team
-    }
+    } |> AsyncResult.ret
 
 let answers team req =
     let logic (team:Domain.Team) =

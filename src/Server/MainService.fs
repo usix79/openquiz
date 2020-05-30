@@ -20,20 +20,22 @@ let api (context:HttpContext) : IMainApi =
             f expertId usersysname username quizId req
         )
 
-        SecurityService.execute logger proc <| SecurityService.authorizeExpertCheckPrivateQuiz secret (ff f)
+        SecurityService.exec logger proc <| SecurityService.authorizeExpertCheckPrivateQuiz secret (ff f)
 
     let exPublisher proc f =
 
         let ff f = (fun expertId username req ->
-            match Data.Experts.get expertId with
-            | Some expert ->
-                f expert req
-            | None ->
-                Log.Error ("{Op} {Error} {ExpertId}", "main", "Wrong Publisher Id", expertId)
-                Error "Wrong Publisher Id"
+            async{
+                match! Data2.Experts.get expertId with
+                | Ok expert ->
+                    return! f expert req
+                | Error _ ->
+                    Log.Error ("{Op} {Error} {ExpertId}", "main", "Wrong Publisher Id", expertId)
+                    return Error "Wrong Publisher Id"
+            }
         )
 
-        SecurityService.execute logger proc <| SecurityService.authorizeExpert secret (ff f)
+        SecurityService.exec logger proc <| SecurityService.authorizeExpert secret (ff f)
 
     let api : IMainApi = {
         becomeProducer = ex "becomeProducer" becomeProducer
@@ -60,12 +62,11 @@ let api (context:HttpContext) : IMainApi =
     api
 
 let becomeProducer expertId usersysname name _ _ =
-    let creator _ = Domain.Experts.createNew expertId usersysname name |> Ok
+    let creator = fun () -> Domain.Experts.createNew expertId usersysname name
     let logic expert = expert |> Domain.Experts.becomeProducer |> Ok
 
-    CommonService.updateOrCreateExpert expertId creator logic |> ignore
-
-    Ok ()
+    Data2.Experts.updateOrCreate expertId logic creator
+    |> AsyncResult.map ignore
 
 let createQuiz expert _ =
     let creator quizId =
@@ -75,23 +76,24 @@ let createQuiz expert _ =
         let! quiz = CommonService.createQuiz creator
 
         let logic expert = expert |> Domain.Experts.addQuiz quiz.Dsc.QuizId |> Ok
-        CommonService.updateExpert expert.Id logic |> ignore
+        Data2.Experts.update expert.Id logic |> Async.RunSynchronously |> ignore
 
         return {|Record = quiz.Dsc |> Main.quizProdRecord; Card = Main.quizProdCard quiz; |}
-    }
+    } |> Async.retn
 
 let getProdQuizzes expert _ =
-    expert.Quizes
+    expert.Quizzes
     |> List.map Data.Quizzes.getDescriptor
     |> List.filter (fun q -> q.IsSome)
     |> List.map (fun q -> Main.quizProdRecord q.Value)
-    |> Ok
+    |> AsyncResult.retn
 
 let getProdQuizCard expert (req : {|QuizId : int|}) =
     match Data.Quizzes.get req.QuizId with
     | Some quiz when quiz.Dsc.Producer <> expert.Id -> Error "Quiz is produced by someone else"
     | None -> Error "Quiz not found"
     | Some quiz -> Ok <| Main.quizProdCard quiz
+    |> Async.retn
 
 let updateProdQuizCard expert card =
     let logic (quiz : Domain.Quiz) =
@@ -109,30 +111,43 @@ let updateProdQuizCard expert card =
 
         return quiz.Dsc |> Main.quizProdRecord
     }
+    |> Async.retn
 
 let uploadFile bucketName _ req =
     Bucket.uploadFile  bucketName req.Cat req.FileType req.FileBody
+    |> Async.retn
 
 let getRegModel expId username name quizId _ =
-    result{
-        let! quizId = quizId, "Quiz not defined"
-        let! quiz = (Data.Quizzes.getDescriptor quizId), "Quiz not found"
-        let team =
-            Data.Experts.get expId
-            |> Option.bind (fun exp -> exp.Competitions.TryFind quizId)
-            |> Option.bind (Data.Teams.getDescriptor quizId)
 
-        return Main.quizRegRecord quiz team
+    let tryFindTeam quizId =
+        async {
+            match! Data2.Experts.get expId with
+            | Ok exp ->
+                return
+                    exp.Competitions.TryFind quizId
+                    |> Option.bind (Data.Teams.getDescriptor quizId)
+            | _ -> return None
+        }
+
+    async{
+        match quizId with
+        | Some quizId ->
+            let! team = tryFindTeam quizId
+            return
+                match Data.Quizzes.getDescriptor quizId with
+                | Some quiz -> Main.quizRegRecord quiz team |> Ok
+                | None -> Error  "Quiz not found"
+        | None -> return Error "Quiz not defined"
     }
 
 let registerTeam expId username name quizId req =
-    let expCreator _ = Domain.Experts.createNew expId username name |> Ok
+    let expCreator () = Domain.Experts.createNew expId username name
 
     result {
         let! quizId = quizId, "Quiz not defined"
         let! quiz = (Data.Quizzes.getDescriptor quizId), "Quiz not found"
 
-        let! exp = CommonService.updateOrCreateExpert expId expCreator Ok
+        let! exp = Data2.Experts.updateOrCreate expId Ok expCreator  |> Async.RunSynchronously
 
         let teamName = req.TeamName.Trim()
         let! team =
@@ -145,6 +160,7 @@ let registerTeam expId username name quizId req =
 
         return Main.quizRegRecord quiz (Some team.Dsc)
     }
+    |> Async.retn
 
 let private createTeam exp quiz teamName : Result<Domain.Team,string> =
 
@@ -158,7 +174,7 @@ let private createTeam exp quiz teamName : Result<Domain.Team,string> =
         let! team = CommonService.createTeam quiz.QuizId creator
 
         let logic expert = expert |> Domain.Experts.addComp team.Dsc.QuizId team.Dsc.TeamId |> Ok
-        CommonService.updateExpert exp.Id logic |> ignore
+        Data2.Experts.update exp.Id logic |> Async.RunSynchronously |> ignore
 
         return team
     }
@@ -184,13 +200,16 @@ let getProdPackages expert _ =
     |> List.filter (fun p -> p.IsSome)
     |> List.map (fun p -> packageRecord p.Value)
     |> Ok
+    |> Async.retn
 
 let getProdPackageCard expert (req : {|PackageId : int|}) =
     if expert |> Domain.Experts.isAuthorizedForPackage req.PackageId then
         match Data.Packages.get req.PackageId with
-        | Some package -> Main.packageCard expert.Id package CommonService.expertLoader |> Ok
+        | Some package ->
+            Main.packageCard expert.Id package Data2.Experts.provider |> Ok
         | None -> Error "Package not found"
     else  Error "You are not authorized to load the package"
+    |> Async.retn
 
 let createPackage expert _ =
     let creator = fun id ->
@@ -199,10 +218,11 @@ let createPackage expert _ =
     result {
         let! package = CommonService.createPackage creator
 
-        CommonService.updateExpertNoReply expert.Id (Domain.Experts.addPackage package.Dsc.PackageId)
+        Data2.Experts.update expert.Id (Domain.Experts.addPackage package.Dsc.PackageId) |> Async.RunSynchronously |> ignore
 
-        return {|Record = package.Dsc |> packageRecord; Card = Main.packageCard expert.Id package CommonService.expertLoader; |}
+        return {|Record = package.Dsc |> packageRecord; Card = Main.packageCard expert.Id package Data2.Experts.provider; |}
     }
+    |> Async.retn
 
 let updateProdPackageCard expert card =
     let logic (pkg:Domain.Package) =
@@ -217,31 +237,34 @@ let updateProdPackageCard expert card =
         let! package = CommonService.updatePackage card.PackageId logic
         return package.Dsc |> packageRecord
     }
+    |> Async.retn
 
 let aquirePackage expert res =
     result{
         let! origPackageDsc = (Data.Packages.getDescriptor res.PackageId, "Invalid Transfer Token")
         let! updatedPackage = CommonService.updatePackage res.PackageId (Domain.Packages.transfer expert.Id res.TransferToken)
 
-        CommonService.updateExpertNoReply origPackageDsc.Producer (Domain.Experts.removePackage origPackageDsc.PackageId)
-        CommonService.updateExpertNoReply expert.Id (Domain.Experts.addPackage updatedPackage.Dsc.PackageId)
+        Data2.Experts.update origPackageDsc.Producer (Domain.Experts.removePackage origPackageDsc.PackageId) |> Async.RunSynchronously |> ignore
+        Data2.Experts.update expert.Id (Domain.Experts.addPackage updatedPackage.Dsc.PackageId) |> Async.RunSynchronously |> ignore
 
         return updatedPackage.Dsc |> packageRecord
     }
+    |> Async.retn
 
 let deleteQuiz expert req =
     result {
-        let! _ = (expert.Quizes |> List.tryFind ((=) req.QuizId), "Quiz belongs to another producer")
+        let! _ = (expert.Quizzes |> List.tryFind ((=) req.QuizId), "Quiz belongs to another producer")
 
         Data.Teams.getIds req.QuizId
         |> List.iter (fun teamId -> Data.Teams.delete req.QuizId teamId)
 
         Data.Quizzes.delete req.QuizId
 
-        CommonService.updateExpertNoReply expert.Id (Domain.Experts.removeQuiz req.QuizId)
+        Data2.Experts.update expert.Id (Domain.Experts.removeQuiz req.QuizId) |> Async.RunSynchronously |> ignore
 
         return ()
     }
+    |> Async.retn
 
 let deletePackage expert req =
     result {
@@ -250,44 +273,48 @@ let deletePackage expert req =
         let! pkg = Data.Packages.get req.PackageId, "Package not found"
 
         for userId in pkg.SharedWith do
-            CommonService.updateExpertNoReply userId (Domain.Experts.removeSharedPackage req.PackageId)
+            Data2.Experts.update  userId (Domain.Experts.removeSharedPackage req.PackageId) |> Async.RunSynchronously |> ignore
 
         Data.Packages.delete req.PackageId
-        CommonService.updateExpertNoReply expert.Id (Domain.Experts.removePackage req.PackageId)
+        Data2.Experts.update  expert.Id (Domain.Experts.removePackage req.PackageId) |> Async.RunSynchronously |> ignore
 
         return ()
     }
+    |> Async.retn
 
 let getSettings expert req =
-    expert |> Main.settingsCard |> Ok
+    expert |> Main.settingsCard |> Ok |> AsyncResult.ret
 
 let updateSettings expert req =
     let logic (exp:Domain.Expert) =
         {exp with DefaultImg = req.DefaultImg; DefaultMixlr = req.DefaultMixlr} |> Ok
 
-    result {
-        let! exp = CommonService.updateExpert expert.Id logic
-        return exp |> Main.settingsCard
+    Data2.Experts.update expert.Id logic
+    |> AsyncResult.map Main.settingsCard
+
+let private chechPackageOwner (expert:Domain.Expert) packageId f =
+    async {
+        match expert.Packages |> List.tryFind ((=) packageId) with
+        | Some _ -> return! f ()
+        | None -> return Error "Package belongs to another producer"
     }
 
 let sharePackage expert req =
-    result{
-        let! _ = (expert.Packages |> List.tryFind ((=) req.PackageId), "Package belongs to another producer")
-        let! exp = Data.Experts.get req.UserId, "User not found"
-
-        let! pgk = CommonService.updatePackage req.PackageId (Domain.Packages.shareWith req.UserId)
-        CommonService.updateExpertNoReply req.UserId (Domain.Experts.addSharedPackage req.PackageId)
-
-        return exp |> Main.expertRecord
-    }
+    chechPackageOwner expert req.PackageId (fun () ->
+        Data2.Experts.update req.UserId (Domain.Experts.addSharedPackage req.PackageId)
+        |> AsyncResult.bind (fun exp ->
+            CommonService.updatePackage req.PackageId (Domain.Packages.shareWith req.UserId)
+            |> Result.map (fun _ -> exp |> Main.expertRecord)
+            |> AsyncResult.ret
+        )
+    )
 
 let removePackageShare expert req =
-    result{
-        let! _ = (expert.Packages |> List.tryFind ((=) req.PackageId), "Package belongs to another producer")
-        let! exp = Data.Experts.get req.UserId, "User not found"
-
-        let! pgk = CommonService.updatePackage req.PackageId (Domain.Packages.removeShareWith req.UserId)
-        CommonService.updateExpertNoReply req.UserId (Domain.Experts.removeSharedPackage req.PackageId)
-
-        return ()
-    }
+    chechPackageOwner expert req.PackageId (fun () ->
+        Data2.Experts.update req.UserId (Domain.Experts.removeSharedPackage req.PackageId)
+        |> AsyncResult.bind (fun _ ->
+            CommonService.updatePackage req.PackageId (Domain.Packages.removeShareWith req.UserId)
+            |> Result.map ignore
+            |> AsyncResult.ret
+        )
+    )

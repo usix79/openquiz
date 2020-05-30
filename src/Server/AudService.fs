@@ -30,7 +30,7 @@ let api (context:HttpContext) : IAudApi =
                 Error "Wrong Quiz Id"
         )
 
-        SecurityService.execute logger proc <| SecurityService.authorizeAudience secret (ff f)
+        SecurityService.exec logger proc <| SecurityService.authorizeAudience secret (ff f)
 
     let api : IAudApi = {
         getQuiz = ex "getState" getQuiz

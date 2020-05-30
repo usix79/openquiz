@@ -247,34 +247,6 @@ let updateQuizNoReply (quizId : int) (logic : Logic<Quiz>) =
     let agent = getOrCreateQuizAgent quizId
     agent.Post (UpdateWithoutReply (quizId, logic))
 
-let mutable private _expertAgents : Map<string, MailboxProcessor<UpdateCommand<unit,string,Expert>>> = Map.empty
-
-let expertLoader (sub:string) = Data.Experts.get sub
-let private expertGenerator () = ""
-let private expertSaver expert = Data.Experts.update expert
-
-let private getOrCreateExpertAgent key =
-    let trans () =
-        match Map.tryFind key _expertAgents with
-        | Some agent -> agent
-        | None ->
-            let agent = createAgent expertGenerator expertLoader expertSaver ignore
-            _expertAgents <- _expertAgents.Add (key, agent)
-            agent
-
-    lock _expertAgents trans
-
-let updateExpert (sub : string) (logic : Logic<Expert>) : Result<Domain.Expert,string> =
-    let agent = getOrCreateExpertAgent sub
-    agent.PostAndReply (fun rch -> Update (sub, logic, rch))
-
-let updateExpertNoReply (sub : string) (logic : Logic<Expert>) =
-    let agent = getOrCreateExpertAgent sub
-    agent.Post (UpdateWithoutReply (sub, logic))
-
-let updateOrCreateExpert (sub : string) (creator:Creator<string,Expert>) (logic : Logic<Expert>) =
-    let agent = getOrCreateExpertAgent sub
-    agent.PostAndReply (fun rch -> UpdateOrCreate ((), sub, creator, logic, rch))
 
 let mutable private _pkgAgents : Map<int, MailboxProcessor<UpdateCommand<unit,int,Package>>> = Map.empty
 

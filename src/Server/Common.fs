@@ -16,8 +16,13 @@ open Shared
 
 let NYI = Error "Not Yet Implemented"
 
+type ARES<'Value> = Async<Result<'Value, string>>
+
 let executedResponse f req =
-    {Status = Executed; Value = f req.Token req.Arg; ST = DateTime.UtcNow}
+    async{
+        let! v = f req.Token req.Arg
+        return {Status = Executed; Value = v; ST = DateTime.UtcNow}
+    }
 
 let generateRandomToken () =
     let randomNumber =  Array.zeroCreate 32
@@ -26,6 +31,49 @@ let generateRandomToken () =
     System.Convert.ToBase64String(randomNumber)
         .Replace("/", "_")
         .Replace("+", "-")
+
+module Result =
+    let toOption = function
+    | Ok entity -> Some entity
+    | Error _ -> None
+
+module Async =
+
+    let retn x = async { return x }
+
+    let map f m =
+        async {
+            let! x = m
+            return f x
+        }
+
+    let bind f m =
+        async {
+            let! x = m
+            return! f x
+        }
+
+module AsyncResult =
+
+    let ret x = async { return x }
+
+    let retn x = async { return Ok x }
+
+    let map f m =
+        async {
+            let! r = m
+            match r with
+            | Ok a -> return Ok(f a)
+            | Error e -> return Error e
+        }
+
+    let bind f m =
+        async {
+            let! r = m
+            match r with
+            | Ok a -> return! f a
+            | Error e -> return Error e
+        }
 
 module Config =
     open Microsoft.Extensions.Configuration

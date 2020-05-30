@@ -36,7 +36,7 @@ let private generateToken (secret:string) claims =
     let key = SymmetricSecurityKey <| Encoding.ASCII.GetBytes secret
 
 #if DEBUG
-    let expires = DateTime.UtcNow.AddMinutes 120.0
+    let expires = DateTime.UtcNow.AddMinutes 1.0
 #else
     let expires = DateTime.UtcNow.AddHours 12.0
 #endif
@@ -96,40 +96,54 @@ let private createRefreshToken () =
     { Value = generateRandomToken(); Expired = DateTime.UtcNow.AddDays 7.0} : RefreshToken
 
 let refreshToken secret (req:REQ<{| RefreshToken: string |}>) =
-    let status, value =
-        match validateJwt secret req.Token false with
-        | Ok principal ->
-            let res =
-                match Data.RefreshTokens.get req.Arg.RefreshToken with
-                | Some refreshToken when refreshToken.Expired < DateTime.UtcNow -> Error "Refresh token expired"
-                | Some refreshToken ->
-                    let newRefreshToken = createRefreshToken()
-                    Data.RefreshTokens.replace refreshToken newRefreshToken
-                    let token = generateToken secret principal.Claims
-                    Ok {|Token = token; RefreshToken = newRefreshToken.Value|}
-                | None -> Error "Refresh token not found"
-            Executed, res
-        | Error status -> status, Error (status.ToString())
+    async{
+        let status, value =
+            match validateJwt secret req.Token false with
+            | Ok principal ->
+                let res =
+                    async{
+                        match! Data2.RefreshTokens.get req.Arg.RefreshToken with
+                        | Ok refreshToken when refreshToken.Expired < DateTime.UtcNow -> return Error "Refresh token expired"
+                        | Ok refreshToken ->
+                            let newRefreshToken = createRefreshToken()
+                            match! Data2.RefreshTokens.replace refreshToken newRefreshToken with
+                            | Ok _ ->
+                                let token = generateToken secret principal.Claims
+                                return Ok {|Token = token; RefreshToken = newRefreshToken.Value|}
+                            | Error _ -> return Error "Replace Token Error"
+                        | Error _ -> return Error "Refresh token not found"
+                    }
+                Executed, res
+            | Error status -> status, async {return Error (status.ToString() )}
 
-    {Status = status; Value = value; ST = DateTime.UtcNow}
+        let! x = value
+        return {Status = status; Value = x; ST = DateTime.UtcNow}
+    }
 
-let authorize secret role (f : ClaimsPrincipal -> 'Arg -> Result<'Value, string>) : REQ<'Arg> -> RESP<'Value> =
+let authorize secret role (f : ClaimsPrincipal -> 'Arg -> ARES<'Value>) : REQ<'Arg> -> ARESP<'Value> =
     fun req ->
         let status, res =
             match validateJwt secret req.Token true with
-            | Ok principal when principal.FindFirstValue CustomClaims.Role = role -> Executed, f principal req.Arg
+            | Ok principal when principal.FindFirstValue CustomClaims.Role = role -> Executed, Ok principal
             | Ok _ -> Unauthorized, Error (Unauthorized.ToString())
             | Error status -> status, Error (status.ToString())
 
-        {Status = status; Value = res; ST = DateTime.UtcNow}
+        async{
+            let! value =
+                match res with
+                | Ok principal -> async { return! f principal req.Arg }
+                | Error txt -> async { return Error txt }
 
-let authorizeExpert secret (f: string -> string -> 'arg -> Result<'res, string>) =
+            return {Status = status; Value = value; ST = DateTime.UtcNow}
+        }
+
+let authorizeExpert secret (f: string -> string -> 'arg -> ARES<'res>) =
     authorize secret CustomRoles.Expert <| fun principal req ->
         let sub = principal.FindFirstValue CustomClaims.UserId
         let username = principal.FindFirstValue CustomClaims.UserName
         f sub username req
 
-let authorizeExpertCheckPrivateQuiz secret (f: string -> string -> string -> string -> 'arg -> Result<'res, string>) =
+let authorizeExpertCheckPrivateQuiz secret (f: string -> string -> string -> string -> 'arg -> ARES<'res>) =
     authorize secret CustomRoles.Expert <| fun principal req ->
         let sub = principal.FindFirstValue CustomClaims.UserId
         let usernamesys = principal.FindFirstValue CustomClaims.UserName
@@ -138,7 +152,7 @@ let authorizeExpertCheckPrivateQuiz secret (f: string -> string -> string -> str
 
         f sub usernamesys username quizIdStr req
 
-let authorizeAdmin secret (f: string -> 'arg -> Result<'res, string>) =
+let authorizeAdmin secret (f: string -> 'arg -> ARES<'res>) =
     authorize secret CustomRoles.Admin <| fun principal req ->
         let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
         f quizIdStr req
@@ -157,24 +171,24 @@ let private teamSessionId (principal : ClaimsPrincipal) =
     | (true, sessionId) -> Some sessionId
     | _ -> None
 
-let authorizeTeam secret (f: int -> TeamKey -> 'arg -> Result<'res, string>) =
+let authorizeTeam secret (f: int -> TeamKey -> 'arg -> ARES<'res>) =
     authorize secret CustomRoles.Team <| fun principal req ->
         result {
             let! teamKey = (teamKey principal, "Invalid team's key")
             let! sessionId = (teamSessionId principal, "Wrong session Id")
 
-            return! f sessionId teamKey req
-        }
+            return! (f sessionId teamKey req |> Async.RunSynchronously)
+        } |> Async.retn
 
 let authorizePrivateReg secret (f: string -> 'arg -> Result<'res, string>) =
     authorize secret CustomRoles.Reg <| fun principal req ->
         let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
-        f quizIdStr req
+        f quizIdStr req |> Async.retn
 
 let authorizeAudience secret (f: string -> 'arg -> Result<'res, string>) =
     authorize secret CustomRoles.Aud <| fun principal req ->
         let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
-        f quizIdStr req
+        f quizIdStr req |> Async.retn
 
 let execute (logger : ILogger) (proc:string) (f: REQ<'Req> -> RESP<'Resp>) : REQ<'Req> -> ARESP<'Resp> =
     fun req ->
@@ -186,11 +200,24 @@ let execute (logger : ILogger) (proc:string) (f: REQ<'Req> -> RESP<'Resp>) : REQ
             return resp
         }
 
+let exec (logger : ILogger) (proc:string) (f: REQ<'Req> -> ARESP<'Resp>) : REQ<'Req> -> ARESP<'Resp> =
+    fun req ->
+        async {
+            let claims = getClaimsFromToken req.Token
+            logger.Information("{@Op} {@Proc} {@Arg} {@Claims}", "Exec", proc, req.Arg, claims)
+            let! resp = f req
+            logger.Information("{@Op} {@Proc} {@ServerResponse}", "Done", proc, resp)
+            return resp
+        }
+
 let loginResp secret claims user =
-    let token = generateToken secret claims
-    let refreshToken = createRefreshToken()
-    Data.RefreshTokens.add refreshToken
-    Ok {|Token = token; RefreshToken = refreshToken.Value; User = user|}
+    async{
+        let token = generateToken secret claims
+        let refreshToken = createRefreshToken()
+
+        let! res = Data2.RefreshTokens.put refreshToken
+        return res |> Result.map (fun _ -> {|Token = token; RefreshToken = refreshToken.Value; User = user|})
+    }
 
 let private tryExtractPrivateQuizId secret token =
     if token <> "" then
@@ -212,23 +239,26 @@ let loginMainUser secret token clientId clientName redirectUrl code =
             match userInfoResult with
             | Ok info ->
                 let privateQuizId = tryExtractPrivateQuizId secret token
-                let exp = Data.Experts.get info.Sub
-                let isProducer = match exp with Some exp -> exp.IsProducer | None -> false
+                let! exp = Data2.Experts.get info.Sub
 
                 // update expert if attributes changed
-                match exp with
-                | Some exp when exp.Username <> info.Username || exp.Name <> info.Name ->
-                    CommonService.updateExpertNoReply exp.Id (fun exp -> {exp with Username = info.Username; Name = info.Name} |> Ok)
-                | _-> ()
+                let! _ =
+                    match exp with
+                    | Ok exp when exp.Username <> info.Username || exp.Name <> info.Name ->
+                        let logic (exp:Domain.Expert) = {exp with Username = info.Username; Name = info.Name} |> Ok
+                        Data2.Experts.update exp.Id logic
+                        |> AsyncResult.map ignore
+                    | _-> AsyncResult.retn ()
 
                 let user = MainUser {
-                        Sub = info.Sub;
-                        Username = info.Username;
-                        Name = info.Name;
-                        PictureUrl = info.Picture;
-                        IsProducer = isProducer;
+                        Sub = info.Sub
+                        Username = info.Username
+                        Name = info.Name
+                        PictureUrl = info.Picture
+                        IsProducer = match exp with Ok exp -> exp.IsProducer | _ -> false
                         IsPrivate = privateQuizId.IsSome
                 }
+                
                 let claims = [
                     Claim(CustomClaims.UserId, info.Sub)
                     Claim(CustomClaims.UserName, info.Username)
@@ -236,80 +266,73 @@ let loginMainUser secret token clientId clientName redirectUrl code =
                     Claim(CustomClaims.Role, CustomRoles.Expert)
                     if (privateQuizId.IsSome) then Claim(CustomClaims.QuizId, privateQuizId.Value.ToString())
                 ]
-                return loginResp secret claims user
+                return! loginResp secret claims user
             | Error txt ->
                 return Error txt
         | Error txt ->
             return Error txt
-    } |> Async.RunSynchronously
+    }
 
 let loginAdminUser secret quizId token =
-    result{
-        let! quiz = ((Data.Quizzes.getDescriptor quizId), "Quiz not found")
-
-        return!
-            if quiz.AdminToken = System.Web.HttpUtility.UrlDecode token then
-                let claims = [Claim(CustomClaims.Role, CustomRoles.Admin); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
-                let user = AdminUser {QuizId = quiz.QuizId; QuizName = quiz.Name; QuizImg = quiz.ImgKey}
-                loginResp secret claims user
-            else
-                Error "Wrong entry token"
+    async{
+        match Data.Quizzes.getDescriptor quizId with
+        | Some quiz when quiz.AdminToken = System.Web.HttpUtility.UrlDecode token ->
+            let claims = [Claim(CustomClaims.Role, CustomRoles.Admin); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
+            let user = AdminUser {QuizId = quiz.QuizId; QuizName = quiz.Name; QuizImg = quiz.ImgKey}
+            return! loginResp secret claims user
+        | Some _ -> return Error "Wrong entry token"
+        | None -> return Error "Quiz not found"
     }
 
 let loginTeamUser secret quizId teamId token =
-    match Data.Teams.getDescriptor quizId teamId with
-    | Some team when team.EntryToken = token ->
-        result {
-            let! quiz = ((Data.Quizzes.getDescriptor quizId), "Quiz not found")
+    async{
+        match Data.Teams.getDescriptor quizId teamId with
+        | Some team when team.EntryToken = token ->
+            match Data.Quizzes.getDescriptor quizId with
+            | Some quiz ->
+                let sessionId = rand.Next(Int32.MaxValue)
 
-            let sessionId = rand.Next(Int32.MaxValue)
+                // if this is first login, than take active session
+                do if team.ActiveSessionId = 0 then
+                    CommonService.updateTeamNoReply {QuizId = quizId; TeamId = teamId}
+                        (fun team -> team |> Domain.Teams.dsc (fun dsc -> {dsc with ActiveSessionId = sessionId} |> Ok))
 
-            // if this is first login, than take active session
-            do if team.ActiveSessionId = 0 then
-                CommonService.updateTeamNoReply {QuizId = quizId; TeamId = teamId}
-                    (fun team -> team |> Domain.Teams.dsc (fun dsc -> {dsc with ActiveSessionId = sessionId} |> Ok))
+                let user = {QuizId = team.QuizId; QuizName = quiz.Name; TeamId = team.TeamId; TeamName = team.Name}
 
-            let user = {QuizId = team.QuizId; QuizName = quiz.Name; TeamId = team.TeamId; TeamName = team.Name}
+                let claims = [
+                    Claim(CustomClaims.Name, user.TeamName)
+                    Claim(CustomClaims.Role, CustomRoles.Team)
+                    Claim(CustomClaims.QuizId, user.QuizId.ToString())
+                    Claim(CustomClaims.TeamId, user.TeamId.ToString())
+                    Claim(CustomClaims.SessionId, sessionId.ToString())
+                ]
 
-            let token = generateToken secret [
-                Claim(CustomClaims.Name, user.TeamName)
-                Claim(CustomClaims.Role, CustomRoles.Team)
-                Claim(CustomClaims.QuizId, user.QuizId.ToString())
-                Claim(CustomClaims.TeamId, user.TeamId.ToString())
-                Claim(CustomClaims.SessionId, sessionId.ToString())
-            ]
+                return! loginResp secret claims (TeamUser user)
 
-            let refreshToken = createRefreshToken()
-            Data.RefreshTokens.add refreshToken
-
-            return {|Token = token; RefreshToken = refreshToken.Value; User = TeamUser user|}
-        }
-    | _ -> Error "Authenticaton Error"
+            | None -> return Error "Quiz not found"
+        | _ -> return Error "Authenticaton Error"
+    }
 
 let loginRegUser secret quizId token =
-    result{
-        let! quiz = ((Data.Quizzes.getDescriptor quizId), "Quiz not found")
-
-        return!
-            if quiz.RegToken = System.Web.HttpUtility.UrlDecode token then
-                let claims = [Claim(CustomClaims.Role, CustomRoles.Reg); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
-                let user = RegUser {QuizId = quiz.QuizId}
-                loginResp secret claims user
-            else
-                Error "Wrong entry token"
+    async{
+        match Data.Quizzes.getDescriptor quizId with
+        | Some quiz when quiz.RegToken = System.Web.HttpUtility.UrlDecode token ->
+            let claims = [Claim(CustomClaims.Role, CustomRoles.Reg); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
+            let user = RegUser {QuizId = quiz.QuizId}
+            return! loginResp secret claims user
+        | Some _ -> return Error "Wrong entry token"
+        | None -> return Error "Quiz not found"
     }
 
 let loginAudUser secret quizId token =
-    result{
-        let! quiz = ((Data.Quizzes.getDescriptor quizId), "Quiz not found")
-
-        return!
-            if quiz.ListenToken = System.Web.HttpUtility.UrlDecode token then
-                let claims = [Claim(CustomClaims.Role, CustomRoles.Aud); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
-                let user = AudUser {QuizId = quiz.QuizId}
-                loginResp secret claims user
-            else
-                Error "Wrong entry token"
+    async{
+        match Data.Quizzes.getDescriptor quizId with
+        | Some quiz when quiz.ListenToken = System.Web.HttpUtility.UrlDecode token ->
+            let claims = [Claim(CustomClaims.Role, CustomRoles.Aud); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
+            let user = AudUser {QuizId = quiz.QuizId}
+            return! loginResp secret claims user
+        | Some _ -> return Error "Wrong entry token"
+        | None -> return Error "Quiz not found"
     }
 
 let api (context:HttpContext) : ISecurityApi =
@@ -318,8 +341,8 @@ let api (context:HttpContext) : ISecurityApi =
     let secret = Config.getJwtSecret cfg
 
     let api : ISecurityApi = {
-        login = execute logger "login" <| executedResponse  (login secret cfg)
-        refreshToken = execute logger "refreshToken" <| refreshToken secret
+        login = exec logger "login" <| executedResponse  (login secret cfg)
+        refreshToken = exec logger "refreshToken" <| refreshToken secret
     }
 
     api
