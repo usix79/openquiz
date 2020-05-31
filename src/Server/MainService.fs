@@ -61,6 +61,13 @@ let api (context:HttpContext) : IMainApi =
 
     api
 
+let private checkPackageOwner (expert:Domain.Expert) packageId f =
+    async {
+        match expert.Packages |> List.tryFind ((=) packageId) with
+        | Some _ -> return! f ()
+        | None -> return Error "Package belongs to another producer"
+    }
+
 let becomeProducer expertId usersysname name _ _ =
     let creator = fun () -> Domain.Experts.createNew expertId usersysname name
     let logic expert = expert |> Domain.Experts.becomeProducer |> Ok
@@ -195,21 +202,25 @@ let private updateTeam quiz team teamName : Result<Domain.Team,string> =
         CommonService.updateTeam team.Key logic
 
 let getProdPackages expert _ =
-    expert.AllPackages
-    |> List.map Data.Packages.getDescriptor
-    |> List.filter (fun p -> p.IsSome)
-    |> List.map (fun p -> packageRecord p.Value)
-    |> Ok
-    |> Async.retn
+    async{
+        let! list =
+            expert.AllPackages
+            |> List.map Data2.Packages.getDescriptor
+            |> Async.Sequential
+
+        return
+            list
+            |> List.ofArray
+            |> List.choose (function Ok res -> res |> packageRecord |> Some | _ -> None)
+            |> Ok
+    }
 
 let getProdPackageCard expert (req : {|PackageId : int|}) =
-    if expert |> Domain.Experts.isAuthorizedForPackage req.PackageId then
-        match Data.Packages.get req.PackageId with
-        | Some package ->
-            Main.packageCard expert.Id package Data2.Experts.provider |> Ok
-        | None -> Error "Package not found"
-    else  Error "You are not authorized to load the package"
-    |> Async.retn
+    expert
+    |> Domain.Experts.authorizePackage req.PackageId
+    |> AsyncResult.fromResult
+    |> AsyncResult.bind (fun _ -> Data2.Packages.get req.PackageId)
+    |> AsyncResult.map (Main.packageCard expert.Id Data2.Experts.provider)
 
 let createPackage expert _ =
     let creator = fun id ->
@@ -220,7 +231,7 @@ let createPackage expert _ =
 
         Data2.Experts.update expert.Id (Domain.Experts.addPackage package.Dsc.PackageId) |> Async.RunSynchronously |> ignore
 
-        return {|Record = package.Dsc |> packageRecord; Card = Main.packageCard expert.Id package Data2.Experts.provider; |}
+        return {|Record = package.Dsc |> packageRecord; Card = Main.packageCard expert.Id Data2.Experts.provider package ; |}
     }
     |> Async.retn
 
@@ -232,12 +243,10 @@ let updateProdPackageCard expert card =
             Slips = card.Slips |> List.map slipToDomain
         } |> Ok
 
-    result {
-        let! _ = (expert.Packages |> List.tryFind ((=) card.PackageId), "Package belongs to another producer")
-        let! package = CommonService.updatePackage card.PackageId logic
-        return package.Dsc |> packageRecord
-    }
-    |> Async.retn
+    checkPackageOwner expert card.PackageId (fun () ->
+        Data2.Packages.update card.PackageId logic
+        |> AsyncResult.map (fun pkg -> pkg.Dsc |> packageRecord)
+    )
 
 let aquirePackage expert res =
     result{
@@ -283,7 +292,7 @@ let deletePackage expert req =
     |> Async.retn
 
 let getSettings expert req =
-    expert |> Main.settingsCard |> Ok |> AsyncResult.ret
+    expert |> Main.settingsCard |> Ok |> AsyncResult.fromResult
 
 let updateSettings expert req =
     let logic (exp:Domain.Expert) =
@@ -292,29 +301,23 @@ let updateSettings expert req =
     Data2.Experts.update expert.Id logic
     |> AsyncResult.map Main.settingsCard
 
-let private chechPackageOwner (expert:Domain.Expert) packageId f =
-    async {
-        match expert.Packages |> List.tryFind ((=) packageId) with
-        | Some _ -> return! f ()
-        | None -> return Error "Package belongs to another producer"
-    }
 
 let sharePackage expert req =
-    chechPackageOwner expert req.PackageId (fun () ->
+    checkPackageOwner expert req.PackageId (fun () ->
         Data2.Experts.update req.UserId (Domain.Experts.addSharedPackage req.PackageId)
         |> AsyncResult.bind (fun exp ->
             CommonService.updatePackage req.PackageId (Domain.Packages.shareWith req.UserId)
             |> Result.map (fun _ -> exp |> Main.expertRecord)
-            |> AsyncResult.ret
+            |> AsyncResult.fromResult
         )
     )
 
 let removePackageShare expert req =
-    chechPackageOwner expert req.PackageId (fun () ->
+    checkPackageOwner expert req.PackageId (fun () ->
         Data2.Experts.update req.UserId (Domain.Experts.removeSharedPackage req.PackageId)
         |> AsyncResult.bind (fun _ ->
             CommonService.updatePackage req.PackageId (Domain.Packages.removeShareWith req.UserId)
             |> Result.map ignore
-            |> AsyncResult.ret
+            |> AsyncResult.fromResult
         )
     )

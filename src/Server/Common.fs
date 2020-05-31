@@ -55,7 +55,7 @@ module Async =
 
 module AsyncResult =
 
-    let ret x = async { return x }
+    let fromResult x = async { return x }
 
     let retn x = async { return Ok x }
 

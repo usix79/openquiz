@@ -28,7 +28,7 @@ let api (context:HttpContext) : IAdminApi =
             | _ ->
                 Log.Error ("{Api} {Error} {Quiz}", "admin", "Wrong quiz Id", quizIdStr)
                 Error "Wrong Quiz Id"
-            |> AsyncResult.ret
+            |> AsyncResult.fromResult
         )
 
         SecurityService.exec logger proc <| SecurityService.authorizeAdmin secret (ff f)

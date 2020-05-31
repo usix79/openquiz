@@ -228,7 +228,7 @@ module Main =
     let settingsCard (exp:Expert) : MainModels.SettingsCard =
         {UserId = exp.Id; DefaultImg = exp.DefaultImg; DefaultMixlr = exp.DefaultMixlr}
 
-    let packageCard expertId (package: Package) (expertsProvider:Provider<string,Expert>) : MainModels.PackageCard =
+    let packageCard expertId (expertsProvider:Provider<string,Expert>) (package: Package)  : MainModels.PackageCard =
         {
             PackageId = package.Dsc.PackageId
             Producer = package.Dsc.Producer

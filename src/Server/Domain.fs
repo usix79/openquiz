@@ -73,6 +73,11 @@ module Experts =
     let isAuthorizedForPackage packageId (expert:Expert) =
         expert.AllPackages |> List.contains packageId
 
+    let authorizePackage packageId (expert:Expert) =
+        match expert.AllPackages |> List.contains packageId with
+        | true -> Ok ()
+        | false -> Error "You are not authorized to load the package"
+
 type PackageDescriptor = {
     PackageId : int
     Producer : string

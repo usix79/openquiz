@@ -206,6 +206,14 @@ module Query =
 
         List.fold folder init additionalConditions
 
+    let buildProjection (projectionFields:string list) =
+        let attrs =
+            projectionFields
+            |> List.mapi (fun idx name -> (sprintf "#prj%i" idx, name ))
+
+        System.String.Join (",", attrs |> List.map fst), Dictionary<string,string>(attrs |> Map.ofList)
+
+
 module Write =
 
     let private putItem' ce (client: AmazonDynamoDBClient) tableName fields  =
@@ -395,6 +403,11 @@ module Read =
         | Some x -> f x |> Result.map Some
         | None -> Ok None
 
+    let private ifSome2 f =
+        function
+        | Some (Some x) -> f x |> Result.map Some
+        | _ -> Ok None
+
     let private required key =
         function
         | Some x -> Ok x
@@ -403,9 +416,18 @@ module Read =
     let req key typ =
         AttrReader(Map.tryFind key >> required key >> Result.map typ)
 
-
     let opt key typ =
         AttrReader(Map.tryFind key >> Option.map typ >> Ok)
+
+    let optDef key defValue typ =
+        AttrReader(Map.tryFind key >> Option.map typ >> Option.defaultValue defValue >> Ok)
+
+    let choice key typ f =
+        fun m ->
+            let ch = m |> Map.tryFind key |> Option.map typ
+            f ch m
+        |> AttrReader
+
 
     let (<!>) = AttrReaderResult.map
     let (<*>) = AttrReaderResult.apply
@@ -422,6 +444,8 @@ module Read =
 
     /// pass ARR option into Result returing f (e.g. Parse.*)
     let (?>->) r f = r >-> ifSome f
+
+    let (??>->) r f = r >-> ifSome2 f
 
     /// pass ARR list into map
     let (@>-) r typ = r >- List.map typ
@@ -445,10 +469,12 @@ module Read =
         >-> (List.map (Option.map typ)
              >> traverseResult (ifSome f))
 
-    let private getItem' (client: AmazonDynamoDBClient) tableName reader fields (projection:string list) =
+    let getItemProjection (projection:string list) (client: AmazonDynamoDBClient) tableName reader fields =
         let req = GetItemRequest(tableName, AttrMapping.mapAttrsToDictionary fields)
         if not (projection.IsEmpty) then
-            req.ProjectionExpression <- System.String.Join (",", projection)
+            let (expression, names) = Query.buildProjection projection
+            req.ProjectionExpression <- expression
+            req.ExpressionAttributeNames <- names
 
         req
         |> client.GetItemAsync
@@ -460,11 +486,7 @@ module Read =
              >> Result.bind (fun m -> if Map.isEmpty m then Error [ItemDoesNotExist] else Ok m)
              >> Result.bind (AttrReader.run reader))
 
-    let getItem (client: AmazonDynamoDBClient) tableName reader fields =
-        getItem' client tableName reader fields []
-
-    let getItemProjection (client: AmazonDynamoDBClient) tableName reader fields projection =
-        getItem' client tableName reader fields projection
+    let getItem (client: AmazonDynamoDBClient) tableName reader fields = getItemProjection []
 
     let doesItemExist (client: AmazonDynamoDBClient) tableName fields =
         GetItemRequest(tableName, AttrMapping.mapAttrsToDictionary fields)
@@ -492,10 +514,11 @@ module Read =
                          ExclusiveStartKey = startKey)
 
             if not (projection.IsEmpty) then
-                req.ProjectionExpression <- System.String.Join (",", projection)
+                let (expression, names) = Query.buildProjection projection
+                req.ProjectionExpression <- expression
+                req.ExpressionAttributeNames <- names
 
             req
-
 
         let rec query req =
             req
