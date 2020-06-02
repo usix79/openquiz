@@ -19,7 +19,7 @@ type Msg =
     | PackagesClick
     | PackagesResp of RESP<PackageRecord list>
     | SelectPackage of string
-    | PackagesCardResp of RESP<PackageCard option>
+    | PackagesCardResp of RESP<PackageCard>
     | SelectSlipIdx of string
     | UpdateTourName of string
     | UpdateTourSeconds of string
@@ -155,7 +155,7 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | PackagesResp {Value = Ok pkgs} -> {cm with AvailablePackages = Some pkgs} |> editing |> noCmd
     | SelectPackage txt -> cm |> setPackage api txt
     | SelectSlipIdx txt -> cm |> setSlipIdx txt |> noCmd
-    | PackagesCardResp {Value = Ok res} -> {cm with Package = res} |> editing |> noCmd
+    | PackagesCardResp {Value = Ok res} -> {cm with Package = Some res} |> editing |> noCmd
     | UpdateTourName txt -> cm |> updateTour (fun qw -> {qw with Name = txt}) |> noCmd
     | UpdateTourSeconds txt -> cm |> updateTour (fun qw -> {qw with Seconds = Int32.Parse txt}) |> noCmd
     | UpdateSlipName txt -> cm |> updateTour (fun qw -> {qw with Slip = match qw.Slip with Single _ -> qw.Slip | Multiple (name,slips) -> (txt,slips)|>Multiple}) |> noCmd

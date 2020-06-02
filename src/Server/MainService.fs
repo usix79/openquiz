@@ -9,6 +9,8 @@ open Shared
 open Common
 open Presenter
 
+module AR = AsyncResult
+
 let api (context:HttpContext) : IMainApi =
     let logger : ILogger = context.Logger()
     let cfg = context.GetService<IConfiguration>()
@@ -61,64 +63,62 @@ let api (context:HttpContext) : IMainApi =
 
     api
 
-let private checkPackageOwner (expert:Domain.Expert) packageId f =
-    async {
-        match expert.Packages |> List.tryFind ((=) packageId) with
-        | Some _ -> return! f ()
-        | None -> return Error "Package belongs to another producer"
-    }
-
 let becomeProducer expertId usersysname name _ _ =
     let creator = fun () -> Domain.Experts.createNew expertId usersysname name
     let logic expert = expert |> Domain.Experts.becomeProducer |> Ok
 
     Data2.Experts.updateOrCreate expertId logic creator
-    |> AsyncResult.map ignore
+    |> AR.map ignore
 
 let createQuiz expert _ =
     let creator quizId =
-        Ok <| Domain.Quizzes.createNew quizId expert.Id expert.DefaultImg expert.DefaultMixlr
+        Domain.Quizzes.createNew quizId expert.Id expert.DefaultImg expert.DefaultMixlr
 
-    result{
-        let! quiz = CommonService.createQuiz creator
+    let logic (quiz:Domain.Quiz) expert  = expert |> Domain.Experts.addQuiz quiz.Dsc.QuizId |> Ok
 
-        let logic expert = expert |> Domain.Experts.addQuiz quiz.Dsc.QuizId |> Ok
-        Data2.Experts.update expert.Id logic |> Async.RunSynchronously |> ignore
-
-        return {|Record = quiz.Dsc |> Main.quizProdRecord; Card = Main.quizProdCard quiz; |}
-    } |> Async.retn
+    Data2.Quizzes.create creator
+    |> AR.side (fun quiz -> Data2.Experts.update expert.Id (logic quiz))
+    |> AR.map (fun quiz -> {|Record = quiz.Dsc |> Main.quizProdRecord; Card = Main.quizProdCard quiz; |})
 
 let getProdQuizzes expert _ =
     expert.Quizzes
-    |> List.map Data.Quizzes.getDescriptor
-    |> List.filter (fun q -> q.IsSome)
-    |> List.map (fun q -> Main.quizProdRecord q.Value)
-    |> AsyncResult.retn
+    |> List.map Data2.Quizzes.getDescriptor
+    |> Async.Sequential
+    |> Async.map (Array.choose (function Ok r -> Some (Main.quizProdRecord r) | _ -> None))
+    |> Async.map (List.ofArray >> Ok)
 
 let getProdQuizCard expert (req : {|QuizId : int|}) =
-    match Data.Quizzes.get req.QuizId with
-    | Some quiz when quiz.Dsc.Producer <> expert.Id -> Error "Quiz is produced by someone else"
-    | None -> Error "Quiz not found"
-    | Some quiz -> Ok <| Main.quizProdCard quiz
-    |> Async.retn
+    Data2.Quizzes.get req.QuizId
+    |> AR.sideRes (fun quiz -> Domain.Quizzes.authorize expert.Id quiz.Dsc)
+    |> AR.map Main.quizProdCard
 
 let updateProdQuizCard expert card =
     let logic (quiz : Domain.Quiz) =
-        match quiz with
-        | _ when quiz.Dsc.Producer <> expert.Id -> Error "Quiz is produced by someone else"
-        | _ ->
+        Domain.Quizzes.authorize expert.Id quiz.Dsc
+        |> Result.map (fun _ ->
             let dsc = { quiz.Dsc with Name = card.Name; StartTime = card.StartTime;
                                     ImgKey = card.ImgKey; WelcomeText = card.WelcomeText; FarewellText = card.FarewellText;
                                     WithPremoderation = card.WithPremoderation; EventPage = card.EventPage; MixlrCode = card.MixlrCode}
 
-            Ok { quiz with Dsc = dsc}
+            { quiz with Dsc = dsc}
+        )
 
-    result{
-        let! quiz = CommonService.updateQuiz card.QuizId logic
+    Data2.Quizzes.update card.QuizId logic
+    |> AR.map (fun quiz -> quiz.Dsc |> Main.quizProdRecord)
 
-        return quiz.Dsc |> Main.quizProdRecord
-    }
-    |> Async.retn
+let deleteQuiz expert req =
+    Data2.Quizzes.getDescriptor req.QuizId
+    |> AR.sideRes (Domain.Quizzes.authorize expert.Id)
+    |> AR.side ( fun _ ->
+        Data2.Teams.getIds req.QuizId
+        |> AR.bind ( fun list ->
+            list
+            |> List.map (Data2.Teams.delete req.QuizId)
+            |> Async.Sequential
+            |> Async.map (fun _ -> Ok ())))
+    |> AR.next (Data2.Quizzes.delete req.QuizId)
+    |> AR.next (Data2.Experts.update expert.Id (Domain.Experts.removeQuiz req.QuizId))
+    |> AR.map ignore
 
 let uploadFile bucketName _ req =
     Bucket.uploadFile  bucketName req.Cat req.FileType req.FileBody
@@ -217,23 +217,15 @@ let getProdPackages expert _ =
 
 let getProdPackageCard expert (req : {|PackageId : int|}) =
     expert
-    |> Domain.Experts.authorizePackage req.PackageId
-    |> AsyncResult.fromResult
-    |> AsyncResult.bind (fun _ -> Data2.Packages.get req.PackageId)
-    |> AsyncResult.map (Main.packageCard expert.Id Data2.Experts.provider)
+    |> Domain.Experts.authorizePackageRead req.PackageId
+    |> AR.fromResult
+    |> AR.next (Data2.Packages.get req.PackageId)
+    |> AR.map (Main.packageCard expert.Id Data2.Experts.provider)
 
 let createPackage expert _ =
-    let creator = fun id ->
-        Domain.Packages.createNew id expert.Id |> Ok
-
-    result {
-        let! package = CommonService.createPackage creator
-
-        Data2.Experts.update expert.Id (Domain.Experts.addPackage package.Dsc.PackageId) |> Async.RunSynchronously |> ignore
-
-        return {|Record = package.Dsc |> packageRecord; Card = Main.packageCard expert.Id Data2.Experts.provider package ; |}
-    }
-    |> Async.retn
+    Data2.Packages.create (Domain.Packages.createNew expert.Id)
+    |> AR.side (fun pkg -> Data2.Experts.update expert.Id (Domain.Experts.addPackage pkg.Dsc.PackageId))
+    |> AR.map (fun pkg -> {|Record = pkg.Dsc |> packageRecord; Card = Main.packageCard expert.Id Data2.Experts.provider pkg ; |})
 
 let updateProdPackageCard expert card =
     let logic (pkg:Domain.Package) =
@@ -243,81 +235,56 @@ let updateProdPackageCard expert card =
             Slips = card.Slips |> List.map slipToDomain
         } |> Ok
 
-    checkPackageOwner expert card.PackageId (fun () ->
-        Data2.Packages.update card.PackageId logic
-        |> AsyncResult.map (fun pkg -> pkg.Dsc |> packageRecord)
-    )
+    expert
+    |> Domain.Experts.authorizePackageWrite card.PackageId
+    |> AR.fromResult
+    |> AR.next (Data2.Packages.update card.PackageId logic)
+    |> AR.map (fun pkg -> pkg.Dsc |> packageRecord)
 
-let aquirePackage expert res =
-    result{
-        let! origPackageDsc = (Data.Packages.getDescriptor res.PackageId, "Invalid Transfer Token")
-        let! updatedPackage = CommonService.updatePackage res.PackageId (Domain.Packages.transfer expert.Id res.TransferToken)
-
-        Data2.Experts.update origPackageDsc.Producer (Domain.Experts.removePackage origPackageDsc.PackageId) |> Async.RunSynchronously |> ignore
-        Data2.Experts.update expert.Id (Domain.Experts.addPackage updatedPackage.Dsc.PackageId) |> Async.RunSynchronously |> ignore
-
-        return updatedPackage.Dsc |> packageRecord
-    }
-    |> Async.retn
-
-let deleteQuiz expert req =
-    result {
-        let! _ = (expert.Quizzes |> List.tryFind ((=) req.QuizId), "Quiz belongs to another producer")
-
-        Data.Teams.getIds req.QuizId
-        |> List.iter (fun teamId -> Data.Teams.delete req.QuizId teamId)
-
-        Data.Quizzes.delete req.QuizId
-
-        Data2.Experts.update expert.Id (Domain.Experts.removeQuiz req.QuizId) |> Async.RunSynchronously |> ignore
-
-        return ()
-    }
-    |> Async.retn
+let aquirePackage expert req =
+    Data2.Packages.getDescriptor req.PackageId
+    |> AR.bind (fun origPkg ->
+        Data2.Packages.update origPkg.PackageId (Domain.Packages.transfer expert.Id req.TransferToken)
+        |> AR.side (fun _ -> Data2.Experts.update origPkg.Producer (Domain.Experts.removePackage origPkg.PackageId)))
+    |> AR.side (fun pkg -> Data2.Experts.update expert.Id (Domain.Experts.addPackage pkg.Dsc.PackageId))
+    |> AR.map (fun pkg -> packageRecord pkg.Dsc)
 
 let deletePackage expert req =
-    result {
-        let! _ = (expert.Packages |> List.tryFind ((=) req.PackageId), "Package belongs to another producer")
-
-        let! pkg = Data.Packages.get req.PackageId, "Package not found"
-
-        for userId in pkg.SharedWith do
-            Data2.Experts.update  userId (Domain.Experts.removeSharedPackage req.PackageId) |> Async.RunSynchronously |> ignore
-
-        Data.Packages.delete req.PackageId
-        Data2.Experts.update  expert.Id (Domain.Experts.removePackage req.PackageId) |> Async.RunSynchronously |> ignore
-
-        return ()
-    }
-    |> Async.retn
+    expert
+    |> Domain.Experts.authorizePackageWrite req.PackageId
+    |> AR.fromResult
+    |> AR.next (Data2.Packages.get req.PackageId)
+    |> AR.side (fun pkg ->
+        pkg.SharedWith
+        |> List.map (fun expId -> Data2.Experts.update expId (Domain.Experts.removeSharedPackage req.PackageId))
+        |> Async.Sequential
+        |> Async.map (fun _ -> Ok ()))
+    |> AR.next (Data2.Packages.delete req.PackageId)
+    |> AR.next (Data2.Experts.update expert.Id (Domain.Experts.removePackage req.PackageId))
+    |> AR.map ignore
 
 let getSettings expert req =
-    expert |> Main.settingsCard |> Ok |> AsyncResult.fromResult
+    expert |> Main.settingsCard |> Ok |> AR.fromResult
 
 let updateSettings expert req =
     let logic (exp:Domain.Expert) =
         {exp with DefaultImg = req.DefaultImg; DefaultMixlr = req.DefaultMixlr} |> Ok
 
     Data2.Experts.update expert.Id logic
-    |> AsyncResult.map Main.settingsCard
-
+    |> AR.map Main.settingsCard
 
 let sharePackage expert req =
-    checkPackageOwner expert req.PackageId (fun () ->
-        Data2.Experts.update req.UserId (Domain.Experts.addSharedPackage req.PackageId)
-        |> AsyncResult.bind (fun exp ->
-            CommonService.updatePackage req.PackageId (Domain.Packages.shareWith req.UserId)
-            |> Result.map (fun _ -> exp |> Main.expertRecord)
-            |> AsyncResult.fromResult
-        )
-    )
+    expert
+    |> Domain.Experts.authorizePackageWrite req.PackageId
+    |> AR.fromResult
+    |> AR.side (fun _ -> Data2.Packages.update req.PackageId (Domain.Packages.shareWith req.UserId))
+    |> AR.next (Data2.Experts.update req.UserId (Domain.Experts.addSharedPackage req.PackageId))
+    |> AR.map Main.expertRecord
 
 let removePackageShare expert req =
-    checkPackageOwner expert req.PackageId (fun () ->
-        Data2.Experts.update req.UserId (Domain.Experts.removeSharedPackage req.PackageId)
-        |> AsyncResult.bind (fun _ ->
-            CommonService.updatePackage req.PackageId (Domain.Packages.removeShareWith req.UserId)
-            |> Result.map ignore
-            |> AsyncResult.fromResult
-        )
-    )
+    expert
+    |> Domain.Experts.authorizePackageWrite req.PackageId
+    |> AR.fromResult
+    |> AR.side (fun _ -> Data2.Packages.update req.PackageId (Domain.Packages.removeShareWith req.UserId))
+    |> AR.next (Data2.Experts.update req.UserId (Domain.Experts.removeSharedPackage req.PackageId))
+    |> AR.map ignore

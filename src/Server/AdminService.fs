@@ -10,6 +10,8 @@ open Shared
 open Common
 open Presenter
 
+module AR = AsyncResult
+
 let api (context:HttpContext) : IAdminApi =
     let logger : ILogger = context.Logger()
     let cfg = context.GetService<IConfiguration>()
@@ -28,22 +30,41 @@ let api (context:HttpContext) : IAdminApi =
             | _ ->
                 Log.Error ("{Api} {Error} {Quiz}", "admin", "Wrong quiz Id", quizIdStr)
                 Error "Wrong Quiz Id"
-            |> AsyncResult.fromResult
+            |> AR.fromResult
+        )
+
+        SecurityService.exec logger proc <| SecurityService.authorizeAdmin secret (ff f)
+
+    let ex2 proc f =
+
+        let ff f = (fun (quizIdStr:string) req ->
+            match Int32.TryParse quizIdStr with
+            | true, quizId ->
+                match Data.Quizzes.getDescriptor quizId with
+                | Some quiz -> f quiz req
+                | None ->
+                    Log.Error ("{Api} {Error} {Quiz}", "admin", "Quiz Not Found", quizId)
+                    Error "Quiz not found"
+                    |> AR.fromResult
+            | _ ->
+                Log.Error ("{Api} {Error} {Quiz}", "admin", "Wrong quiz Id", quizIdStr)
+                Error "Wrong Quiz Id"
+                |> AR.fromResult
         )
 
         SecurityService.exec logger proc <| SecurityService.authorizeAdmin secret (ff f)
 
     let api : IAdminApi = {
-        getTeams = ex  "getTeams" getTeams
-        createTeam = ex  "createTeam" createTeam
-        getTeamCard = ex  "getTeamCard" getTeamCard
-        updateTeamCard = ex  "updateTeamCard" updateTeamCard
+        getTeams = ex2  "getTeams" getTeams
+        createTeam = ex2  "createTeam" createTeam
+        getTeamCard = ex2  "getTeamCard" getTeamCard
+        updateTeamCard = ex2  "updateTeamCard" updateTeamCard
         changeTeamStatus = ex  "changeTeamStatus" changeTeamStatus
         getQuizCard = ex  "getQuizCard" getQuizCard
         changeQuizStatus = ex  "changeQuizStatus" changeQuizStatus
-        getPackages = ex "getPackages" getPackages
+        getPackages = ex2 "getPackages" getPackages
         setPackage = ex "setPackage" setPackage
-        getPackageCard = ex "getPackageCard" getPackageCard
+        getPackageCard = ex2 "getPackageCard" getPackageCard
         uploadFile = ex "uploadFile" <| uploadFile (Config.getFilesAccessPoint cfg)
         startCountDown = ex "startCountDown" startCountDown
         pauseCountDown = ex "pauseCountDown" pauseCountDown
@@ -60,28 +81,24 @@ let api (context:HttpContext) : IAdminApi =
     api
 
 let getTeams quiz req =
-    Data.Teams.getDescriptors quiz.QuizId
-    |> List.map Admin.teamRecord
-    |> Ok
+    Data2.Teams.getDescriptors quiz.QuizId
+    |> AR.map (List.map Admin.teamRecord)
 
 let createTeam quiz req =
     let teamName = req.TeamName.Trim()
 
-    let creator (key : Domain.TeamKey) =
+    let creator teamId =
         let teamsInQuiz = Data.Teams.getDescriptors quiz.QuizId
         match Domain.Teams.validateTeamUpdate true teamName teamsInQuiz quiz with
         | Some txt -> Error txt
-        | None -> Domain.Teams.createNewAdmin key.TeamId teamName quiz Domain.Admitted  |> Ok
+        | None -> Domain.Teams.createNewAdmin teamId teamName quiz Domain.Admitted  |> Ok
 
-    result {
-        let! team = CommonService.createTeam quiz.QuizId creator
-        return! Ok {|Record = Admin.teamRecord team.Dsc|}
-    }
+    Data2.Teams.create quiz.QuizId creator
+    |> AR.map (fun team -> {|Record = Admin.teamRecord team.Dsc|})
 
 let getTeamCard quiz req =
-    match Data.Teams.getDescriptor quiz.QuizId req.TeamId with
-    | Some team -> Admin.teamCard team |> Ok
-    | None -> Error "Team not found"
+    Data2.Teams.getDescriptor quiz.QuizId req.TeamId
+    |> AR.map Admin.teamCard
 
 let updateTeamCard quiz req =
     let logic (team : Domain.Team) =
@@ -94,9 +111,8 @@ let updateTeamCard quiz req =
             }
         } |> Ok
 
-    match CommonService.updateTeam {QuizId = quiz.QuizId; TeamId = req.TeamId} logic with
-    | Ok team -> Ok <| Admin.teamRecord team.Dsc
-    | Error txt -> Error txt
+    Data2.Teams.update {QuizId = quiz.QuizId; TeamId = req.TeamId} logic
+    |> AR.map (fun team -> Admin.teamRecord team.Dsc)
 
 let changeTeamStatus quiz req =
     let logic (team : Domain.Team) =
@@ -119,23 +135,20 @@ let getQuizCard quiz _ =
 
 let changeQuizStatus quiz req =
     let logic quiz =
-        quiz |> Domain.Quizzes.changeStatus (quizStatusToDomain req.QuizStatus) CommonService.packageLoader |> Ok
+        quiz |> Domain.Quizzes.changeStatus (quizStatusToDomain req.QuizStatus) Data2.Packages.provider |> Ok
 
     result{
         let! quiz = CommonService.updateQuiz quiz.QuizId logic
         return Admin.quizCard quiz
     }
 
-let getPackages quiz req =
-    result {
-        let! exp = async{ return! Data2.Experts.get quiz.Producer } |> Async.RunSynchronously
-
-        return
-            exp.AllPackages
-            |> List.map Data.Packages.getDescriptor
-            |> List.filter (fun p -> p.IsSome)
-            |> List.map (fun p -> packageRecord p.Value)
-    }
+let getPackages quiz _ =
+    Data2.Experts.get quiz.Producer
+    |> AR.bind (fun exp ->
+        exp.AllPackages
+        |> List.map Data2.Packages.getDescriptor
+        |> Async.Sequential
+        |> Async.map (Array.choose (function Ok dsc -> Some (packageRecord dsc) | _ -> None) >> List.ofSeq >> Ok ))
 
 let setPackage quiz req =
     let logic quiz =
@@ -155,19 +168,10 @@ let setPackage quiz req =
     }
 
 let getPackageCard quiz req =
-    result {
-        let! exp = async{ return! Data2.Experts.get quiz.Producer } |> Async.RunSynchronously
-
-        do!
-            if not <| Domain.Experts.isAuthorizedForPackage req.PackageId exp then Error "You are not autorized to access the package"
-            else Ok ()
-
-        return
-            match Data.Packages.get req.PackageId with
-            | Some pkg -> Some (packageCard pkg)
-            | None -> None
-    }
-
+    Data2.Experts.get quiz.Producer
+    |> AR.bind (Domain.Experts.authorizePackageRead req.PackageId >> AR.fromResult)
+    |> AR.next (Data2.Packages.get req.PackageId)
+    |> AR.map packageCard
 
 let uploadFile bucketName _ req =
     Bucket.uploadFile  bucketName req.Cat req.FileType req.FileBody
@@ -267,7 +271,7 @@ let settleAnswers (quiz : Domain.Quiz) =
 
 let nextTour quiz _ =
     let logic quiz =
-        quiz |> Domain.Quizzes.next CommonService.packageLoader |> Ok
+        quiz |> Domain.Quizzes.next Data2.Packages.provider |> Ok
 
     result{
         let! quiz = CommonService.updateQuiz quiz.QuizId logic
@@ -277,7 +281,7 @@ let nextTour quiz _ =
 let getAnswers quiz _ =
     result{
         let! quiz = (Data.Quizzes.get quiz.QuizId, "Quiz not found")
-        let teams = Data.Teams.getAllInQuiz quiz.Dsc.QuizId
+        let! teams = Data2.Teams.getAllInQuiz quiz.Dsc.QuizId |> Async.RunSynchronously
 
         return Admin.AnswersBundle quiz teams
     }

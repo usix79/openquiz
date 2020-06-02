@@ -73,10 +73,15 @@ module Experts =
     let isAuthorizedForPackage packageId (expert:Expert) =
         expert.AllPackages |> List.contains packageId
 
-    let authorizePackage packageId (expert:Expert) =
+    let authorizePackageRead packageId (expert:Expert) =
         match expert.AllPackages |> List.contains packageId with
         | true -> Ok ()
         | false -> Error "You are not authorized to load the package"
+
+    let authorizePackageWrite packageId (expert:Expert) =
+        match expert.Packages |> List.contains packageId with
+        | true -> Ok ()
+        | false -> Error "You are not authorized to change the package"
 
 type PackageDescriptor = {
     PackageId : int
@@ -149,7 +154,7 @@ type SingleAwSlip = {
 
 module Packages =
 
-    let createNew packageId producerId : Package =
+    let createNew producerId packageId : Package =
         {
             Dsc = {
                 PackageId = packageId
@@ -268,6 +273,9 @@ module Quizzes =
             Tours = []
             Version = 0
         }
+
+    let authorize expertId (quiz:QuizDescriptor) =
+        if quiz.Producer <> expertId then Error "Quiz is produced by someone else" else Ok quiz
 
     let getDescription (quiz:QuizDescriptor) =
         match quiz.Status with

@@ -50,7 +50,6 @@ let packageRecord (package:PackageDescriptor) : PackageRecord =
         PackageId = package.PackageId
         Producer = package.Producer
         Name = package.Name
-
     }
 
 let packageCard (package: Package) : PackageCard =

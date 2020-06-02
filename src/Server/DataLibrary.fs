@@ -33,13 +33,14 @@ type private A = AttributeValue
 
 module private AttrMapping =
 
+    let ISO8601DateFormat = "yyyy-MM-dd\\THH:mm:ss.fff\\Z"
     let toSet (NonEmptyList (head, tail)) = Set.ofList tail |> Set.add head
 
     let rec mapAttrValue =
         function
         | ScalarString s -> A(S = s)
         | ScalarGuid g -> A(S = string g)
-        | ScalarDate d -> A(S = d.ToString("s"))
+        | ScalarDate d -> A(S = d.ToUniversalTime().ToString(ISO8601DateFormat, Globalization.CultureInfo.InvariantCulture))
         | ScalarInt32 i -> A(N = string i)
         | ScalarDecimal d -> A(N = string d)
         | ScalarBinary b -> A(B = toGzipMemoryStream b)
@@ -428,6 +429,30 @@ module Read =
             f ch m
         |> AttrReader
 
+    let map key keyReader valueReader =
+        fun m ->
+            m
+            |> Map.tryFind key
+            |> required key
+            |> Result.map (fun (a:A) -> a.M |> Seq.map (|KeyValue|) |> List.ofSeq )
+            |> Result.bind (fun list ->
+                list
+                |> traverseResult (
+                    fun (k,v) ->
+                        match (keyReader k), (valueReader v) with
+                        | (Ok k), (Ok v) -> Ok (k, v)
+                        | _ -> Error [ParseError key]
+                ))
+            |> Result.map Map.ofList
+        |> AttrReader
+
+    let private toInt32Map (map:Map<string,Model.AttributeValue>) =
+        map
+        |> Map.toSeq
+        |> Seq.map (fun (key,value) -> ((Int32.Parse key), (Int32.Parse value.N)))
+        |> Map.ofSeq
+        |> Ok
+
 
     let (<!>) = AttrReaderResult.map
     let (<*>) = AttrReaderResult.apply
@@ -529,7 +554,7 @@ module Read =
                 (DynamoDbError.handleAsyncError
                  >> Result.map (fun r -> Seq.map toMap r.Items |> List.ofSeq, r.LastEvaluatedKey))
             |> AsyncResult.bind (function
-                | items, null -> AsyncResult.retn items
+                | items, key when key.Count = 0 -> AsyncResult.retn items
                 | items, key ->
                     async {
                         match! query (request key) with
@@ -586,7 +611,7 @@ module Read =
             |> fromByRef (sprintf "could not parse %s as guid" s)
 
         let dateTime (s: String) =
-            DateTime.TryParse s
+            DateTime.TryParseExact(s, AttrMapping.ISO8601DateFormat, Globalization.CultureInfo.InvariantCulture, Globalization.DateTimeStyles.AssumeUniversal)
             |> fromByRef (sprintf "could not parse %s as date" s)
 
         let decimal (s: String) =
@@ -597,7 +622,10 @@ module Read =
             Int32.TryParse s
             |> fromByRef (sprintf "could not parse %s as integer" s)
 
-
+        let enum<'a> (s: String) =
+            match Reflection.FSharpType.GetUnionCases typeof<'a> |> Array.filter (fun case -> case.Name = s) with
+            |[|case|] -> Some(Reflection.FSharpValue.MakeUnion(case,[||]) :?> 'a)
+            |_ -> None
 
 /// todo:
 /// parameterize error type (not hardcoded string)

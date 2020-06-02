@@ -246,33 +246,3 @@ let updateQuiz (quizId : int) (logic : Logic<Quiz>) : Result<Domain.Quiz,string>
 let updateQuizNoReply (quizId : int) (logic : Logic<Quiz>) =
     let agent = getOrCreateQuizAgent quizId
     agent.Post (UpdateWithoutReply (quizId, logic))
-
-
-let mutable private _pkgAgents : Map<int, MailboxProcessor<UpdateCommand<unit,int,Package>>> = Map.empty
-
-let packageLoader (id:int) = Data.Packages.get id
-let private packageGenerator () = Data.Packages.getMaxId () + 1
-let private packageSaver team = Data.Packages.update team
-
-let private getOrCreatePackageAgent id =
-    let trans () =
-        match Map.tryFind id _pkgAgents with
-        | Some agent -> agent
-        | None ->
-            let agent = createAgent packageGenerator packageLoader packageSaver ignore
-            _pkgAgents <- _pkgAgents.Add (id, agent)
-            agent
-
-    lock _pkgAgents trans
-
-let createPackage (creator:Creator<int,Package>) =
-    let agent = getOrCreatePackageAgent -1
-    agent.PostAndReply (fun rch -> Create ((), creator, rch))
-
-let updatePackage (id : int) (logic : Logic<Package>) : Result<Domain.Package,string> =
-    let agent = getOrCreatePackageAgent id
-    agent.PostAndReply (fun rch -> Update (id, logic, rch))
-
-let updatePackageNoReply (id : int) (logic : Logic<Package>) =
-    let agent = getOrCreatePackageAgent id
-    agent.Post (UpdateWithoutReply (id, logic))

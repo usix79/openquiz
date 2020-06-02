@@ -13,7 +13,15 @@ module A = Attribute
 module P = Parse
 module R = AttrReader
 
-type PutResult = Success | Retry
+type PutResult<'item> = Success | Retry
+
+module Errors =
+    let [<Literal>] TransactionFailed = "Transaction Failed"
+    let [<Literal>] GetError = "DynamoDB Get Error"
+    let [<Literal>] PutError = "DynamoDB Put Error"
+    let [<Literal>] QueryError = "DynamoDB Query Error"
+    let [<Literal>] DeleteError = "DynamoDB Delete Error"
+    let [<Literal>] ItemDoesNotExist = "ItemDoesNotExist"
 
 let private logErrors list =
     Log.Logger.Error ("{@Proc} {@Details}", "DB", list)
@@ -34,7 +42,7 @@ let private putOptimistic' get put id logic  =
                         return! tryUpdate (attempt + 1)
                     | Ok Retry ->
                         logErrors [sprintf "Put Condition Failed for Key %A Attempt %i Give Up" id attempt]
-                        return Error "Transaction Failed"
+                        return Error Errors.TransactionFailed
                     | Error txt -> return Error txt
                 | Error txt -> return Error txt
             | Error txt -> return Error txt
@@ -49,20 +57,29 @@ let fullTableName name = sprintf "OQ-%s" name
 let private checkItem' tableName fields =
     async{
         let! res = doesItemExist client (fullTableName tableName) fields
-        return res |> Result.mapError (fun errors -> logErrors errors; "DynamoDB Get Error")
+        return res |> Result.mapError (fun errors -> logErrors errors; Errors.GetError)
     }
 
 let private getItemProjection' projection tableName reader fields  =
     async{
         match! getItemProjection projection client (fullTableName tableName) reader fields  with
         | Ok entity -> return Ok entity
-        | Error [ItemDoesNotExist] -> return Error "ItemDoesNotExist"
+        | Error [ItemDoesNotExist] -> return Error Errors.ItemDoesNotExist
         | Error list ->
             logErrors list
-            return Error "DynamoDB Get Error"
+            return Error Errors.GetError
     }
 
 let private getItem' tableName reader = getItemProjection' [] tableName reader
+
+let private query' tableName projection reader kce =
+    async{
+        match! queryProjection client projection (fullTableName tableName) reader kce with
+        | Ok list -> return Ok list
+        | Error list ->
+            logErrors list
+            return Error Errors.QueryError
+    }
 
 let private putItem' version tableName fields  =
     async{
@@ -77,14 +94,19 @@ let private putItem' version tableName fields  =
         | Error [ConditionalCheckFailed] -> return Ok Retry
         | Error list ->
             logErrors list
-            return Error "DynamoDB Put Error"
+            return Error Errors.PutError
     }
 
 let private deleteItem' tableName fields =
     async{
         let! res = deleteItem client (fullTableName tableName) fields
-        return res |> Result.mapError (fun errors -> logErrors errors; "DynamoDB Delete Error")
+        return res |> Result.mapError (fun errors -> logErrors errors; Errors.DeleteError)
     }
+
+let private tryParseInt32 (str:string) =
+    match System.Int32.TryParse(str) with
+    | true, n -> Some n
+    | _ -> None
 
 let private toInt32Map (map:Map<string,Model.AttributeValue>) =
     map
@@ -118,6 +140,66 @@ let private setString fieldName v =
     match v with
     | head::tail -> [Attr (fieldName, SetString (NonEmptyList (head, tail)))]
     | _ -> []
+
+type SysItem = {
+    Id : string; Map : Map<string,string>; Version : int
+} with
+    member x.LastId = x.Map.TryFind "LastId" |> Option.map Int32.Parse |> Option.defaultValue -100
+    static member NewItem key = {Id = key; Map = Map.empty; Version = 0}
+
+module SysItem =
+    let private tableName = "System"
+
+    module private Fields =
+        let Id = "Id"
+        let Map = "Map"
+        let Version = "Version"
+
+    let private key id = [ Attr (Fields.Id, ScalarString id) ]
+
+    let private fullId itemKey = "d2-" + itemKey
+
+    let private builder id map version : SysItem =
+        {Id = id; Map = map; Version = version}
+
+    let private reader =
+        builder
+        <!> (req Fields.Id A.string)
+        <*> (req Fields.Map A.docMap >- (Map.map (fun _ -> A.string)))
+        <*> (req Fields.Version A.number >-> P.int)
+
+    let get = key >> getItem' tableName reader
+
+    let put (item:SysItem) =
+        [Attr (Fields.Id, ScalarString item.Id)
+         Attr (Fields.Map, DocMap (item.Map |> Map.toList |> List.map (fun (k,v) -> Attr (k, ScalarString v))))
+         Attr (Fields.Version, ScalarInt32 (item.Version + 1))]
+        |> putItem' (Some item.Version) tableName
+
+    let delete itemKey =
+        key (fullId itemKey)
+        |> deleteItem' tableName
+
+    let private setLastId id (item:SysItem) =
+        {item with Map = item.Map.Add("LastId", id.ToString())}
+
+    let private incLastId (item:SysItem) =
+        {item with Map = item.Map.Add("LastId", (item.LastId + 1).ToString())}
+
+    let getNextId itemKey (startIdProvider: unit -> int) =
+        let itemId = fullId itemKey
+        async{
+            match! putOptimistic' get put itemId (incLastId >> Ok) with
+            | Ok item -> return Ok (item.LastId)
+            | Error Errors.ItemDoesNotExist ->
+                let item =
+                    SysItem.NewItem(itemId)
+                    |> setLastId (startIdProvider())
+                    |> incLastId
+                let! x = put item
+                return x |> Result.map (fun _ -> item.LastId)
+            | Error txt -> return Error txt
+        }
 
 module RefreshTokens =
     let private tableName = "Tokens"
@@ -270,7 +352,7 @@ module private Slips =
         {Question = question; ImgKey = imgKey; Answer = answer; Comment = comment; CommentImgKey = commentImgKey;
             Points = points; JeopardyPoints = jeopardyPoints; WithChoice = withChoice}
 
-    let private singleSlipReader =
+    let singleSlipReader =
         singleSlipBuilder
         <!> (choice Fields.Questions A.docList questionsInSlipReader)
         <*> (optDef Fields.ImgKey "" A.string)
@@ -367,11 +449,13 @@ module Packages =
 
     let get = key >> getItem' tableName reader
 
+    let provider = get >> Async.RunSynchronously >> Result.toOption
+
     let delete = key >> deleteItem' tableName
 
     let private put (pkg : Domain.Package) =
         [
-            Attr (Fields.Id, ScalarInt32 -100)
+            Attr (Fields.Id, ScalarInt32 pkg.Dsc.PackageId)
             Attr (Fields.Producer, ScalarString pkg.Dsc.Producer)
             Attr (Fields.Name, ScalarString pkg.Dsc.Name)
             Attr (Fields.TransferToken, ScalarString pkg.TransferToken)
@@ -379,6 +463,323 @@ module Packages =
             Attr (Fields.Questions, DocList (pkg.Slips |> List.map (Slips.fields >> DocMap)))
             Attr (Fields.Version, ScalarInt32 (pkg.Version + 1))
         ]
-        |> putItem' None tableName
+        |> putItem' (Some pkg.Version) tableName
+
+    let create (creator : int -> Domain.Package) =
+        async{
+            match! SysItem.getNextId "pkg" (fun () -> -100) with
+            | Ok id ->
+                let pkg = creator id
+                return! put pkg |> AsyncResult.map (fun _ -> pkg)
+            | Error txt -> return Error txt
+        }
 
     let update = putOptimistic' get put
+
+module Quizzes =
+    let private tableName = "Quizzes"
+
+    module private Fields =
+        let Id = "Id"
+        let Producer = "Producer"
+        let Name = "Name"
+        let StartTime = "StartTime"
+        let Status = "Status"
+        let WelcomeText = "WelcomeText"
+        let FarewellText = "FarewellText"
+        let ImgKey = "ImgKey"
+        let WithPremoderation = "WithPremoderation"
+        let AdminToken = "AdminToken"
+        let RegToken = "RegToken"
+        let ListenToken = "ListenToken"
+        let PkgId = "PkgId"
+        let PkgQwIdx = "PkgQwIdx"
+        let EventPage = "EventPage"
+        let MixlrCode = "MixlrCode"
+        let Questions = "Questions"
+        let TourName = "Name"
+        let TourSeconds = "Seconds"
+        let TourStatus = "Status"
+        let TourQwIdx = "QwIdx"
+        let TourQwPartIdx = "QwPartIdx"
+        let TourStartTime = "StartTime"
+        let TourSlip = "Slip"
+
+        let Version = "Version"
+
+    let private key id = [ Attr (Fields.Id, ScalarInt32 id) ]
+
+    let private dscFields = [
+        Fields.Id; Fields.Producer; Fields.StartTime; Fields.Name; Fields.Status; Fields.WelcomeText; Fields.FarewellText;
+        Fields.ImgKey;  Fields.WithPremoderation; Fields.AdminToken; Fields.RegToken; Fields.ListenToken;
+        Fields.PkgId; Fields.PkgQwIdx; Fields.EventPage; Fields.MixlrCode]
+
+    let private dscBuilder id producer startTime name status wlcmText frwlText
+        imgKey withPremoderation adminToken regToken listenToken pkgId pkgQwIdx evtPage mixlrCode: Domain.QuizDescriptor =
+        {QuizId = id; Producer = producer; StartTime = startTime; Name = name; Status = status |> Option.defaultValue Domain.Setup;
+         WelcomeText = wlcmText; FarewellText = frwlText; ImgKey = imgKey; WithPremoderation = withPremoderation;
+         AdminToken = adminToken; RegToken = regToken; ListenToken = listenToken;
+         PkgId = pkgId; PkgSlipIdx = pkgQwIdx; EventPage = evtPage; MixlrCode = mixlrCode}
+
+    let private dscReader =
+        dscBuilder
+        <!> (req Fields.Id A.number >-> P.int)
+        <*> (req Fields.Producer A.string)
+        <*> (opt Fields.StartTime A.string ?>-> P.dateTime)
+        <*> (req Fields.Name A.string)
+        <*> (req Fields.Status A.string >- P.enum<Domain.QuizStatus>)
+        <*> (optDef Fields.WelcomeText "" A.string)
+        <*> (optDef Fields.FarewellText "" A.string)
+        <*> (optDef Fields.ImgKey "" A.string)
+        <*> (optDef Fields.WithPremoderation false A.bool)
+        <*> (optDef Fields.AdminToken "" A.string)
+        <*> (optDef Fields.RegToken "" A.string)
+        <*> (optDef Fields.ListenToken "" A.string)
+        <*> (opt Fields.PkgId (A.nullOr A.number) ??>-> P.int)
+        <*> (opt Fields.PkgQwIdx (A.nullOr A.number) ??>-> P.int)
+        <*> (optDef Fields.EventPage "" A.string)
+        <*> (opt Fields.MixlrCode (A.nullOr A.number) ??>-> P.int)
+
+    let getDescriptor = key >> getItemProjection' dscFields tableName dscReader
+
+    let private tourBuilder name seconds status qwIdx qwPartIdx startTime slip : Domain.QuizTour =
+        {Name = name; Seconds = seconds; Status = status |> Option.defaultValue Domain.Announcing;
+            QwIdx = qwIdx; QwPartIdx = qwPartIdx; StartTime = startTime; Slip = slip}
+
+    let private slipChoice =
+        function
+        | Some map -> (fun _ -> Slips.reader map)
+        | None -> (AttrReader.run Slips.singleSlipReader) >> Result.map Domain.Single
+
+    let private tourReader =
+        tourBuilder
+        <!> (optDef Fields.TourName "" A.string)
+        <*> (req Fields.TourSeconds A.number >-> P.int)
+        <*> (req Fields.TourStatus A.string >- P.enum<Domain.QuizTourStatus>)
+        <*> (optDef Fields.TourQwIdx "0" A.number >-> P.int)
+        <*> (optDef Fields.TourQwPartIdx "0" A.number >-> P.int)
+        <*> (opt Fields.TourStartTime (A.nullOr A.string) ??>-> P.dateTime)
+        <*> (choice Fields.TourSlip A.docMap slipChoice)
+
+    let private builder dsc tours version : Domain.Quiz =
+        {Dsc = dsc; Tours = tours; Version = version}
+
+    let private reader =
+        builder
+        <!> dscReader
+        <*> (req Fields.Questions A.docList @>-> (A.docMap, AttrReader.run tourReader))
+        <*> (req Fields.Version A.number >-> P.int)
+
+    let sysKey quizId = (sprintf "quiz-%i" quizId)
+
+    let get = key >> getItem' tableName reader
+
+    let private put (item : Domain.Quiz) =
+        [
+            Attr (Fields.Id, ScalarInt32 item.Dsc.QuizId)
+            Attr (Fields.Producer, ScalarString item.Dsc.Producer)
+            yield! BuildAttr.optional Fields.StartTime ScalarDate item.Dsc.StartTime
+            Attr (Fields.Name, ScalarString item.Dsc.Name)
+            Attr (Fields.Status, ScalarString (item.Dsc.Status.ToString()))
+            yield! BuildAttr.string Fields.WelcomeText item.Dsc.WelcomeText
+            yield! BuildAttr.string Fields.FarewellText item.Dsc.FarewellText
+            yield! BuildAttr.string Fields.ImgKey item.Dsc.ImgKey
+            Attr (Fields.WithPremoderation, ScalarBool item.Dsc.WithPremoderation)
+            yield! BuildAttr.string Fields.AdminToken item.Dsc.AdminToken
+            yield! BuildAttr.string Fields.RegToken item.Dsc.RegToken
+            yield! BuildAttr.string Fields.ListenToken item.Dsc.ListenToken
+            yield! BuildAttr.optional Fields.PkgId ScalarInt32 item.Dsc.PkgId
+            yield! BuildAttr.optional Fields.PkgQwIdx ScalarInt32 item.Dsc.PkgSlipIdx
+            yield! BuildAttr.string Fields.EventPage item.Dsc.EventPage
+            yield! BuildAttr.optional Fields.MixlrCode ScalarInt32 item.Dsc.MixlrCode
+
+            Attr (Fields.Questions, DocList [
+                for tour in item.Tours do
+                    yield DocMap [
+                        yield! BuildAttr.string Fields.TourName tour.Name
+                        Attr (Fields.TourSeconds, ScalarInt32 tour.Seconds)
+                        Attr (Fields.TourStatus, ScalarString (tour.Status.ToString()))
+                        Attr (Fields.TourSlip, DocMap (Slips.fields tour.Slip))
+                        yield! BuildAttr.optional Fields.TourStartTime ScalarDate tour.StartTime
+                        Attr (Fields.TourQwIdx, ScalarInt32 tour.QwIdx)
+                        Attr (Fields.TourQwPartIdx, ScalarInt32 tour.QwPartIdx)
+                    ]
+            ])
+
+            Attr (Fields.Version, ScalarInt32 (item.Version + 1))
+        ]
+        |> putItem' (Some item.Version) tableName
+
+    let create (creator : int -> Domain.Quiz) =
+        async{
+            match! SysItem.getNextId "quizzes" (fun () -> -100) with
+            | Ok id ->
+                let item = creator id
+                return! put item |> AsyncResult.map (fun _ -> item)
+            | Error txt -> return Error txt
+        }
+
+    let update = putOptimistic' get put
+
+    let delete quizId =
+        deleteItem' tableName (key quizId)
+        |> AsyncResult.next (SysItem.delete (sysKey quizId))
+
+module Teams =
+    let private tableName = "Teams"
+
+    module private Fields =
+        let QuizId = "QuizId"
+        let TeamId = "TeamId"
+        let Name = "Name"
+        let Status = "Status"
+        let EntryToken = "EntryToken"
+        let RegistrationDate = "RegistrationDate"
+        let ActiveSessionId = "ActiveSessionId"
+        let Answers = "Answers"
+        let AnswerText = "Text"
+        let AnswerJeopardy = "Jpd"
+        let AnswerRecieveTime = "RecieveTime"
+        let AnswerResult = "Result"
+        let AnswerIsAutoResult = "IsAutoResult"
+        let AnswerUpdateTime = "UpdateTime"
+        let Version = "Version"
+
+    let private key quizId teamId =
+       [ Attr (Fields.QuizId, ScalarInt32 quizId)
+         Attr (Fields.TeamId, ScalarInt32 teamId) ]
+
+    let private queryKeyConditions quizId =
+        Query.KeyConditionExpression (Query.NumberEquals (Fields.QuizId, decimal quizId), [])
+
+    let private dscFields =
+        [Fields.QuizId; Fields.TeamId; Fields.Name; Fields.Status; Fields.EntryToken; Fields.RegistrationDate; Fields.ActiveSessionId]
+
+    let private dscBuilder quizId teamId name status entryToken regDate activeSessionId : Domain.TeamDescriptor =
+       {QuizId = quizId
+        TeamId = teamId
+        Name = name
+        Status = status |> Option.defaultValue Domain.TeamStatus.New
+        EntryToken = entryToken
+        RegistrationDate = regDate
+        ActiveSessionId = activeSessionId}
+
+    let private dscReader =
+        dscBuilder
+        <!> (req Fields.QuizId A.number >-> P.int)
+        <*> (req Fields.TeamId A.number >-> P.int)
+        <*> (optDef Fields.Name "" A.string)
+        <*> (req Fields.Status A.string >- P.enum<Domain.TeamStatus>)
+        <*> (optDef Fields.EntryToken "" A.string)
+        <*> (req Fields.RegistrationDate A.string >-> P.dateTime)
+        <*> (req Fields.ActiveSessionId A.number >-> P.int)
+
+    let getDescriptor quizId teamId  =
+        key quizId teamId
+        |> getItemProjection' dscFields tableName dscReader
+
+    let getIds (quizId: int)  =
+        let kce = queryKeyConditions quizId
+        let reader = (req Fields.TeamId A.number >-> P.int)
+        query' tableName [Fields.TeamId] reader kce
+
+    let getDescriptors (quizId: int)  =
+        let kce = queryKeyConditions quizId
+        query' tableName dscFields dscReader kce
+
+    let private teamAnswerBuilder text jpd recieveTime result isAutoResult updateTime : Domain.TeamAnswer =
+        {Text = text; Jeopardy = jpd; RecieveTime = recieveTime;
+            Result = result; IsAutoResult = isAutoResult; UpdateTime = updateTime}
+
+    let private teamAnswerReader =
+        teamAnswerBuilder
+        <!> (optDef Fields.AnswerText "" A.string)
+        <*> (optDef Fields.AnswerJeopardy false A.bool)
+        <*> (req Fields.AnswerRecieveTime A.string >-> P.dateTime)
+        <*> (opt Fields.AnswerResult  (A.nullOr A.number) ??>-> P.decimal)
+        <*> (optDef Fields.AnswerIsAutoResult false A.bool)
+        <*> (opt Fields.AnswerUpdateTime  (A.nullOr A.string) ??>-> P.dateTime)
+
+    let private teamBuilder dsc answers version : Domain.Team =
+        {Dsc = dsc; Answers = answers; Version = version}
+
+    let private qwKeyOfString (str:string) =
+        match str.StartsWith "qw" with
+        | true ->
+            let indexes = (str.Substring(2)).Split '.'
+            {
+                TourIdx = indexes |> Array.tryItem 0 |> Option.bind tryParseInt32 |> Option.defaultValue 0
+                QwIdx = indexes |> Array.tryItem 1 |> Option.bind tryParseInt32 |> Option.defaultValue 0
+            } : Domain.QwKey
+        | false ->
+            {
+                TourIdx = str |> tryParseInt32 |> Option.defaultValue 0
+                QwIdx = 0
+            }
+        |> Ok
+
+    let private stringOfQwKey (key:Domain.QwKey) : string =
+        sprintf "qw%i.%i" key.TourIdx key.QwIdx
+
+    let private reader =
+        teamBuilder
+        <!> dscReader
+        <*> (map Fields.Answers qwKeyOfString (A.docMap >> (AttrReader.run teamAnswerReader)))
+        <*> (req Fields.Version A.number >-> P.int)
+
+    let get (k:Domain.TeamKey) =
+        getItem' tableName reader (key k.QuizId k.TeamId)
+
+    let getAllInQuiz (quizId: int)  =
+        let kce = queryKeyConditions quizId
+        query' tableName [] reader kce
+
+    let private put (item : Domain.Team) =
+        [
+            Attr (Fields.QuizId, ScalarInt32 item.Dsc.QuizId)
+            Attr (Fields.TeamId, ScalarInt32 item.Dsc.TeamId)
+            Attr (Fields.Name, ScalarString item.Dsc.Name)
+            Attr (Fields.Status, ScalarString (item.Dsc.Status.ToString()))
+            Attr (Fields.RegistrationDate, ScalarDate item.Dsc.RegistrationDate)
+            Attr (Fields.EntryToken, ScalarString item.Dsc.EntryToken)
+            Attr (Fields.ActiveSessionId, ScalarInt32 item.Dsc.ActiveSessionId)
+            Attr (Fields.Answers, DocMap [
+                for pair in item.Answers do
+                    Attr((stringOfQwKey pair.Key), DocMap[
+                        Attr (Fields.AnswerText, ScalarString pair.Value.Text)
+                        Attr (Fields.AnswerJeopardy, ScalarBool pair.Value.Jeopardy)
+                        Attr (Fields.AnswerRecieveTime, ScalarDate pair.Value.RecieveTime)
+                        match pair.Value.Result with
+                        | Some res -> Attr (Fields.AnswerResult, ScalarDecimal res)
+                        | None -> Attr (Fields.AnswerResult, ScalarNull)
+                        Attr (Fields.AnswerIsAutoResult, ScalarBool pair.Value.IsAutoResult)
+                        match pair.Value.UpdateTime with
+                        | Some v -> Attr (Fields.AnswerUpdateTime, ScalarDate v)
+                        | None -> Attr (Fields.AnswerUpdateTime, ScalarNull)
+                    ])
+            ])
+            Attr (Fields.Version, ScalarInt32 (item.Version + 1))
+        ]
+        |> putItem' (Some item.Version) tableName
+
+    let create quizId creator =
+        async{
+            let lastIdProvider = (fun () ->
+                match getIds quizId |> Async.RunSynchronously with
+                | Ok (head::tail) -> List.max (head::tail)
+                | _ -> 0
+            )
+
+            match! SysItem.getNextId (Quizzes.sysKey quizId) lastIdProvider with
+            | Ok id ->
+                match creator id with
+                | Ok item -> return! put item |> AsyncResult.map (fun _ -> item)
+                | Error txt -> return Error txt
+            | Error txt -> return Error txt
+        }
+
+    let update = putOptimistic' get put
+
+    let delete quizId teamId  =
+        key quizId teamId
+        |> deleteItem' tableName

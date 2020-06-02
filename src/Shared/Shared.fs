@@ -565,7 +565,7 @@ type IAdminApi = {
     changeQuizStatus : REQ<{|QuizStatus : QuizStatus|}> -> ARESP<AdminModels.QuizControlCard>
     getPackages : REQ<unit> -> ARESP<PackageRecord list>
     setPackage : REQ<{|PackageId: int option|}> -> ARESP<AdminModels.QuizControlCard>
-    getPackageCard : REQ<{|PackageId: int|}> -> ARESP<PackageCard option>
+    getPackageCard : REQ<{|PackageId: int|}> -> ARESP<PackageCard>
     uploadFile : REQ<{|Cat:ImgCategory; FileType : string; FileBody : byte[]|}> -> ARESP<{|BucketKey: string|}>
     startCountDown : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     pauseCountDown : REQ<unit> -> ARESP<AdminModels.QuizControlCard>

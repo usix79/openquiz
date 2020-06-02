@@ -258,7 +258,7 @@ let loginMainUser secret token clientId clientName redirectUrl code =
                         IsProducer = match exp with Ok exp -> exp.IsProducer | _ -> false
                         IsPrivate = privateQuizId.IsSome
                 }
-                
+
                 let claims = [
                     Claim(CustomClaims.UserId, info.Sub)
                     Claim(CustomClaims.UserName, info.Username)

@@ -71,7 +71,8 @@ let answers team req =
 let getHistory team _ =
     result{
         let! quiz = (Data.Quizzes.get team.QuizId, "Quiz not found")
-        let! team = (Data.Teams.get team.QuizId team.TeamId, "Team not found")
+
+        let! team = Data2.Teams.get team.Key |> Async.RunSynchronously
 
         return Teams.quizHistory quiz team
     }

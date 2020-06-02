@@ -61,19 +61,42 @@ module AsyncResult =
 
     let map f m =
         async {
-            let! r = m
-            match r with
+            match! m with
             | Ok a -> return Ok(f a)
             | Error e -> return Error e
         }
 
     let bind f m =
         async {
-            let! r = m
-            match r with
+            match! m with
             | Ok a -> return! f a
             | Error e -> return Error e
         }
+
+    let side f m =
+        async {
+            match! m with
+            | Ok a ->
+                match! f a with
+                | Ok _ -> return Ok a
+                | Error e -> return Error e
+            | Error e -> return Error e
+        }
+
+    let sideRes f m =
+        async {
+            match! m with
+            | Ok a ->
+                match f a with
+                | Ok _ -> return Ok a
+                | Error e -> return Error e
+            | Error e -> return Error e
+        }
+
+
+
+    let next mn m =
+        bind (fun _ -> mn) m
 
 module Config =
     open Microsoft.Extensions.Configuration
