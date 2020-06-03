@@ -67,15 +67,15 @@ let imgHandler (dir,key) : HttpHandler =
             return! ctx.WriteStreamAsync true data.Body None None
         }
 
-let gameChangedSse = Sse.SseService<QuizChangedEvent>()
+let quizChangedSse = Sse.SseService<QuizChangedEvent>()
 
 Data2.Quizzes.onChanged.Add (fun quiz ->
         let evt = Presenter.quizChangeEvent quiz
         Log.Information ("{@Op} {@Evt}", "Event", evt)
-        gameChangedSse.Send evt
+        quizChangedSse.Send (sprintf "quiz-%i" evt.Id) evt
      )
 
-let sseHandler _next (ctx: HttpContext)  =
+let sseHandler (_next:HttpFunc) (ctx: HttpContext)  =
     let (|QInt|_|) key =
        match ctx.TryGetQueryStringValue key with
        | Some str ->
@@ -100,22 +100,21 @@ let sseHandler _next (ctx: HttpContext)  =
             match! Data2.Quizzes.get quizId |> Async.StartAsTask with
             | Ok quiz when quiz.Dsc.ListenToken = listenToken->
                 ctx.SetContentType "text/event-stream"
-                do! gameChangedSse.WriteHeartbeat ctx.Response
+                do! quizChangedSse.WriteHeartbeat ctx.Response
                 //do! ctx.Response.Body.FlushAsync()
 
                 if quiz.Version > startVersion then
                     do! Task.Delay(1000)
                     let evt = Presenter.quizChangeEvent quiz
-                    do! gameChangedSse.WriteMessage ctx.Response evt
+                    do! quizChangedSse.WriteMessage ctx.Response evt
 
-                gameChangedSse.Subscribe ctx.TraceIdentifier ctx.Response (fun evt -> evt.Id = quizId)
+                quizChangedSse.Subscribe ctx.TraceIdentifier ctx.Response (fun evt -> evt.Id = quizId)
 
                 do! Task.Delay(-1, ctx.RequestAborted).ContinueWith(ignore,TaskContinuationOptions.OnlyOnCanceled)
-                //ctx.RequestAborted.WaitHandle.WaitOne() |> ignore
 
-                gameChangedSse.Unsubscribe ctx.TraceIdentifier
+                quizChangedSse.Unsubscribe ctx.TraceIdentifier
 
-                return None
+                return! _next ctx
             | Ok _ -> return! error 401 "wrong token"
             | Error _ -> return! error 400 "quiz not found"
         | _ ->
@@ -124,6 +123,7 @@ let sseHandler _next (ctx: HttpContext)  =
 
 let appRouter =
     choose [
+        route "/ping" >=> text ("pong")
         route "/index.html" >=> redirectTo false "/"
         route "/default.html" >=> redirectTo false "/"
         route "/login" >=> loginHandler

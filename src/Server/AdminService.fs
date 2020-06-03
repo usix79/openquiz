@@ -195,11 +195,17 @@ type SettleItem = {
 
 let settleAnswers (quiz : Domain.Quiz) =
 
+    let now = DateTime.UtcNow
+
     let logic (items: SettleItem list) (team : Domain.Team) =
-        let now = DateTime.UtcNow
         items
-        |> List.fold (fun team item -> team |> Domain.Teams.settleAnswer item.Idx item.Jury item.Points item.JeopardyPoints item.WithChoice now) team
-        |> Ok
+        |> List.fold (fun (team,changed) item ->
+            let (team,changedNow) = team |> Domain.Teams.settleAnswer item.Idx item.Jury item.Points item.JeopardyPoints item.WithChoice now
+            team, (changed || changedNow))
+            (team,false)
+        |> (function
+            | team,true -> Ok team
+            | _, false -> Error "Nothing to change")
 
     let createItem (slip:Domain.SingleAwSlip) qwIdx =
         if not (String.IsNullOrWhiteSpace slip.Answer) then
@@ -216,13 +222,17 @@ let settleAnswers (quiz : Domain.Quiz) =
             | Domain.Multiple (_, slips) -> slips |> List.mapi (fun idx slip -> createItem slip idx)
             |> List.choose id
 
+        let sw = Diagnostics.Stopwatch.StartNew()
+
         Data2.Teams.getIds quiz.Dsc.QuizId
         |> AR.bind (fun list ->
             list |> List.map (fun teamId -> Data2.Teams.update {QuizId = quiz.Dsc.QuizId; TeamId = teamId} (logic items))
             |> Async.Sequential
-            |> Async.map (fun _ -> Ok ()))
+            |> Async.map (fun _ ->
+                sw.Stop()
+                Log.Information("{@Op} {@Proc} {@Quiz} {@TeamsCount} {@Duration}", "Settle", "admin", quiz.Dsc.QuizId, list.Length, sw.ElapsedMilliseconds)
+                Ok ()))
     | _ -> AR.retn ()
-
 
 let nextTour quiz _ =
     let logic quiz = quiz |> Domain.Quizzes.next Data2.Packages.provider |> Ok
@@ -237,7 +247,10 @@ let getAnswers quiz _ =
         |> AR.map (fun teams -> Admin.AnswersBundle quiz teams))
 
 let updateResults quiz req =
-    let logic qwKey res team = team |> Domain.Teams.updateResult qwKey res DateTime.UtcNow |> Ok
+    let logic qwKey res team =
+        team
+        |> Domain.Teams.updateResult qwKey res DateTime.UtcNow
+        |> (function team,true -> Ok team | _,false -> Error "Nothing to change")
 
     req
     |> List.map (fun r -> Data2.Teams.update {QuizId = quiz.QuizId; TeamId = r.TeamId} (logic (qwKeyToDomain r.QwKey) r.Res))

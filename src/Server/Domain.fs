@@ -454,10 +454,12 @@ module Teams =
     let changeName newName (team:Team) =
         {team with Dsc = {team.Dsc with Name = newName}}
 
-    let updateAnswer qwIdx (f : TeamAnswer -> TeamAnswer) (team: Team) =
+    let updateAnswer qwIdx (f : TeamAnswer -> TeamAnswer*bool) (team: Team) =
         match team.GetAnswer qwIdx with
-        | Some aw -> {team with Answers = team.Answers |> Map.add qwIdx (f aw)}
-        | None -> team
+        | Some aw ->
+            let (aw, changed) = f aw
+            {team with Answers = team.Answers |> Map.add qwIdx aw}, changed
+        | None -> team, false
 
     let settleAnswer qwIdx (jury : string -> bool) points jpdPoints withChoice now (team: Team) =
         team |> updateAnswer qwIdx (fun aw ->
@@ -475,14 +477,9 @@ module Teams =
                         | Some jpdPoints, true when aw.Jeopardy -> Some (-jpdPoints)
                         | _ -> None
                 match result with
-                | Some _ ->
-                    {aw with
-                        Result = result
-                        IsAutoResult = true
-                        UpdateTime = Some now
-                    }
-                | None -> aw
-            else aw
+                | Some _ -> {aw with Result = result; IsAutoResult = true; UpdateTime = Some now}, true
+                | None -> aw, false
+            else aw, false
         )
 
     let registerAnswer qwIndex awText jeopardy now (team:Team) =
@@ -497,5 +494,5 @@ module Teams =
 
     let updateResult qwIdx res now (team:Team) =
         team |> updateAnswer qwIdx (fun aw ->
-            {aw with Result = res; IsAutoResult = false; UpdateTime = Some now}
+            {aw with Result = res; IsAutoResult = false; UpdateTime = Some now}, true
         )

@@ -300,7 +300,7 @@ module Sse =
     type private AgentCommand<'msg> =
         | Subscribe of Subscription<'msg>
         | Unsubcribe of string
-        | Send of 'msg
+        | Send of string*'msg
         | Heartbeat
 
     type SseService<'msg> () =
@@ -334,16 +334,25 @@ module Sse =
                             Log.Information ("{@Op} {@Proc} {@Count}", "Unsubscribe", "SSE", subs.Count)
                             return! loop subs
                         | Heartbeat ->
+                            let sw = Diagnostics.Stopwatch.StartNew()
+
                             subs |> Map.toSeq |> Seq.map (fun (_,sub) -> writeMessage sub.Response heartbeatTxt)
                             |> FSharpx.Control.Async.ParallelCatchWithThrottle 2
-                            |> Async.map ignore
+                            |> Async.map (fun _ ->
+                                sw.Stop()
+                                Log.Information("{@Op} {@Proc} {@ListenersCount} {@Duration}", "Heartbeat", "SSE", subs.Count, sw.ElapsedMilliseconds)
+                            )
                             |> Async.Start
-                        | Send msg ->
+                        | Send (topic,msg) ->
+                            let sw = Diagnostics.Stopwatch.StartNew()
                             subs |> Map.toSeq
                             |> Seq.filter (fun (_, sub) -> sub.Filter msg)
                             |> Seq.map (fun (_,sub) -> writeMessage sub.Response (msgToText msg))
                             |> FSharpx.Control.Async.ParallelCatchWithThrottle 2
-                            |> Async.map ignore
+                            |> Async.map (fun arr ->
+                                sw.Stop()
+                                Log.Information("{@Op} {@Proc} {@Topic} {@ListenersCount} {@Duration}", "Message", "SSE", topic, arr.Length, sw.ElapsedMilliseconds)
+                            )
                             |> Async.Start
                     with
                     | ex -> Log.Error ("{@Proc} {@Exn}", "SSE", ex)
@@ -370,8 +379,8 @@ module Sse =
         member x.Unsubscribe subscriptionId =
             agent.Post (Unsubcribe subscriptionId)
 
-        member x.Send msg =
-            agent.Post (Send msg)
+        member x.Send topic msg =
+            agent.Post (Send (topic,msg))
 
         member x.WriteMessage (resp : HttpResponse) (msg:'msg) =
             writeMessage resp (msgToText msg) |> Async.StartAsTask

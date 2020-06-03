@@ -703,6 +703,7 @@ module Teams =
         query' tableName [] reader kce
 
     let private put (item : Domain.Team) =
+        printfn "PUT TEAM %i" item.Dsc.TeamId
         [
             Attr (Fields.QuizId, ScalarInt32 item.Dsc.QuizId)
             Attr (Fields.TeamId, ScalarInt32 item.Dsc.TeamId)
