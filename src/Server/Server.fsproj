@@ -11,10 +11,8 @@
     <Compile Include="Jury.fs" />
     <Compile Include="Bucket.fs" />
     <Compile Include="DataLibrary.fs" />
-    <Compile Include="Data.fs" />
     <Compile Include="Data2.fs" />
     <Compile Include="Presenter.fs" />
-    <Compile Include="CommonService.fs" />
     <Compile Include="SecurityService.fs" />
     <Compile Include="MainService.fs" />
     <Compile Include="AdminService.fs" />

@@ -69,7 +69,8 @@ let imgHandler (dir,key) : HttpHandler =
 
 let gameChangedSse = Sse.SseService<QuizChangedEvent>()
 
-CommonService.DomainEvents.subscribeOnQuizChanges (fun evt ->
+Data2.Quizzes.onChanged.Add (fun quiz ->
+        let evt = Presenter.quizChangeEvent quiz
         Log.Information ("{@Op} {@Evt}", "Event", evt)
         gameChangedSse.Send evt
      )
@@ -94,12 +95,10 @@ let sseHandler _next (ctx: HttpContext)  =
         }
 
     task {
-        printfn "Available Threads: %A" (Threading.ThreadPool.GetAvailableThreads())
-
         match "quiz", "start", "token" with
         | QInt quizId, QInt startVersion, QStr listenToken ->
-            match Data.Quizzes.get quizId with
-            | Some quiz when quiz.Dsc.ListenToken = listenToken->
+            match! Data2.Quizzes.get quizId |> Async.StartAsTask with
+            | Ok quiz when quiz.Dsc.ListenToken = listenToken->
                 ctx.SetContentType "text/event-stream"
                 do! gameChangedSse.WriteHeartbeat ctx.Response
                 //do! ctx.Response.Body.FlushAsync()
@@ -117,9 +116,8 @@ let sseHandler _next (ctx: HttpContext)  =
                 gameChangedSse.Unsubscribe ctx.TraceIdentifier
 
                 return None
-            | Some _ -> return! error 401 "wrong token"
-            | None -> return! error 400 "game not found"
-
+            | Ok _ -> return! error 401 "wrong token"
+            | Error _ -> return! error 400 "quiz not found"
         | _ ->
             return! error 400 "(-)"
     }

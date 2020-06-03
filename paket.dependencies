@@ -8,6 +8,7 @@ nuget AWS.Logger.SeriLog
 nuget AWSSDK.DynamoDBv2
 nuget AWSSDK.S3
     nuget FSharp.Core
+nuget FSharpx.Async
     nuget Giraffe
     nuget Fable.Remoting.Giraffe ~> 3
 nuget Giraffe.SerilogExtensions

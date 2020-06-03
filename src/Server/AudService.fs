@@ -18,16 +18,14 @@ let api (context:HttpContext) : IAudApi =
     let ex proc f =
 
         let ff f = (fun (quizIdStr:string) req ->
-            match Int32.TryParse quizIdStr with
-            | true, quizId ->
-                match Data.Quizzes.getDescriptor quizId with
-                | Some quiz -> f quiz req
-                | None ->
-                    Log.Error ("{Api} {Error} {Quiz}", "aud", "Quiz Not Found", quizId)
-                    Error "Quiz not found"
-            | _ ->
+            match tryParseInt32 quizIdStr with
+            | Some quizId ->
+                Data2.Quizzes.getDescriptor quizId
+                |> AsyncResult.bind (fun quiz -> f quiz req)
+            | None ->
                 Log.Error ("{Api} {Error} {Quiz}", "aud", "Wrong quiz Id", quizIdStr)
                 Error "Wrong Quiz Id"
+                |> AsyncResult.fromResult
         )
 
         SecurityService.exec logger proc <| SecurityService.authorizeAudience secret (ff f)
@@ -41,23 +39,15 @@ let api (context:HttpContext) : IAudApi =
     api
 
 let getQuiz quiz _ =
-    result{
-        let! quiz = (Data.Quizzes.get quiz.QuizId, "Quiz not found")
-
-        return Audience.quizCard quiz
-    }
+    Data2.Quizzes.get quiz.QuizId
+    |> AsyncResult.map Audience.quizCard
 
 let getHistory quiz _ =
-    result{
-        let! quiz = (Data.Quizzes.get quiz.QuizId, "Quiz not found")
-
-        return Audience.quizHistory quiz
-    }
+    Data2.Quizzes.get quiz.QuizId
+    |> AsyncResult.map Audience.quizHistory
 
 let getResults quiz _ =
-    result{
-        let! quiz = (Data.Quizzes.get quiz.QuizId, "Quiz not found")
-        let teams = Data.Teams.getAllInQuiz quiz.Dsc.QuizId
-
-        return {|Teams = teams |> teamResults false; Questions = questionResults quiz|}
-    }
+    Data2.Quizzes.get quiz.QuizId
+    |> AsyncResult.bind (fun quiz ->
+        Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
+        |> AsyncResult.map (fun teams -> {|Teams = teams |> teamResults false; Questions = questionResults quiz|}))

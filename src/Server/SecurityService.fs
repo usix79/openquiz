@@ -14,6 +14,8 @@ open Shared
 open Common
 open Domain
 
+module AR = AsyncResult
+
 module CustomClaims =
     let Name = "name"
     let Role = "role'"
@@ -176,19 +178,20 @@ let authorizeTeam secret (f: int -> TeamKey -> 'arg -> ARES<'res>) =
         result {
             let! teamKey = (teamKey principal, "Invalid team's key")
             let! sessionId = (teamSessionId principal, "Wrong session Id")
+            return (sessionId, teamKey)
+        }
+        |> AsyncResult.fromResult
+        |> AsyncResult.bind (fun (sessionId, teamKey) -> f sessionId teamKey req)
 
-            return! (f sessionId teamKey req |> Async.RunSynchronously)
-        } |> Async.retn
-
-let authorizePrivateReg secret (f: string -> 'arg -> Result<'res, string>) =
+let authorizePrivateReg secret (f: string -> 'arg -> ARES<'res>) =
     authorize secret CustomRoles.Reg <| fun principal req ->
         let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
-        f quizIdStr req |> Async.retn
+        f quizIdStr req
 
-let authorizeAudience secret (f: string -> 'arg -> Result<'res, string>) =
+let authorizeAudience secret (f: string -> 'arg -> ARES<'res>) =
     authorize secret CustomRoles.Aud <| fun principal req ->
         let quizIdStr = principal.FindFirstValue CustomClaims.QuizId
-        f quizIdStr req |> Async.retn
+        f quizIdStr req
 
 let execute (logger : ILogger) (proc:string) (f: REQ<'Req> -> RESP<'Resp>) : REQ<'Req> -> ARESP<'Resp> =
     fun req ->
@@ -274,66 +277,53 @@ let loginMainUser secret token clientId clientName redirectUrl code =
     }
 
 let loginAdminUser secret quizId token =
-    async{
-        match Data.Quizzes.getDescriptor quizId with
-        | Some quiz when quiz.AdminToken = System.Web.HttpUtility.UrlDecode token ->
+    Data2.Quizzes.getDescriptor quizId
+    |> AR.bind (fun quiz ->
+        if quiz.AdminToken = System.Web.HttpUtility.UrlDecode token then
             let claims = [Claim(CustomClaims.Role, CustomRoles.Admin); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
             let user = AdminUser {QuizId = quiz.QuizId; QuizName = quiz.Name; QuizImg = quiz.ImgKey}
-            return! loginResp secret claims user
-        | Some _ -> return Error "Wrong entry token"
-        | None -> return Error "Quiz not found"
-    }
+            loginResp secret claims user
+        else Error "Wrong entry token" |> AR.fromResult)
 
 let loginTeamUser secret quizId teamId token =
-    async{
-        match Data.Teams.getDescriptor quizId teamId with
-        | Some team when team.EntryToken = token ->
-            match Data.Quizzes.getDescriptor quizId with
-            | Some quiz ->
+    Data2.Teams.getDescriptor quizId teamId
+    |> AR.bind (fun team ->
+        if team.EntryToken = token then
+            Data2.Quizzes.getDescriptor quizId
+            |> AR.bind (fun quiz ->
                 let sessionId = rand.Next(Int32.MaxValue)
-
-                // if this is first login, than take active session
-                do if team.ActiveSessionId = 0 then
-                    CommonService.updateTeamNoReply {QuizId = quizId; TeamId = teamId}
-                        (fun team -> team |> Domain.Teams.dsc (fun dsc -> {dsc with ActiveSessionId = sessionId} |> Ok))
-
                 let user = {QuizId = team.QuizId; QuizName = quiz.Name; TeamId = team.TeamId; TeamName = team.Name}
-
                 let claims = [
                     Claim(CustomClaims.Name, user.TeamName)
                     Claim(CustomClaims.Role, CustomRoles.Team)
                     Claim(CustomClaims.QuizId, user.QuizId.ToString())
                     Claim(CustomClaims.TeamId, user.TeamId.ToString())
-                    Claim(CustomClaims.SessionId, sessionId.ToString())
-                ]
-
-                return! loginResp secret claims (TeamUser user)
-
-            | None -> return Error "Quiz not found"
-        | _ -> return Error "Authenticaton Error"
-    }
+                    Claim(CustomClaims.SessionId, sessionId.ToString())]
+                if team.ActiveSessionId = 0 then
+                    Data2.Teams.update {QuizId = quizId; TeamId = teamId}
+                      (fun team -> team |> Domain.Teams.dsc (fun dsc -> {dsc with ActiveSessionId = sessionId} |> Ok))
+                    |> AR.next (AR.retn ())
+                else AR.retn ()
+                |> AR.next (loginResp secret claims (TeamUser user)))
+        else Error "Authenticaton Error" |> AR.fromResult)
 
 let loginRegUser secret quizId token =
-    async{
-        match Data.Quizzes.getDescriptor quizId with
-        | Some quiz when quiz.RegToken = System.Web.HttpUtility.UrlDecode token ->
+    Data2.Quizzes.getDescriptor quizId
+    |> AR.bind (fun quiz ->
+        if quiz.RegToken = System.Web.HttpUtility.UrlDecode token then
             let claims = [Claim(CustomClaims.Role, CustomRoles.Reg); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
             let user = RegUser {QuizId = quiz.QuizId}
-            return! loginResp secret claims user
-        | Some _ -> return Error "Wrong entry token"
-        | None -> return Error "Quiz not found"
-    }
+            loginResp secret claims user
+        else Error "Wrong entry token" |> AR.fromResult)
 
 let loginAudUser secret quizId token =
-    async{
-        match Data.Quizzes.getDescriptor quizId with
-        | Some quiz when quiz.ListenToken = System.Web.HttpUtility.UrlDecode token ->
+    Data2.Quizzes.getDescriptor quizId
+    |> AR.bind (fun quiz ->
+        if quiz.ListenToken = System.Web.HttpUtility.UrlDecode token then
             let claims = [Claim(CustomClaims.Role, CustomRoles.Aud); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
-            let user = AudUser {QuizId = quiz.QuizId}
-            return! loginResp secret claims user
-        | Some _ -> return Error "Wrong entry token"
-        | None -> return Error "Quiz not found"
-    }
+            let user = RegUser {QuizId = quiz.QuizId}
+            loginResp secret claims user
+        else Error "Wrong entry token" |> AR.fromResult)
 
 let api (context:HttpContext) : ISecurityApi =
     let logger : ILogger = context.Logger()
@@ -354,11 +344,7 @@ let login secret (cfg:IConfiguration) (token:string) (req : LoginReq) =
         let clientName = Config.getCognitoClientName cfg
         let redirectUri = Config.getRedirectUrl cfg
         loginMainUser secret token clientId clientName redirectUri data.Code
-    | LoginReq.AdminUser data ->
-        loginAdminUser secret data.QuizId data.Token
-    | LoginReq.TeamUser data ->
-        loginTeamUser secret data.QuizId data.TeamId data.Token
-    | LoginReq.RegUser data ->
-        loginRegUser secret data.QuizId data.Token
-    | LoginReq.AudUser data ->
-        loginAudUser secret data.QuizId data.Token
+    | LoginReq.AdminUser data -> loginAdminUser secret data.QuizId data.Token
+    | LoginReq.TeamUser data -> loginTeamUser secret data.QuizId data.TeamId data.Token
+    | LoginReq.RegUser data -> loginRegUser secret data.QuizId data.Token
+    | LoginReq.AudUser data -> loginAudUser secret data.QuizId data.Token

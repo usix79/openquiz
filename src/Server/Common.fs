@@ -6,7 +6,6 @@ open System.Security.Cryptography
 open System.Threading.Tasks
 open System.Net.Http
 
-open Microsoft.FSharp.Reflection
 open Microsoft.AspNetCore.Http
 open Fable.Remoting.Server
 open Newtonsoft.Json.Linq
@@ -32,10 +31,29 @@ let generateRandomToken () =
         .Replace("/", "_")
         .Replace("+", "-")
 
+let tryParseInt32 (str:string) =
+    match System.Int32.TryParse(str) with
+    | true, n -> Some n
+    | _ -> None
+
+let toEpoch dt =
+    (dt - DateTime.UnixEpoch).TotalSeconds
+    |> Convert.ToInt64
+    |> Convert.ToDecimal
+
+let fromEpoch (epoch:decimal) =
+    epoch
+    |> Convert.ToDouble
+    |> DateTime.UnixEpoch.AddSeconds
+
 module Result =
     let toOption = function
     | Ok entity -> Some entity
     | Error _ -> None
+
+    let fromOption error = function
+    | Some entity -> Ok entity
+    | None -> Error error
 
 module Async =
 
@@ -66,6 +84,20 @@ module AsyncResult =
             | Error e -> return Error e
         }
 
+    let mapError f m =
+        async {
+            match! m with
+            | Ok a -> return Ok a
+            | Error e -> return Error (f e)
+        }
+
+    let ifError f m =
+        async {
+            match! m with
+            | Ok a -> return Ok a
+            | Error e -> return Ok (f e)
+        }
+
     let bind f m =
         async {
             match! m with
@@ -83,6 +115,9 @@ module AsyncResult =
             | Error e -> return Error e
         }
 
+    let sideIf p f m =
+        if p then side f m else m
+
     let sideRes f m =
         async {
             match! m with
@@ -92,8 +127,6 @@ module AsyncResult =
                 | Error e -> return Error e
             | Error e -> return Error e
         }
-
-
 
     let next mn m =
         bind (fun _ -> mn) m
@@ -301,17 +334,17 @@ module Sse =
                             Log.Information ("{@Op} {@Proc} {@Count}", "Unsubscribe", "SSE", subs.Count)
                             return! loop subs
                         | Heartbeat ->
-                            let! _ = subs |> Map.toSeq |> Seq.map (fun (_,sub) -> writeMessage sub.Response heartbeatTxt)
-                                        |> Async.Parallel
-
-                            ()
+                            subs |> Map.toSeq |> Seq.map (fun (_,sub) -> writeMessage sub.Response heartbeatTxt)
+                            |> FSharpx.Control.Async.ParallelCatchWithThrottle 2
+                            |> Async.map ignore
+                            |> Async.Start
                         | Send msg ->
-                            let! _ =
-                                subs |> Map.toSeq
-                                |> Seq.filter (fun (_, sub) -> sub.Filter msg)
-                                |> Seq.map (fun (_,sub) -> writeMessage sub.Response (msgToText msg))
-                                |> Async.Parallel
-                            ()
+                            subs |> Map.toSeq
+                            |> Seq.filter (fun (_, sub) -> sub.Filter msg)
+                            |> Seq.map (fun (_,sub) -> writeMessage sub.Response (msgToText msg))
+                            |> FSharpx.Control.Async.ParallelCatchWithThrottle 2
+                            |> Async.map ignore
+                            |> Async.Start
                     with
                     | ex -> Log.Error ("{@Proc} {@Exn}", "SSE", ex)
 

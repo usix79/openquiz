@@ -20,51 +20,29 @@ let api (context:HttpContext) : IAdminApi =
     let ex proc f =
 
         let ff f = (fun (quizIdStr:string) req ->
-            match Int32.TryParse quizIdStr with
-            | true, quizId ->
-                match Data.Quizzes.getDescriptor quizId with
-                | Some quiz -> f quiz req
-                | None ->
-                    Log.Error ("{Api} {Error} {Quiz}", "admin", "Quiz Not Found", quizId)
-                    Error "Quiz not found"
-            | _ ->
+            match tryParseInt32 quizIdStr with
+            | Some quizId ->
+                Data2.Quizzes.getDescriptor quizId
+                |> AsyncResult.bind (fun quiz -> f quiz req)
+            | None ->
                 Log.Error ("{Api} {Error} {Quiz}", "admin", "Wrong quiz Id", quizIdStr)
                 Error "Wrong Quiz Id"
-            |> AR.fromResult
-        )
-
-        SecurityService.exec logger proc <| SecurityService.authorizeAdmin secret (ff f)
-
-    let ex2 proc f =
-
-        let ff f = (fun (quizIdStr:string) req ->
-            match Int32.TryParse quizIdStr with
-            | true, quizId ->
-                match Data.Quizzes.getDescriptor quizId with
-                | Some quiz -> f quiz req
-                | None ->
-                    Log.Error ("{Api} {Error} {Quiz}", "admin", "Quiz Not Found", quizId)
-                    Error "Quiz not found"
-                    |> AR.fromResult
-            | _ ->
-                Log.Error ("{Api} {Error} {Quiz}", "admin", "Wrong quiz Id", quizIdStr)
-                Error "Wrong Quiz Id"
-                |> AR.fromResult
+                |> AsyncResult.fromResult
         )
 
         SecurityService.exec logger proc <| SecurityService.authorizeAdmin secret (ff f)
 
     let api : IAdminApi = {
-        getTeams = ex2  "getTeams" getTeams
-        createTeam = ex2  "createTeam" createTeam
-        getTeamCard = ex2  "getTeamCard" getTeamCard
-        updateTeamCard = ex2  "updateTeamCard" updateTeamCard
+        getTeams = ex  "getTeams" getTeams
+        createTeam = ex  "createTeam" createTeam
+        getTeamCard = ex  "getTeamCard" getTeamCard
+        updateTeamCard = ex  "updateTeamCard" updateTeamCard
         changeTeamStatus = ex  "changeTeamStatus" changeTeamStatus
         getQuizCard = ex  "getQuizCard" getQuizCard
         changeQuizStatus = ex  "changeQuizStatus" changeQuizStatus
-        getPackages = ex2 "getPackages" getPackages
+        getPackages = ex "getPackages" getPackages
         setPackage = ex "setPackage" setPackage
-        getPackageCard = ex2 "getPackageCard" getPackageCard
+        getPackageCard = ex "getPackageCard" getPackageCard
         uploadFile = ex "uploadFile" <| uploadFile (Config.getFilesAccessPoint cfg)
         startCountDown = ex "startCountDown" startCountDown
         pauseCountDown = ex "pauseCountDown" pauseCountDown
@@ -87,14 +65,15 @@ let getTeams quiz req =
 let createTeam quiz req =
     let teamName = req.TeamName.Trim()
 
-    let creator teamId =
-        let teamsInQuiz = Data.Teams.getDescriptors quiz.QuizId
+    let creator teamsInQuiz teamId =
         match Domain.Teams.validateTeamUpdate true teamName teamsInQuiz quiz with
         | Some txt -> Error txt
         | None -> Domain.Teams.createNewAdmin teamId teamName quiz Domain.Admitted  |> Ok
 
-    Data2.Teams.create quiz.QuizId creator
-    |> AR.map (fun team -> {|Record = Admin.teamRecord team.Dsc|})
+    Data2.Teams.getDescriptors quiz.QuizId
+    |> AR.bind (fun teamsInQuiz ->
+        Data2.Teams.create quiz.QuizId (creator teamsInQuiz)
+        |> AR.map (fun team -> {|Record = Admin.teamRecord team.Dsc|}))
 
 let getTeamCard quiz req =
     Data2.Teams.getDescriptor quiz.QuizId req.TeamId
@@ -116,31 +95,21 @@ let updateTeamCard quiz req =
 
 let changeTeamStatus quiz req =
     let logic (team : Domain.Team) =
-        { team with
-            Dsc = {
-                team.Dsc with
-                    Status = teamStatusToDomain req.TeamStatus
-            }
-        } |> Ok
+        { team with Dsc = { team.Dsc with Status = teamStatusToDomain req.TeamStatus } } |> Ok
 
-    match CommonService.updateTeam {QuizId = quiz.QuizId; TeamId = req.TeamId} logic with
-    | Ok team -> Ok <| Admin.teamRecord team.Dsc
-    | Error txt -> Error txt
+    Data2.Teams.update {QuizId = quiz.QuizId; TeamId = req.TeamId} logic
+    |> AR.map (fun team -> Admin.teamRecord team.Dsc)
 
 let getQuizCard quiz _ =
-    result{
-        let! quiz = (Data.Quizzes.get quiz.QuizId, "Quiz Not Found")
-        return Admin.quizCard quiz
-    }
+    Data2.Quizzes.get quiz.QuizId
+    |> AR.map Admin.quizCard
 
 let changeQuizStatus quiz req =
     let logic quiz =
         quiz |> Domain.Quizzes.changeStatus (quizStatusToDomain req.QuizStatus) Data2.Packages.provider |> Ok
 
-    result{
-        let! quiz = CommonService.updateQuiz quiz.QuizId logic
-        return Admin.quizCard quiz
-    }
+    Data2.Quizzes.update quiz.QuizId logic
+    |> AR.map Admin.quizCard
 
 let getPackages quiz _ =
     Data2.Experts.get quiz.Producer
@@ -151,21 +120,16 @@ let getPackages quiz _ =
         |> Async.map (Array.choose (function Ok dsc -> Some (packageRecord dsc) | _ -> None) >> List.ofSeq >> Ok ))
 
 let setPackage quiz req =
-    let logic quiz =
-        quiz |> Domain.Quizzes.setPackageId req.PackageId |> Ok
+    let logic quiz = quiz |> Domain.Quizzes.setPackageId req.PackageId |> Ok
 
-    result {
-        let! exp = async{ return! Data2.Experts.get quiz.Producer } |> Async.RunSynchronously
-
-        do!
+    Data2.Experts.get quiz.Producer
+    |> AR.bind (fun exp ->
             match req.PackageId with
-            | Some id when not <| Domain.Experts.isAuthorizedForPackage id exp  -> Error "You are not autorized to access the package"
-            | _ -> Ok ()
-
-        let! quiz = CommonService.updateQuiz quiz.QuizId logic
-
-        return Admin.quizCard quiz
-    }
+            | Some packageId -> Domain.Experts.authorizePackageRead packageId exp
+            | None -> Ok ()
+            |> AR.fromResult)
+    |> AR.next (Data2.Quizzes.update quiz.QuizId logic)
+    |> AR.map Admin.quizCard
 
 let getPackageCard quiz req =
     Data2.Experts.get quiz.Producer
@@ -185,10 +149,8 @@ let nextQuestion quiz req =
             |> Domain.Quizzes.nextQuestion
         | None -> Error "Question is empty"
 
-    result{
-        let! quiz = CommonService.updateQuiz quiz.QuizId logic
-        return Admin.quizCard quiz
-    }
+    Data2.Quizzes.update quiz.QuizId logic
+    |> AR.map Admin.quizCard
 
 let nextQuestionPart quiz req =
     let logic quiz =
@@ -199,10 +161,8 @@ let nextQuestionPart quiz req =
             |> Domain.Quizzes.nextQuestionPart
         | None -> Error "Question is empty"
 
-    result{
-        let! quiz = CommonService.updateQuiz quiz.QuizId logic
-        return Admin.quizCard quiz
-    }
+    Data2.Quizzes.update quiz.QuizId logic
+    |> AR.map Admin.quizCard
 
 let startCountDown quiz req =
     let logic quiz =
@@ -213,23 +173,17 @@ let startCountDown quiz req =
             |> Domain.Quizzes.startCountdown DateTime.UtcNow
         | None -> Error "Question is empty"
 
-    result{
-        let! quiz = CommonService.updateQuiz quiz.QuizId logic
-        return Admin.quizCard quiz
-    }
+    Data2.Quizzes.update quiz.QuizId logic
+    |> AR.map Admin.quizCard
 
 let pauseCountDown quiz _ =
-    result{
-        let! quiz = CommonService.updateQuiz quiz.QuizId Domain.Quizzes.pauseCountdown
-        return Admin.quizCard quiz
-    }
+    Data2.Quizzes.update quiz.QuizId Domain.Quizzes.pauseCountdown
+    |> AR.map Admin.quizCard
 
 let settleTour quiz _ =
-    result{
-        let! quiz = CommonService.updateQuiz quiz.QuizId Domain.Quizzes.settle
-        settleAnswers quiz
-        return Admin.quizCard quiz
-    }
+    Data2.Quizzes.update quiz.QuizId Domain.Quizzes.settle
+    |> AR.side settleAnswers
+    |> AR.map Admin.quizCard
 
 type SettleItem = {
     Idx : Domain.QwKey
@@ -262,46 +216,39 @@ let settleAnswers (quiz : Domain.Quiz) =
             | Domain.Multiple (_, slips) -> slips |> List.mapi (fun idx slip -> createItem slip idx)
             |> List.choose id
 
-        async {
-            for teamId in Data.Teams.getIds quiz.Dsc.QuizId do
-                CommonService.updateTeamNoReply {QuizId = quiz.Dsc.QuizId; TeamId = teamId} (logic items)
-        } |> Async.Start
+        Data2.Teams.getIds quiz.Dsc.QuizId
+        |> AR.bind (fun list ->
+            list |> List.map (fun teamId -> Data2.Teams.update {QuizId = quiz.Dsc.QuizId; TeamId = teamId} (logic items))
+            |> Async.Sequential
+            |> Async.map (fun _ -> Ok ()))
+    | _ -> AR.retn ()
 
-    | _ -> ()
 
 let nextTour quiz _ =
-    let logic quiz =
-        quiz |> Domain.Quizzes.next Data2.Packages.provider |> Ok
+    let logic quiz = quiz |> Domain.Quizzes.next Data2.Packages.provider |> Ok
 
-    result{
-        let! quiz = CommonService.updateQuiz quiz.QuizId logic
-        return Admin.quizCard quiz
-    }
+    Data2.Quizzes.update quiz.QuizId logic
+    |> AR.map Admin.quizCard
 
 let getAnswers quiz _ =
-    result{
-        let! quiz = (Data.Quizzes.get quiz.QuizId, "Quiz not found")
-        let! teams = Data2.Teams.getAllInQuiz quiz.Dsc.QuizId |> Async.RunSynchronously
-
-        return Admin.AnswersBundle quiz teams
-    }
+    Data2.Quizzes.get quiz.QuizId
+    |> AR.bind (fun quiz ->
+        Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
+        |> AR.map (fun teams -> Admin.AnswersBundle quiz teams))
 
 let updateResults quiz req =
-    let logic qwKey res team =
-        team |> Domain.Teams.updateResult qwKey res DateTime.UtcNow |> Ok
+    let logic qwKey res team = team |> Domain.Teams.updateResult qwKey res DateTime.UtcNow |> Ok
 
-    for r in req do
-        CommonService.updateTeamNoReply {QuizId = quiz.QuizId; TeamId = r.TeamId} (logic (qwKeyToDomain r.QwKey) r.Res)
-
-    Ok()
+    req
+    |> List.map (fun r -> Data2.Teams.update {QuizId = quiz.QuizId; TeamId = r.TeamId} (logic (qwKeyToDomain r.QwKey) r.Res))
+    |> Async.Sequential
+    |> Async.map (fun _ -> Ok ())
 
 let getResults quiz _ =
-    result{
-        let! quiz = (Data.Quizzes.get quiz.QuizId, "Quiz not found")
-        let teams = Data.Teams.getAllInQuiz quiz.Dsc.QuizId
-
-        return {|Teams = teams |> teamResults true; Questions = questionResults quiz|}
-    }
+    Data2.Quizzes.get quiz.QuizId
+    |> AR.bind (fun quiz ->
+        Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
+        |> AR.map (fun teams -> {|Teams = teams |> teamResults true; Questions = questionResults quiz|}))
 
 let getListenToken quiz _ =
-    quiz.ListenToken |> Ok
+    quiz.ListenToken |> AR.retn

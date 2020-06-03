@@ -18,8 +18,7 @@ let api (context:HttpContext) : IMainApi =
 
     let ex proc f =
         let ff f = (fun expertId usersysname username (quizIdStr:string) req ->
-            let quizId = match System.Int32.TryParse quizIdStr with true, id -> Some id | _ -> None
-            f expertId usersysname username quizId req
+            f expertId usersysname username (tryParseInt32 quizIdStr) req
         )
 
         SecurityService.exec logger proc <| SecurityService.authorizeExpertCheckPrivateQuiz secret (ff f)
@@ -122,84 +121,73 @@ let deleteQuiz expert req =
 
 let uploadFile bucketName _ req =
     Bucket.uploadFile  bucketName req.Cat req.FileType req.FileBody
-    |> Async.retn
 
 let getRegModel expId username name quizId _ =
-
-    let tryFindTeam quizId =
-        async {
-            match! Data2.Experts.get expId with
-            | Ok exp ->
-                return
-                    exp.Competitions.TryFind quizId
-                    |> Option.bind (Data.Teams.getDescriptor quizId)
-            | _ -> return None
-        }
-
-    async{
-        match quizId with
-        | Some quizId ->
-            let! team = tryFindTeam quizId
-            return
-                match Data.Quizzes.getDescriptor quizId with
-                | Some quiz -> Main.quizRegRecord quiz team |> Ok
-                | None -> Error  "Quiz not found"
-        | None -> return Error "Quiz not defined"
-    }
+    quizId |> Result.fromOption "Quiz not defined"
+    |> AR.fromResult
+    |> AR.bind (fun quizId ->
+        Data2.Experts.get expId
+        |> AR.bind (fun exp ->
+            match exp.Competitions.TryFind quizId with
+            | Some teamId ->
+                Data2.Teams.getDescriptor quizId teamId
+                |> AR.map Some
+                |> AR.ifError (fun _ -> None)
+            | None -> AR.retn None)
+        |> AR.ifError (fun _ -> None)
+        |> AR.bind (fun team ->
+            Data2.Quizzes.getDescriptor quizId
+            |> AR.map (fun quiz -> Main.quizRegRecord quiz team)))
 
 let registerTeam expId username name quizId req =
     let expCreator () = Domain.Experts.createNew expId username name
 
-    result {
-        let! quizId = quizId, "Quiz not defined"
-        let! quiz = (Data.Quizzes.getDescriptor quizId), "Quiz not found"
-
-        let! exp = Data2.Experts.updateOrCreate expId Ok expCreator  |> Async.RunSynchronously
-
-        let teamName = req.TeamName.Trim()
-        let! team =
-            match Domain.Experts.getComp quizId exp with
+    quizId |> Result.fromOption "Quiz not defined"
+    |> AR.fromResult
+    |> AR.bind Data2.Quizzes.getDescriptor
+    |> AR.bind (fun quiz ->
+        Data2.Experts.updateOrCreate expId Ok expCreator
+        |> AR.bind (fun exp ->
+            let teamName = req.TeamName.Trim()
+            match Domain.Experts.getComp quiz.QuizId exp with
             | Some teamId ->
-                match Data.Teams.get quizId teamId with
-                | Some team -> updateTeam quiz team teamName
-                | None -> createTeam exp quiz teamName
+                Data2.Teams.check quiz.QuizId teamId
+                |> AR.bind (fun exist ->
+                    match exist with
+                    | true ->
+                        Data2.Teams.get {QuizId = quiz.QuizId; TeamId = teamId}
+                        |> AR.bind (fun team -> updateTeam quiz team teamName)
+                    | false -> createTeam exp quiz teamName
+                )
             | None -> createTeam exp quiz teamName
+            |> AR.map (fun (team:Domain.Team) -> Main.quizRegRecord quiz (Some team.Dsc))))
 
-        return Main.quizRegRecord quiz (Some team.Dsc)
-    }
-    |> Async.retn
+let private createTeam exp quiz teamName  =
 
-let private createTeam exp quiz teamName : Result<Domain.Team,string> =
-
-    let creator (key : Domain.TeamKey) =
-        let teamsInQuiz = Data.Teams.getDescriptors quiz.QuizId
+    let creator teamsInQuiz teamId =
         match Domain.Teams.validateTeamUpdate true teamName teamsInQuiz quiz with
         | Some txt -> Error txt
-        | None -> Domain.Teams.createNew key.TeamId teamName quiz |> Ok
+        | None -> Domain.Teams.createNew teamId teamName quiz |> Ok
 
-    result {
-        let! team = CommonService.createTeam quiz.QuizId creator
+    Data2.Teams.getDescriptors quiz.QuizId
+    |> AR.bind (fun teamsInQuiz ->
+        Data2.Teams.create quiz.QuizId (creator teamsInQuiz)
+        |> AR.side (fun team ->
+            let logic expert = expert |> Domain.Experts.addComp team.Dsc.QuizId team.Dsc.TeamId |> Ok
+            Data2.Experts.update exp.Id logic))
 
-        let logic expert = expert |> Domain.Experts.addComp team.Dsc.QuizId team.Dsc.TeamId |> Ok
-        Data2.Experts.update exp.Id logic |> Async.RunSynchronously |> ignore
-
-        return team
-    }
-
-let private updateTeam quiz team teamName : Result<Domain.Team,string> =
+let private updateTeam quiz team teamName  =
     match team.Dsc.Name = teamName with
-    | true -> Ok team
+    | true -> Ok team |> AsyncResult.fromResult
     | false ->
-        let logic (team : Domain.Team) =
+        let logic teamsInQuiz (team : Domain.Team) =
             result {
-                let teamsInQuiz = Data.Teams.getDescriptors quiz.QuizId
-
                 do! match Domain.Teams.validateTeamUpdate false teamName teamsInQuiz quiz with Some txt -> Error txt | _ -> Ok()
-
                 return team |> Domain.Teams.changeName teamName
             }
-
-        CommonService.updateTeam team.Key logic
+        Data2.Teams.getDescriptors quiz.QuizId
+        |> AR.bind (fun teamsInQuiz ->
+            Data2.Teams.update team.Key (logic teamsInQuiz))
 
 let getProdPackages expert _ =
     async{

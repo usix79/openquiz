@@ -70,9 +70,6 @@ module Experts =
     let removeSharedPackage packageId (expert:Expert) =
         {expert with PackagesSharedWithMe = expert.PackagesSharedWithMe |> List.filter (fun id -> id <> packageId)} |> Ok
 
-    let isAuthorizedForPackage packageId (expert:Expert) =
-        expert.AllPackages |> List.contains packageId
-
     let authorizePackageRead packageId (expert:Expert) =
         match expert.AllPackages |> List.contains packageId with
         | true -> Ok ()

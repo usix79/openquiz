@@ -103,11 +103,6 @@ let private deleteItem' tableName fields =
         return res |> Result.mapError (fun errors -> logErrors errors; Errors.DeleteError)
     }
 
-let private tryParseInt32 (str:string) =
-    match System.Int32.TryParse(str) with
-    | true, n -> Some n
-    | _ -> None
-
 let private toInt32Map (map:Map<string,Model.AttributeValue>) =
     map
     |> Map.toSeq
@@ -126,19 +121,9 @@ let private toInt32List (set:Set<string>) =
     |> List.map Int32.Parse
     |> Ok
 
-let private toStringList (set:Set<string>) =
-    set
-    |> Set.toList
-    |> Ok
-
 let private optInt32 fieldName v =
     match v with
     | Some id -> [Attr (fieldName, ScalarInt32 id)]
-    | _ -> []
-
-let private setString fieldName v =
-    match v with
-    | head::tail -> [Attr (fieldName, SetString (NonEmptyList (head, tail)))]
     | _ -> []
 
 type SysItem = {
@@ -148,6 +133,7 @@ type SysItem = {
     static member NewItem key = {Id = key; Map = Map.empty; Version = 0}
 
 module SysItem =
+
     let private tableName = "System"
 
     module private Fields =
@@ -204,16 +190,6 @@ module SysItem =
 module RefreshTokens =
     let private tableName = "Tokens"
 
-    let toEpoch dt =
-        (dt - DateTime.UnixEpoch).TotalSeconds
-        |> Convert.ToInt64
-        |> Convert.ToDecimal
-
-    let fromEpoch (epoch:decimal) =
-        epoch
-        |> Convert.ToDouble
-        |> DateTime.UnixEpoch.AddSeconds
-
     module private Fields =
         let Token = "Token"
         let Expired = "TTL"
@@ -236,10 +212,8 @@ module RefreshTokens =
         |> putItem' None tableName
 
     let replace (oldToken:Domain.RefreshToken) (newToken:Domain.RefreshToken) =
-        async{
-            let! _ = deleteItem' tableName (key oldToken.Value)
-            return! put newToken
-        }
+        deleteItem' tableName (key oldToken.Value)
+        |> AsyncResult.next (put newToken)
 
 module Experts =
     let private tableName = "Experts"
@@ -298,9 +272,9 @@ module Experts =
             Attr (Fields.Name, ScalarString exp.Name)
             Attr (Fields.IsProducer, ScalarBool exp.IsProducer)
             Attr (Fields.Competitions, DocMap (fromInt32Map exp.Competitions))
-            yield! setString Fields.Quizzes (exp.Quizzes |> List.map string)
-            yield! setString Fields.Packages (exp.Packages |> List.map string)
-            yield! setString Fields.PackagesSharedWithMe (exp.PackagesSharedWithMe |> List.map string)
+            yield! BuildAttr.setString Fields.Quizzes (exp.Quizzes |> List.map string)
+            yield! BuildAttr.setString Fields.Packages (exp.Packages |> List.map string)
+            yield! BuildAttr.setString Fields.PackagesSharedWithMe (exp.PackagesSharedWithMe |> List.map string)
             Attr (Fields.DefaultImg, ScalarString exp.DefaultImg)
             yield! optInt32 Fields.DefaultMixlr exp.DefaultMixlr
             Attr (Fields.Version, ScalarInt32 (exp.Version + 1))
@@ -310,6 +284,7 @@ module Experts =
     let update = putOptimistic' get put
 
     let updateOrCreate id logic creator =
+
         async{
             do!
                 async{
@@ -322,6 +297,7 @@ module Experts =
         }
 
 module private Slips =
+
     module private Fields =
         let Kind = "Kind"
         let Questions = "Questions"
@@ -382,16 +358,14 @@ module private Slips =
         [
             Attr (Fields.Kind, ScalarString Fields.KindSingle)
             match slip.Question with
-            | Domain.Solid qw -> if qw <> "" then Attr (Fields.Text, ScalarString qw)
+            | Domain.Solid qw -> yield! BuildAttr.string Fields.Text qw
             | Domain.Split list -> Attr (Fields.Questions, DocList (list |> List.map ScalarString))
-            if slip.ImgKey <> "" then Attr (Fields.ImgKey, ScalarString slip.ImgKey)
-            if slip.Answer <> "" then Attr (Fields.Answer, ScalarString slip.Answer)
-            if slip.Comment <> "" then Attr (Fields.Comment, ScalarString slip.Comment)
-            if slip.CommentImgKey <> "" then Attr (Fields.CommentImgKey, ScalarString slip.CommentImgKey)
+            yield! BuildAttr.string Fields.ImgKey slip.ImgKey
+            yield! BuildAttr.string Fields.Answer slip.Answer
+            yield! BuildAttr.string Fields.Comment slip.Comment
+            yield! BuildAttr.string Fields.CommentImgKey slip.CommentImgKey
             Attr (Fields.Points, ScalarDecimal slip.Points)
-            match slip.JeopardyPoints with
-            | Some points -> Attr (Fields.JpdPoints, ScalarDecimal points)
-            | None -> ()
+            yield! BuildAttr.optional Fields.JpdPoints ScalarDecimal slip.JeopardyPoints
             if slip.WithChoice then Attr (Fields.Choiсe, ScalarBool slip.WithChoice)
         ]
 
@@ -433,11 +407,8 @@ module Packages =
     let getDescriptor = key >> getItemProjection' dscFields tableName dscReader
 
     let private builder dsc transferToken sharedWith slips version : Domain.Package =
-        {Dsc = dsc
-         TransferToken = transferToken
-         SharedWith = sharedWith |> Set.toList
-         Slips = slips
-         Version = version}
+        {Dsc = dsc; TransferToken = transferToken; SharedWith = sharedWith |> Set.toList
+         Slips = slips; Version = version}
 
     let private reader =
         builder
@@ -459,20 +430,16 @@ module Packages =
             Attr (Fields.Producer, ScalarString pkg.Dsc.Producer)
             Attr (Fields.Name, ScalarString pkg.Dsc.Name)
             Attr (Fields.TransferToken, ScalarString pkg.TransferToken)
-            yield! setString Fields.SharedWith (pkg.SharedWith |> List.map string)
+            yield! BuildAttr.setString Fields.SharedWith (pkg.SharedWith |> List.map string)
             Attr (Fields.Questions, DocList (pkg.Slips |> List.map (Slips.fields >> DocMap)))
             Attr (Fields.Version, ScalarInt32 (pkg.Version + 1))
         ]
         |> putItem' (Some pkg.Version) tableName
 
     let create (creator : int -> Domain.Package) =
-        async{
-            match! SysItem.getNextId "pkg" (fun () -> -100) with
-            | Ok id ->
-                let pkg = creator id
-                return! put pkg |> AsyncResult.map (fun _ -> pkg)
-            | Error txt -> return Error txt
-        }
+        SysItem.getNextId "pkg" (fun () -> -100)
+        |> AsyncResult.bind (creator >> AsyncResult.retn)
+        |> AsyncResult.side put
 
     let update = putOptimistic' get put
 
@@ -504,7 +471,6 @@ module Quizzes =
         let TourQwPartIdx = "QwPartIdx"
         let TourStartTime = "StartTime"
         let TourSlip = "Slip"
-
         let Version = "Version"
 
     let private key id = [ Attr (Fields.Id, ScalarInt32 id) ]
@@ -611,15 +577,17 @@ module Quizzes =
         |> putItem' (Some item.Version) tableName
 
     let create (creator : int -> Domain.Quiz) =
-        async{
-            match! SysItem.getNextId "quizzes" (fun () -> -100) with
-            | Ok id ->
-                let item = creator id
-                return! put item |> AsyncResult.map (fun _ -> item)
-            | Error txt -> return Error txt
-        }
+        SysItem.getNextId "quizzes" (fun () -> -100)
+        |> AsyncResult.bind (creator >> AsyncResult.retn)
+        |> AsyncResult.side put
 
-    let update = putOptimistic' get put
+    let private changedEvt = new Event<Domain.Quiz>()
+
+    let onChanged = changedEvt.Publish
+
+    let update quizId logic =
+        putOptimistic' get put quizId logic
+        |> AsyncResult.sideRes (changedEvt.Trigger >> Ok)
 
     let delete quizId =
         deleteItem' tableName (key quizId)
@@ -763,20 +731,18 @@ module Teams =
         |> putItem' (Some item.Version) tableName
 
     let create quizId creator =
-        async{
-            let lastIdProvider = (fun () ->
-                match getIds quizId |> Async.RunSynchronously with
-                | Ok (head::tail) -> List.max (head::tail)
-                | _ -> 0
-            )
+        let lastIdProvider () =
+            match getIds quizId |> Async.RunSynchronously with
+            | Ok (head::tail) -> List.max (head::tail)
+            | _ -> 0
 
-            match! SysItem.getNextId (Quizzes.sysKey quizId) lastIdProvider with
-            | Ok id ->
-                match creator id with
-                | Ok item -> return! put item |> AsyncResult.map (fun _ -> item)
-                | Error txt -> return Error txt
-            | Error txt -> return Error txt
-        }
+        SysItem.getNextId (Quizzes.sysKey quizId) lastIdProvider
+        |> AsyncResult.bind (creator >> AsyncResult.fromResult)
+        |> AsyncResult.side put
+
+    let check quizId teamId =
+        key quizId teamId
+        |> checkItem' tableName
 
     let update = putOptimistic' get put
 
