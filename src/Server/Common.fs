@@ -310,6 +310,7 @@ module Sse =
         let msgToText msg = sprintf "event: message\ndata: %s\n\n" (DynamicRecord.serialize msg)
 
         let writeMessage (resp:HttpResponse) (msg : string) =
+            printfn "WriteMessage"
             async {
                 try
                     do! resp.WriteAsync msg |> Async.AwaitTask
@@ -336,24 +337,28 @@ module Sse =
                         | Heartbeat ->
                             let sw = Diagnostics.Stopwatch.StartNew()
 
+                            do!
                             subs |> Map.toSeq |> Seq.map (fun (_,sub) -> writeMessage sub.Response heartbeatTxt)
-                            |> FSharpx.Control.Async.ParallelCatchWithThrottle 2
+                            //|> FSharpx.Control.Async.ParallelCatchWithThrottle 2
+                            |> Async.Sequential
                             |> Async.map (fun _ ->
                                 sw.Stop()
                                 Log.Information("{@Op} {@Proc} {@ListenersCount} {@Duration}", "Heartbeat", "SSE", subs.Count, sw.ElapsedMilliseconds)
                             )
-                            |> Async.Start
+                            //|> Async.Start
                         | Send (topic,msg) ->
                             let sw = Diagnostics.Stopwatch.StartNew()
+                            do!
                             subs |> Map.toSeq
                             |> Seq.filter (fun (_, sub) -> sub.Filter msg)
                             |> Seq.map (fun (_,sub) -> writeMessage sub.Response (msgToText msg))
-                            |> FSharpx.Control.Async.ParallelCatchWithThrottle 2
+                            //|> FSharpx.Control.Async.ParallelCatchWithThrottle 2
+                            |> Async.Sequential
                             |> Async.map (fun arr ->
                                 sw.Stop()
                                 Log.Information("{@Op} {@Proc} {@Topic} {@ListenersCount} {@Duration}", "Message", "SSE", topic, arr.Length, sw.ElapsedMilliseconds)
                             )
-                            |> Async.Start
+                            //|> Async.Start
                     with
                     | ex -> Log.Error ("{@Proc} {@Exn}", "SSE", ex)
 
