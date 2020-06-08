@@ -184,6 +184,12 @@ let configureServices (services : IServiceCollection) =
 let main _ =
     printfn "Working directory - %s" (Directory.GetCurrentDirectory())
 
+    async{
+        while true do
+            Diag.status()
+            do! Async.Sleep(1000)
+    } |> Async.Start
+
     //Threading.ThreadPool.SetMinThreads(1024,8) |> ignore
     let minThreads = Threading.ThreadPool.GetMinThreads()
     let maxThreads = Threading.ThreadPool.GetMaxThreads()

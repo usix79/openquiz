@@ -310,7 +310,6 @@ module Sse =
         let msgToText msg = sprintf "event: message\ndata: %s\n\n" (DynamicRecord.serialize msg)
 
         let writeMessage (resp:HttpResponse) (msg : string) =
-            printfn "WriteMessage"
             async {
                 try
                     do! resp.WriteAsync msg |> Async.AwaitTask
@@ -392,3 +391,49 @@ module Sse =
 
         member x.WriteHeartbeat (resp : HttpResponse)  =
             writeMessage resp heartbeatTxt |> Async.StartAsTask
+
+module Diag =
+    let status () =
+        printfn "THREADS:%i WI(%i %i) MEMORY:%i Heap:%i GCC(%i %i %i) AllockRage:%i  MI(%i %i %i %i %i) Locks:%i"
+            Threading.ThreadPool.ThreadCount
+            Threading.ThreadPool.PendingWorkItemCount
+            Threading.ThreadPool.CompletedWorkItemCount
+            (Environment.WorkingSet / 1000000L)
+            (GC.GetTotalMemory(false) / 1000000L)
+            (GC.CollectionCount(0))
+            (GC.CollectionCount(1))
+            (GC.CollectionCount(2))
+            (GC.GetTotalAllocatedBytes(false))
+            (GC.GetGCMemoryInfo().FragmentedBytes)
+            (GC.GetGCMemoryInfo().HeapSizeBytes)
+            (GC.GetGCMemoryInfo().HighMemoryLoadThresholdBytes)
+            (GC.GetGCMemoryInfo().MemoryLoadBytes)
+            (GC.GetGCMemoryInfo().TotalAvailableMemoryBytes)
+            (Threading.Monitor.LockContentionCount)
+
+    // type DiagListener () =
+    //     inherit Diagnostics.Tracing.EventListener()
+
+
+
+
+    //     override x.OnEventSourceCreated es =
+
+    //         if es.Name = "Microsoft-Windows-DotNETRuntime" then
+    //             let GC_KEYWORD =                 0x0000001L
+    //             let TYPE_KEYWORD =               0x0080000L
+    //             let GCHEAPANDTYPENAMES_KEYWORD = 0x1000000L
+    //             let ThreadingKeyword    = 0x00010000L
+
+    //             let flags =
+    //                 (GC_KEYWORD ||| TYPE_KEYWORD ||| GCHEAPANDTYPENAMES_KEYWORD (*||| ThreadingKeyword*))
+    //             printfn "AGA Listener flags %A" flags
+    //             let kwObj = Enum.ToObject(typeof<Diagnostics.Tracing.EventKeywords>, flags)
+    //             let kw = unbox kwObj
+    //             printfn "KW %A" kw
+    //             x.EnableEvents (es, Diagnostics.Tracing.EventLevel.Informational, kw)
+
+    //     override x.OnEventWritten ed =
+    //         printfn "Message: %s" (DateTime.UtcNow.ToString("HH:mm:ss:fff"))
+    //         ed.Payload
+    //         |> Seq.iteri (fun idx p -> printfn "%s %A" ed.PayloadNames.[idx] p)
