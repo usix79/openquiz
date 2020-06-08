@@ -110,10 +110,12 @@ let sseHandler (_next:HttpFunc) (ctx: HttpContext)  =
 
                 quizChangedSse.Subscribe ctx.TraceIdentifier ctx.Response (fun evt -> evt.Id = quizId)
 
-                try
-                    do! Task.Delay(1000, ctx.RequestAborted).ContinueWith(ignore,TaskContinuationOptions.OnlyOnCanceled)
-                with
-                | _ -> ()
+                do! Task.Delay(-1, ctx.RequestAborted).ContinueWith(ignore,TaskContinuationOptions.OnlyOnCanceled)
+
+                // try
+                //     do! Task.Delay(1000, ctx.RequestAborted).ContinueWith(ignore,TaskContinuationOptions.OnlyOnCanceled)
+                // with
+                // | _ -> ()
 
                 quizChangedSse.Unsubscribe ctx.TraceIdentifier
 
