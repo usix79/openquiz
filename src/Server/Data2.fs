@@ -1,6 +1,7 @@
 module Data2
 
 open System
+open System.Threading
 open Amazon.DynamoDBv2
 open DynamoDb.Ok
 open DynamoDb.Ok.Read
@@ -52,55 +53,105 @@ let private putOptimistic' get put id logic  =
 
 let client = new AmazonDynamoDBClient()
 
+let semaphore = new SemaphoreSlim(256, 256);
+
 let fullTableName name = sprintf "OQ-%s" name
 
 let private checkItem' tableName fields =
     async{
-        let! res = doesItemExist client (fullTableName tableName) fields
-        return res |> Result.mapError (fun errors -> logErrors errors; Errors.GetError)
+        do! semaphore.WaitAsync() |> Async.AwaitTask
+
+        let! res =
+            doesItemExist client (fullTableName tableName) fields
+            |> Async.Catch
+
+        semaphore.Release() |> ignore
+
+        return match res with
+               | Choice1Of2 res -> res |> Result.mapError (fun errors -> logErrors errors; Errors.GetError)
+               | Choice2Of2 exn -> raise exn
     }
 
 let private getItemProjection' projection tableName reader fields  =
     async{
-        match! getItemProjection projection client (fullTableName tableName) reader fields  with
-        | Ok entity -> return Ok entity
-        | Error [ItemDoesNotExist] -> return Error Errors.ItemDoesNotExist
-        | Error list ->
-            logErrors list
-            return Error Errors.GetError
+        do! semaphore.WaitAsync() |> Async.AwaitTask
+
+        let! res =
+            getItemProjection projection client (fullTableName tableName) reader fields
+            |> Async.Catch
+
+        return match res with
+               | Choice1Of2 res ->
+                    match res with
+                    | Ok entity -> Ok entity
+                    | Error [ItemDoesNotExist] -> Error Errors.ItemDoesNotExist
+                    | Error list ->
+                        logErrors list
+                        Error Errors.GetError
+               | Choice2Of2 exn -> raise exn
     }
 
 let private getItem' tableName reader = getItemProjection' [] tableName reader
 
 let private query' tableName projection reader kce =
     async{
-        match! queryProjection client projection (fullTableName tableName) reader kce with
-        | Ok list -> return Ok list
-        | Error list ->
-            logErrors list
-            return Error Errors.QueryError
+        do! semaphore.WaitAsync() |> Async.AwaitTask
+
+        let! res =
+            queryProjection client projection (fullTableName tableName) reader kce
+            |> Async.Catch
+
+        semaphore.Release() |> ignore
+
+        return match res with
+               | Choice1Of2 res ->
+                    match res with
+                    | Ok list -> Ok list
+                    | Error list ->
+                        logErrors list
+                        Error Errors.QueryError
+               | Choice2Of2 exn -> raise exn
     }
 
 let private putItem' version tableName fields  =
     async{
+        do! semaphore.WaitAsync() |> Async.AwaitTask
+
         let ce =
             match version with
             | None -> None
             | Some v when v = 0 -> None
             | Some v -> Query.KeyConditionExpression (Query.NumberEquals ("Version", decimal v), []) |> Some
 
-        match! putItemWithCondition ce client (fullTableName tableName) fields with
-        | Ok () -> return Ok Success
-        | Error [ConditionalCheckFailed] -> return Ok Retry
-        | Error list ->
-            logErrors list
-            return Error Errors.PutError
+        let! res =
+            putItemWithCondition ce client (fullTableName tableName) fields
+            |> Async.Catch
+
+        semaphore.Release() |> ignore
+
+        return match res with
+               | Choice1Of2 res ->
+                    match res with
+                    | Ok () -> Ok Success
+                    | Error [ConditionalCheckFailed] -> Ok Retry
+                    | Error list ->
+                        logErrors list
+                        Error Errors.PutError
+               | Choice2Of2 exn -> raise exn
     }
 
 let private deleteItem' tableName fields =
     async{
-        let! res = deleteItem client (fullTableName tableName) fields
-        return res |> Result.mapError (fun errors -> logErrors errors; Errors.DeleteError)
+        do! semaphore.WaitAsync() |> Async.AwaitTask
+        let! res =
+            deleteItem client (fullTableName tableName) fields
+            |> Async.Catch
+
+        semaphore.Release() |> ignore
+
+        return match res with
+               | Choice1Of2 res -> res |> Result.mapError (fun errors -> logErrors errors; Errors.DeleteError)
+               | Choice2Of2 exn -> raise exn
     }
 
 let private toInt32Map (map:Map<string,Model.AttributeValue>) =

@@ -1,7 +1,10 @@
 module Common
 
 open System
+open AWS.AppSync.Client
 open Fable.Remoting.DotnetClient
+open Fable.Remoting.Json
+open Newtonsoft.Json
 
 open Shared
 
@@ -150,3 +153,50 @@ type AudienceFacade (server, token) =
             let req = serverRequest token ()
             return! proxy.callSafely <@ fun server -> server.getQuiz req @>
         }
+
+
+type SubscriptionMessage = {
+    body : string
+}
+
+type AppSyncFacade (cfg) =
+    let appSyncClient = AppSyncClient(cfg.Endpoint, AuthOptions(APIKey = cfg.ApiKey))
+    let guid = Guid.NewGuid()
+    let converter = FableJsonConverter()
+
+    let query = sprintf """
+          subscription pqm {
+            onQuizMessage(quizId: %i, token: "%s") {
+              body
+            }
+          }
+        """
+
+    let onMessage handler = Action<obj>(fun obj ->
+        match obj with
+        | :? SubscriptionMessage as msg ->
+            let json =
+                msg.body
+                |> Convert.FromBase64String
+                |> Text.UTF8Encoding.UTF8.GetString
+
+            try
+                let evt = JsonConvert.DeserializeObject<QuizChangedEvent>(json, converter)
+                handler evt
+            with
+            | ex -> printfn "EXCEPTION: %s" ex.Message
+
+        | _ -> printfn "WRONG MESSAGE %A" obj
+
+
+    )
+    let onError = Action<exn>(fun exn -> printfn "EXCEPTION: %A" exn)
+
+    member x.Subscribe quizId listenToken handler =
+        let opt = QueryOptions(Query = (query quizId listenToken), SubscriptionId = guid)
+        appSyncClient.CreateSubscriptionAsync<SubscriptionMessage>(opt, (onMessage handler), onError)
+        |> Async.AwaitTask
+        |> ignore
+
+    member x.Unsubscribe () =
+        appSyncClient.UnSubscribe guid

@@ -3,4 +3,3 @@ Fable.Remoting.DotnetClient
 FSharp.Control.Reactive
 FSharpx.Async
 DotNetCSharp.AWS.AppSync.Client
-File:SSEClient.fs

@@ -27,7 +27,6 @@ nuget DotNetCSharp.AWS.AppSync.Client 1.1.1
 nuget Fable.Remoting.DotnetClient
 nuget FSharp.Control.Reactive
 nuget FSharpx.Async
-github deapsquatter/FSharp.SSEClient /src/SSEClient.fs
 
 group Client
     source https://api.nuget.org/v3/index.json

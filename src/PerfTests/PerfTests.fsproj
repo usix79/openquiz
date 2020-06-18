@@ -5,10 +5,6 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\paket-files\ptests\deapsquatter\FSharp.SSEClient\src\SSEClient.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/SSEClient.fs</Link>
-    </Compile>
     <Compile Include="../Shared/Shared.fs" />
     <Compile Include="Common.fs" />
     <Compile Include="Setup.fs" />
