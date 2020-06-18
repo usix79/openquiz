@@ -80,6 +80,8 @@ let private getItemProjection' projection tableName reader fields  =
             getItemProjection projection client (fullTableName tableName) reader fields
             |> Async.Catch
 
+        semaphore.Release() |> ignore
+
         return match res with
                | Choice1Of2 res ->
                     match res with
