@@ -317,10 +317,8 @@ module Diag =
             (GC.GetGCMemoryInfo().TotalAvailableMemoryBytes)
             (Threading.Monitor.LockContentionCount)
 
-    let ulimit () =
-        let command = "ulimit -a";
-
-        use proc = new System.Diagnostics.Process()
+    let run command =
+        use proc = new Diagnostics.Process()
         proc.StartInfo.FileName <- "/bin/sh"
         proc.StartInfo.Arguments <- "-c \" " + command + " \""
         proc.StartInfo.UseShellExecute <- false
@@ -328,7 +326,11 @@ module Diag =
         proc.StartInfo.RedirectStandardError <- true
         proc.Start() |> ignore
 
-        printfn "ULIMITS: %s" (proc.StandardOutput.ReadToEnd())
-        printfn "ULIMITS ERROR: %s" (proc.StandardError.ReadToEnd())
+        let output =
+            sprintf "%s\n%s"
+                (proc.StandardOutput.ReadToEnd())
+                (proc.StandardError.ReadToEnd())
 
         proc.WaitForExit();
+
+        output
