@@ -321,7 +321,7 @@ module Diag =
         let command = "ulimit -a";
 
         use proc = new System.Diagnostics.Process()
-        proc.StartInfo.FileName <- "/bin/bash"
+        proc.StartInfo.FileName <- "/bin/sh"
         proc.StartInfo.Arguments <- "-c \" " + command + " \""
         proc.StartInfo.UseShellExecute <- false
         proc.StartInfo.RedirectStandardOutput <- true
