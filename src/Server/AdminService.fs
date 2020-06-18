@@ -6,6 +6,7 @@ open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Configuration
 open Serilog
 
+
 open Shared
 open Common
 open Presenter
@@ -226,8 +227,10 @@ let settleAnswers (quiz : Domain.Quiz) =
 
         Data2.Teams.getIds quiz.Dsc.QuizId
         |> AR.bind (fun list ->
-            list |> List.map (fun teamId -> Data2.Teams.update {QuizId = quiz.Dsc.QuizId; TeamId = teamId} (logic items))
-            |> Async.Sequential
+            list
+            |> List.map (fun teamId -> Data2.Teams.update {QuizId = quiz.Dsc.QuizId; TeamId = teamId} (logic items))
+            |> FSharpx.Control.Async.ParallelCatchWithThrottle 20
+            //|> Async.Sequential
             |> Async.map (fun _ ->
                 sw.Stop()
                 Log.Information("{@Op} {@Proc} {@Quiz} {@TeamsCount} {@Duration}", "Settle", "admin", quiz.Dsc.QuizId, list.Length, sw.ElapsedMilliseconds)
