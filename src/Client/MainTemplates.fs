@@ -129,13 +129,8 @@ let playFooter dispatch history questions results current isCountdownActive seco
             ]
         ]
 
-let playTitle quizName quizImg isConnectionOk showImg =
+let playTitle quizName quizImg showImg =
     div [][
-        if isConnectionOk then
-            Fa.i [Fa.Solid.Wifi; Fa.Props [Style[Position PositionOptions.Absolute; Top "5px"; Left "5px"]]][str " connected"]
-        else
-            span [Class "has-text-danger"][Fa.i [Fa.Solid.Wifi; Fa.Props [Style[Position PositionOptions.Absolute; Top "5px"; Left "5px"]]][ str " disconnected"]]
-
         br []
         if showImg then
             figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Shared.Infra.urlForImgSafe quizImg ] ]

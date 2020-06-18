@@ -3,13 +3,11 @@ module Common
 open System
 open System.Collections.Generic
 open System.Security.Cryptography
-open System.Threading.Tasks
 open System.Net.Http
 
 open Microsoft.AspNetCore.Http
 open Fable.Remoting.Server
 open Newtonsoft.Json.Linq
-open Serilog
 
 open Shared
 
@@ -134,15 +132,13 @@ module AsyncResult =
 module Config =
     open Microsoft.Extensions.Configuration
 
-    let getJwtSecret (cfg:IConfiguration) =
-        cfg.["jwtsecret"]
-
-    let getCognitoClientId (cfg:IConfiguration) =
-        cfg.["cognitoClientId"]
-
-    let getCognitoClientName (cfg:IConfiguration) =
-        cfg.["cognitoClientName"]
-
+    let getJwtSecret (cfg:IConfiguration) = cfg.["jwtsecret"]
+    let getCognitoClientId (cfg:IConfiguration) = cfg.["cognitoClientId"]
+    let getCognitoClientName (cfg:IConfiguration) = cfg.["cognitoClientName"]
+    let getFilesAccessPoint (cfg:IConfiguration) = cfg.["filesAccessPoint"]
+    let getAppsyncEndpoint (cfg:IConfiguration) = cfg.["appsync-endpoint"]
+    let getAppsyncApiKey (cfg:IConfiguration) = cfg.["appsync-apikey"]
+    let getAppsyncRegion (cfg:IConfiguration) = cfg.["appsync-region"]
     let getRedirectUrl (cfg:IConfiguration) =
 #if DEBUG
         cfg.["redirectUrlDebug"]
@@ -150,29 +146,10 @@ module Config =
         cfg.["redirectUrl"]
 #endif
 
-    let getFilesAccessPoint (cfg:IConfiguration) =
-        cfg.["filesAccessPoint"]
-
-module Http =
-    open Microsoft.AspNetCore.Http
-    open Giraffe
-
-    let (|QInt|_|) (ctx: HttpContext) key =
-       match ctx.TryGetQueryStringValue key with
-       | Some str ->
-           match System.Int32.TryParse(str) with
-           | (true,int) -> Some(int)
-           | _ -> None
-       | None -> None
-
-    let (|QStr|_|) (ctx: HttpContext) key =
-        ctx.TryGetQueryStringValue key
+    let getAppSyncCfg (cfg:IConfiguration) =
+        {Endpoint = getAppsyncEndpoint cfg; Region = getAppsyncRegion cfg; ApiKey = getAppsyncApiKey cfg}
 
 module Aws =
-    open System.Collections.Generic
-    open System.Net.Http
-    open Newtonsoft.Json.Linq
-
     let private httpClient = new HttpClient()
 
     let getCognitoUri clientName =
@@ -221,7 +198,6 @@ module Aws =
 
             match resp.StatusCode with
             | Net.HttpStatusCode.OK ->
-                printfn "RESP: %s" respStr
                 let json = JObject.Parse respStr
 
                 let username = json.GetValue("username").ToString()
@@ -249,6 +225,34 @@ module Aws =
 
         }
 
+    let publishQuizMessage (endpoint:string) region quizId token version evt =
+        async {
+            try
+                let! creds = Amazon.Runtime.FallbackCredentialsFactory.GetCredentials().GetCredentialsAsync() |> Async.AwaitTask
+
+                let signer = new Aws4RequestSigner.AWS4RequestSigner(creds.AccessKey, creds.SecretKey)
+
+                let body =
+                    DynamicRecord.serialize evt
+                    |> Text.UTF8Encoding.UTF8.GetBytes
+                    |> Convert.ToBase64String
+
+                let data = sprintf """{ "query": "mutation quizMessage {quizMessage(quizId: %i, token: \"%s\", body: \"%s\", version: %i){quizId,token,body,version}}" }""" quizId token body version
+
+                let content = new StringContent(data, Text.Encoding.UTF8, "application/graphql")
+
+                let origReq = new HttpRequestMessage(HttpMethod.Post, endpoint, Content = content)
+
+                let! signedReq = signer.Sign(origReq, "appsync", region) |> Async.AwaitTask
+
+                let! resp = httpClient.SendAsync(signedReq) |> Async.AwaitTask
+                let! respStr = resp.Content.ReadAsStringAsync() |> Async.AwaitTask
+                match resp.StatusCode with
+                | Net.HttpStatusCode.OK -> return ()
+                | _ -> return Serilog.Log.Error ("{@Op} {@Status} {@Resp}", "Aws.appsync", resp.StatusCode,  respStr)
+            with
+            | ex -> return Serilog.Log.Error ("{@Op} {@Exception}", "Aws.appsync", ex)
+        }
 
 let ofOption error = function Some s -> Ok s | None -> Error error
 
@@ -289,109 +293,6 @@ type ResultBuilder() =
 
 let result = ResultBuilder()
 
-module Sse =
-
-    type private Subscription<'msg> = {
-        SubscriptionId : string
-        Response : HttpResponse
-        Filter : 'msg -> bool
-    }
-
-    type private AgentCommand<'msg> =
-        | Subscribe of Subscription<'msg>
-        | Unsubcribe of string
-        | Send of string*'msg
-        | Heartbeat
-
-    type SseService<'msg> () =
-
-        let heartbeatTxt = "event: heartbeat\ndata: .\n\n"
-
-        let msgToText msg = sprintf "event: message\ndata: %s\n\n" (DynamicRecord.serialize msg)
-
-        let writeMessage (resp:HttpResponse) (msg : string) =
-            async {
-                try
-                    do! resp.WriteAsync msg |> Async.AwaitTask
-                    do! resp.Body.FlushAsync() |> Async.AwaitTask
-                with
-                | ex -> Log.Error ("{@Proc} {@Step} {@Exn}", "SSE", "writeMessage", ex)
-            }
-
-        let agent = MailboxProcessor<AgentCommand<'msg>>.Start(fun inbox ->
-
-            let rec loop (subs : Map<string, Subscription<'msg>>) =
-                async {
-                    try
-                        let! cmd = inbox.Receive()
-                        match cmd with
-                        | Subscribe sub ->
-                            let subs = (subs.Add (sub.SubscriptionId, sub))
-                            Log.Information ("{@Op} {@Proc} {@Count}", "Subscribe", "SSE", subs.Count)
-                            return! loop subs
-                        | Unsubcribe subId ->
-                            let subs = (subs.Remove subId)
-                            Log.Information ("{@Op} {@Proc} {@Count}", "Unsubscribe", "SSE", subs.Count)
-                            return! loop subs
-                        | Heartbeat ->
-                            let sw = Diagnostics.Stopwatch.StartNew()
-
-                            do!
-                            subs |> Map.toSeq |> Seq.map (fun (_,sub) -> writeMessage sub.Response heartbeatTxt)
-                            //|> FSharpx.Control.Async.ParallelCatchWithThrottle 2
-                            |> Async.Sequential
-                            |> Async.map (fun _ ->
-                                sw.Stop()
-                                Log.Information("{@Op} {@Proc} {@ListenersCount} {@Duration}", "Heartbeat", "SSE", subs.Count, sw.ElapsedMilliseconds)
-                            )
-                            //|> Async.Start
-                        | Send (topic,msg) ->
-                            let sw = Diagnostics.Stopwatch.StartNew()
-                            do!
-                            subs |> Map.toSeq
-                            |> Seq.filter (fun (_, sub) -> sub.Filter msg)
-                            |> Seq.map (fun (_,sub) -> writeMessage sub.Response (msgToText msg))
-                            //|> FSharpx.Control.Async.ParallelCatchWithThrottle 2
-                            |> Async.Sequential
-                            |> Async.map (fun arr ->
-                                sw.Stop()
-                                Log.Information("{@Op} {@Proc} {@Topic} {@ListenersCount} {@Duration}", "Message", "SSE", topic, arr.Length, sw.ElapsedMilliseconds)
-                            )
-                            //|> Async.Start
-                    with
-                    | ex -> Log.Error ("{@Proc} {@Exn}", "SSE", ex)
-
-                    return! loop subs
-                }
-
-            loop Map.empty
-        )
-
-        let rec ticker () =
-            async{
-                do! Task.Delay (1000 * 30) |> Async.AwaitTask
-                agent.Post Heartbeat
-
-                return! ticker()
-            }
-
-        do ticker() |> Async.Start
-
-        member x.Subscribe subscriptionId (resp : HttpResponse) (filter : 'msg -> bool) =
-            agent.Post (Subscribe {SubscriptionId = subscriptionId; Response = resp; Filter = filter})
-
-        member x.Unsubscribe subscriptionId =
-            agent.Post (Unsubcribe subscriptionId)
-
-        member x.Send topic msg =
-            agent.Post (Send (topic,msg))
-
-        member x.WriteMessage (resp : HttpResponse) (msg:'msg) =
-            writeMessage resp (msgToText msg) |> Async.StartAsTask
-
-        member x.WriteHeartbeat (resp : HttpResponse)  =
-            writeMessage resp heartbeatTxt |> Async.StartAsTask
-
 module Diag =
     let status () =
         printfn "THREADS:%i WI(%i %i) MEMORY:%i Heap:%i GCC(%i %i %i) AllockRage:%i  MI(%i %i %i %i %i) Locks:%i"
@@ -410,30 +311,3 @@ module Diag =
             (GC.GetGCMemoryInfo().MemoryLoadBytes)
             (GC.GetGCMemoryInfo().TotalAvailableMemoryBytes)
             (Threading.Monitor.LockContentionCount)
-
-    // type DiagListener () =
-    //     inherit Diagnostics.Tracing.EventListener()
-
-
-
-
-    //     override x.OnEventSourceCreated es =
-
-    //         if es.Name = "Microsoft-Windows-DotNETRuntime" then
-    //             let GC_KEYWORD =                 0x0000001L
-    //             let TYPE_KEYWORD =               0x0080000L
-    //             let GCHEAPANDTYPENAMES_KEYWORD = 0x1000000L
-    //             let ThreadingKeyword    = 0x00010000L
-
-    //             let flags =
-    //                 (GC_KEYWORD ||| TYPE_KEYWORD ||| GCHEAPANDTYPENAMES_KEYWORD (*||| ThreadingKeyword*))
-    //             printfn "AGA Listener flags %A" flags
-    //             let kwObj = Enum.ToObject(typeof<Diagnostics.Tracing.EventKeywords>, flags)
-    //             let kw = unbox kwObj
-    //             printfn "KW %A" kw
-    //             x.EnableEvents (es, Diagnostics.Tracing.EventLevel.Informational, kw)
-
-    //     override x.OnEventWritten ed =
-    //         printfn "Message: %s" (DateTime.UtcNow.ToString("HH:mm:ss:fff"))
-    //         ed.Payload
-    //         |> Seq.iteri (fun idx p -> printfn "%s %A" ed.PayloadNames.[idx] p)

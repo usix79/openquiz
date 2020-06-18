@@ -1,22 +1,17 @@
 open System
 open System.IO
-open System.Threading.Tasks
 
 open AWS.Logger
 open AWS.Logger.SeriLog
 open Giraffe
-open Giraffe.Core
-open Giraffe.ResponseWriters
 open Giraffe.SerilogExtensions
 open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
-open FSharp.Control.Tasks.ContextInsensitive
 open FSharp.Control.Tasks.V2
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
-open Microsoft.AspNetCore.Rewrite
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Serilog
@@ -67,65 +62,6 @@ let imgHandler (dir,key) : HttpHandler =
             return! ctx.WriteStreamAsync true data.Body None None
         }
 
-let quizChangedSse = Sse.SseService<QuizChangedEvent>()
-
-Data2.Quizzes.onChanged.Add (fun quiz ->
-        let evt = Presenter.quizChangeEvent quiz
-        Log.Information ("{@Op} {@Evt}", "Event", evt)
-        quizChangedSse.Send (sprintf "quiz-%i" evt.Id) evt
-     )
-
-let sseHandler (_next:HttpFunc) (ctx: HttpContext)  =
-    let (|QInt|_|) key =
-       match ctx.TryGetQueryStringValue key with
-       | Some str ->
-           match System.Int32.TryParse(str) with
-           | (true,int) -> Some(int)
-           | _ -> None
-       | None -> None
-
-    let (|QStr|_|) key =
-        ctx.TryGetQueryStringValue key
-
-    let error code txt =
-        task {
-            ctx.SetContentType "plain/text"
-            ctx.SetStatusCode code
-            return! ctx.WriteTextAsync txt
-        }
-
-    task {
-        match "quiz", "start", "token" with
-        | QInt quizId, QInt startVersion, QStr listenToken ->
-            match! Data2.Quizzes.get quizId |> Async.StartAsTask with
-            | Ok quiz when quiz.Dsc.ListenToken = listenToken->
-                ctx.SetContentType "text/event-stream"
-                do! quizChangedSse.WriteHeartbeat ctx.Response
-                //do! ctx.Response.Body.FlushAsync()
-
-                if quiz.Version > startVersion then
-                    do! Task.Delay(1000)
-                    let evt = Presenter.quizChangeEvent quiz
-                    do! quizChangedSse.WriteMessage ctx.Response evt
-
-                quizChangedSse.Subscribe ctx.TraceIdentifier ctx.Response (fun evt -> evt.Id = quizId)
-
-                do! Task.Delay(-1, ctx.RequestAborted).ContinueWith(ignore,TaskContinuationOptions.OnlyOnCanceled)
-
-                // try
-                //     do! Task.Delay(1000, ctx.RequestAborted).ContinueWith(ignore,TaskContinuationOptions.OnlyOnCanceled)
-                // with
-                // | _ -> ()
-
-                quizChangedSse.Unsubscribe ctx.TraceIdentifier
-
-                return! _next ctx
-            | Ok _ -> return! error 401 "wrong token"
-            | Error _ -> return! error 400 "quiz not found"
-        | _ ->
-            return! error 400 "(-)"
-    }
-
 let appRouter =
     choose [
         route "/ping" >=> text ("pong")
@@ -133,7 +69,6 @@ let appRouter =
         route "/default.html" >=> redirectTo false "/"
         route "/login" >=> loginHandler
         routef "/img/%s/%s" imgHandler
-        route "/sse" >=> sseHandler
         apiHandler SecurityService.api
         apiHandler MainService.api
         apiHandler AdminService.api
@@ -156,6 +91,7 @@ let serilogConfig = {
             Ignore.fromResponse
             |> Field.responseContentType
 }
+
 let appRouterWithLogging = SerilogAdapter.Enable(appRouter, serilogConfig)
 
 let awsLogConfig = AWSLoggerConfig("openquiz")
@@ -168,12 +104,6 @@ Log.Logger <-
     .CreateLogger()
 
 let configureApp (app : IApplicationBuilder) =
-
-
-// #if !DEBUG
-//     let app = app.UseRewriter (RewriteOptions().AddRedirectToHttps())
-// #endif
-
     app.UseResponseCompression()
        .UseDefaultFiles()
        .UseStaticFiles()
@@ -183,32 +113,42 @@ let configureServices (services : IServiceCollection) =
     services.AddResponseCompression() |> ignore
     services.AddGiraffe() |> ignore
 
-//let realPublicPath = System.IO.Path.Combine(Environment.CurrentDirectory, publicPath)
-
 [<EntryPoint>]
 let main _ =
     printfn "Working directory - %s" (Directory.GetCurrentDirectory())
 
-    async{
-        while true do
-            Diag.status()
-            do! Async.Sleep(1000)
-    } |> Async.Start
+    // async{
+    //     while true do
+    //         Diag.status()
+    //         do! Async.Sleep(1000)
+    // } |> Async.Start
 
-    //Threading.ThreadPool.SetMinThreads(1024,8) |> ignore
-    let minThreads = Threading.ThreadPool.GetMinThreads()
-    let maxThreads = Threading.ThreadPool.GetMaxThreads()
-    printfn "Threads: Min - %A Max - %A" minThreads maxThreads
+    let host =
+        WebHost
+            .CreateDefaultBuilder()
+            .UseWebRoot(publicPath)
+            .UseContentRoot(publicPath)
+            .ConfigureAppConfiguration(fun builder -> builder.AddSystemsManager("/openquiz") |> ignore)
+            .Configure(Action<IApplicationBuilder> configureApp)
+            .ConfigureServices(configureServices)
+            .UseUrls("http://0.0.0.0:" + port.ToString() + "/")
+            .Build()
 
-    WebHost
-        .CreateDefaultBuilder()
-        .UseWebRoot(publicPath)
-        .UseContentRoot(publicPath)
-        .ConfigureAppConfiguration(fun builder -> builder.AddSystemsManager("/openquiz") |> ignore)
-        .Configure(Action<IApplicationBuilder> configureApp)
-        .ConfigureServices(configureServices)
-        .UseUrls("http://0.0.0.0:" + port.ToString() + "/")
-        .Build()
-        .Run()
+
+    let cfg = host.Services.GetService<IConfiguration>()
+
+    Data2.Quizzes.subscribe (fun quiz ->
+            let evt = Presenter.quizChangeEvent quiz
+            Log.Information ("{@Op} {@Evt}", "Event", evt)
+
+            Aws.publishQuizMessage
+                (Config.getAppsyncEndpoint cfg)
+                (Config.getAppsyncRegion cfg)
+                quiz.Dsc.QuizId
+                quiz.Dsc.ListenToken
+                quiz.Version evt
+         )
+
+    host.Run()
 
     0 // return an integer exit code

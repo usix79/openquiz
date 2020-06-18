@@ -5,6 +5,7 @@ group Server
 
 nuget Amazon.Extensions.Configuration.SystemsManager
 nuget AWS.Logger.SeriLog
+nuget Aws4RequestSigner 1.0.1
 nuget AWSSDK.DynamoDBv2
 nuget AWSSDK.S3
     nuget FSharp.Core

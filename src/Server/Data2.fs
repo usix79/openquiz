@@ -1,4 +1,4 @@
-module rec Data2
+module Data2
 
 open System
 open Amazon.DynamoDBv2
@@ -352,7 +352,7 @@ module private Slips =
         | Some Fields.KindMultiple ->  AttrReader.run multipleSlipReader
         | Some Fields.KindWWW | Some Fields.KindSingle | _ -> (AttrReader.run singleSlipReader) >> Result.map Domain.Single
 
-    let reader = AttrReader.run (choice Fields.Kind A.string Slips.slipReader)
+    let reader = AttrReader.run (choice Fields.Kind A.string slipReader)
 
     let fieldsOfSingleSlip (slip : Domain.SingleAwSlip) =
         [
@@ -581,13 +581,20 @@ module Quizzes =
         |> AsyncResult.bind (creator >> AsyncResult.retn)
         |> AsyncResult.side put
 
-    let private changedEvt = new Event<Domain.Quiz>()
+    let mutable private _subscriptions : (Domain.Quiz -> Async<unit>) list = []
 
-    let onChanged = changedEvt.Publish
+    let subscribe handler =
+        _subscriptions <- handler :: _subscriptions
 
     let update quizId logic =
         putOptimistic' get put quizId logic
-        |> AsyncResult.sideRes (changedEvt.Trigger >> Ok)
+        |> AsyncResult.side (fun quiz ->
+            _subscriptions
+            |> List.map (fun handler -> handler quiz)
+            |> Async.Sequential
+            |> Async.Catch
+            |> Async.map Ok
+        )
 
     let delete quizId =
         deleteItem' tableName (key quizId)

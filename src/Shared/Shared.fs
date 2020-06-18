@@ -50,11 +50,17 @@ type MainUser = {
     IsPrivate : bool
 }
 
+type AppSyncConfig = {
+    Endpoint: string
+    Region: string
+    ApiKey : string
+}
 type TeamUser = {
     QuizId : int
     QuizName : string
     TeamId : int
     TeamName : string
+    AppSyncCfg : AppSyncConfig
 }
 
 type AdminUser = {
@@ -65,6 +71,7 @@ type AdminUser = {
 
 type AudUser = {
     QuizId : int
+    AppSyncCfg : AppSyncConfig
 }
 
 type RegUser = {

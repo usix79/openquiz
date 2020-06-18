@@ -254,29 +254,6 @@ module Infra =
     let REQ<'Arg> (arg:'Arg) =
         {Token = ""; Arg = arg}
 
-    type SseSource (url:string)=
-
-        let sse = createEmpty<EventSource.EventSource>.Create(url)
-
-        member x.SSE = sse
-
-        member inline x.OnMessage<'msg> (subscription: 'msg -> unit) =
-            sse.onmessage <- (fun evt ->
-                let evt = Json.parseAs<'msg> (sprintf "%A" evt.data)
-                subscription evt
-            )
-
-        member x.OnError (subscription: string -> unit) =
-            sse.onerror <- (fun _ ->
-                subscription "SERVER STREAM ERROR"
-            )
-
-        member x.OnHeartbeat (subscription: unit -> unit) =
-            sse.addEventListener("heartbeat", (fun _ -> subscription ()))
-
-        member x.Close () =
-            sse.close()
-
     let inline createApi<'I> () : 'I =
         Remoting.createApi()
         |> Remoting.withBaseUrl "/"

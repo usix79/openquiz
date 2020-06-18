@@ -13,3 +13,4 @@ AWSSDK.S3
 String.Similarity
 AWSSDK.DynamoDBv2
 FSharpx.Async
+Aws4RequestSigner

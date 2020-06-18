@@ -18,11 +18,10 @@ type Msg =
     | GetQuizRsp of RESP<QuizCard>
     | ChangeTab of Tab
     | QuizChanged of QuizChangedEvent
-    | SourceError of string
-    | Heartbeat
     | CountdownTick of {|QwIndex: int|}
     | GetHistoryResp of RESP<HistoryRecord list>
     | GetResultsResp of RESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
+    | ConnectionErrors of string array
     | Exn of exn
 
 type Model = {
@@ -30,8 +29,6 @@ type Model = {
     ActiveTab : Tab
     Error : string
     TimeDiff: TimeSpan
-    SseSource: Infra.SseSource option
-    IsConnectionOk : bool
     History : HistoryRecord list
     TeamResults : TeamResult list
     QuestionResults : QuestionResult list
@@ -58,19 +55,10 @@ let ok model =
 let subscribe quizId (model:Model) =
     match model.Quiz with
     | Some quiz ->
-        let url = Infra.sseUrl quizId quiz.V quiz.LT
-        let source = Infra.SseSource(url)
-
-        //let subUpdate dispatch = source.OnMessage (QuizChanged >> dispatch)
         let subUpdate dispatch =
-            source.SSE.onmessage <- (fun evt ->
-                    let evt = Json.parseAs<QuizChangedEvent> (sprintf "%A" evt.data)
-                    QuizChanged evt |> dispatch
-            )
+            AppSync.subscribe quizId quiz.LT (QuizChanged >> dispatch) (ConnectionErrors >> dispatch)
 
-        let subError dispatch = source.OnError (SourceError >> dispatch)
-        let heartbeat dispatch = source.OnHeartbeat (fun _ ->  dispatch Heartbeat)
-        {model with SseSource = Some source}, Cmd.batch[(*Cmd.ofSub subUpdate;*) Cmd.ofSub subError; Cmd.ofSub heartbeat]
+        model, Cmd.ofSub subUpdate
     | None -> model |> noCmd
 
 let setupCountdown (model : Model, cmd : Cmd<Msg>) =
@@ -87,11 +75,9 @@ let updateQuiz (f : QuizCard -> QuizCard) model  =
     | Some quiz -> {model with Quiz = Some <| f quiz}
     | None -> model
 
-let connection isOk model =
-    {model with IsConnectionOk = isOk}
-
-let init (api:IAudApi): Model * Cmd<Msg> =
-    {Quiz = None; ActiveTab = Question; Error = ""; TimeDiff = TimeSpan.Zero; SseSource = None; IsConnectionOk = false;
+let init (api:IAudApi) (user:AudUser): Model * Cmd<Msg> =
+    AppSync.configure user.AppSyncCfg.Endpoint user.AppSyncCfg.Region user.AppSyncCfg.ApiKey
+    {Quiz = None; ActiveTab = Question; Error = ""; TimeDiff = TimeSpan.Zero;
         History = []; TeamResults = []; QuestionResults = []} |> apiCmd api.getQuiz () GetQuizRsp Exn
 
 let update (api:IAudApi) (user:AudUser) (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
@@ -104,8 +90,6 @@ let update (api:IAudApi) (user:AudUser) (msg : Msg) (cm : Model) : Model * Cmd<M
     | ChangeTab Results -> {cm with ActiveTab = Results} |> ok |> apiCmd api.getResults () GetResultsResp Exn
     | GetHistoryResp {Value = Ok res} -> {cm with History = res} |> noCmd
     | GetResultsResp {Value = Ok res} -> {cm with TeamResults = res.Teams; QuestionResults = res.Questions} |> noCmd
-    | SourceError _ -> cm |> connection false |> noCmd
-    | Heartbeat -> cm |> connection true |> noCmd
     | Err txt -> cm |> error txt |> noCmd
     | Exn ex -> cm |> error ex.Message |> noCmd
     | _ -> cm |> noCmd
@@ -127,7 +111,7 @@ let quizView (dispatch : Msg -> unit) (model:Model) (quiz:QuizCard) =
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
 
             MainTemplates.mixlrFrame quiz.Mxlr
-            MainTemplates.playTitle quiz.QN quiz.Img model.IsConnectionOk quiz.Mxlr.IsNone
+            MainTemplates.playTitle quiz.QN quiz.Img quiz.Mxlr.IsNone
 
             h4 [Class "subtitle is-4" ] [Fa.i [Fa.Solid.Users] [ str " audience"] ]
 

@@ -35,11 +35,11 @@ type Msg =
     | ToggleJeopardy of qwIdx:int
     | CountdownTick of {|QwIndex: int|}
     | QuizChanged of QuizChangedEvent
-    | SourceError of string
-    | Heartbeat
     | AnswerResponse of RESP<unit>
     | GetHistoryResp of RESP<TeamHistoryRecord list>
     | GetResultsResp of RESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
+    | ConnectionErrors of string array
+
 
 type Model = {
     IsActive : bool
@@ -48,8 +48,6 @@ type Model = {
     ActiveTab : Tab
     Error : string
     TimeDiff: TimeSpan
-    SseSource: Infra.SseSource option
-    IsConnectionOk : bool
     History : TeamHistoryRecord list
     TeamResults : TeamResult list
     QuestionResults : QuestionResult list
@@ -122,25 +120,14 @@ let setupCountdown (model : Model, cmd : Cmd<Msg>) =
 let subscribe quizId (model:Model, cmd : Cmd<Msg>) =
     match model.Quiz with
     | Some quiz ->
-        let url = Infra.sseUrl quizId quiz.V quiz.LT
-        let source = Infra.SseSource(url)
-
-        //let subUpdate dispatch = source.OnMessage (QuizChanged >> dispatch)
         let subUpdate dispatch =
-            source.SSE.onmessage <- (fun evt ->
-                    let evt = Json.parseAs<QuizChangedEvent> (sprintf "%A" evt.data)
-                    QuizChanged evt |> dispatch
-            )
+            AppSync.subscribe quizId quiz.LT (QuizChanged >> dispatch) (ConnectionErrors >> dispatch)
 
-        let subError dispatch = source.OnError (SourceError >> dispatch)
-        let heartbeat dispatch = source.OnHeartbeat (fun _ ->  dispatch Heartbeat)
-        {model with SseSource = Some source}, Cmd.batch[cmd; Cmd.ofSub subUpdate; Cmd.ofSub subError; Cmd.ofSub heartbeat]
+        model, Cmd.batch[cmd; Cmd.ofSub subUpdate]
     | None -> model, cmd
 
 let unsubscribe (model:Model) =
-    match model.SseSource with
-    | Some source -> source.Close()
-    | _ -> ()
+    AppSync.unsubscribe()
 
 let applyEvent (evt:QuizChangedEvent) (model:Model) =
     model |> updateQuiz (fun quiz -> {quiz with QS = evt.QS; TC = evt.T})
@@ -187,9 +174,6 @@ let sendAnswer api (model : Model) =
         | _ -> model |> noCmd
     | _ -> model |> noCmd
 
-let connection isOk model =
-    {model with IsConnectionOk = isOk}
-
 let awStorageKey (user:TeamUser) =
     sprintf "aw-%i-%i" user.QuizId user.TeamId
 
@@ -203,9 +187,11 @@ let deleteAnswer (user:TeamUser) (model: Model) =
     Infra.removeFromLocalStorage (awStorageKey user)
     model
 
-let init (api:ITeamApi) user : Model*Cmd<Msg> =
-    {IsActive = true; Quiz = None; Answers = None; IsConnectionOk = false;  ActiveTab = Question;
-        Error = ""; TimeDiff = TimeSpan.Zero; SseSource = None; History = []; TeamResults = []; QuestionResults = []} |> apiCmd api.getState () QuizCardResp Exn
+let init (api:ITeamApi)  (user:TeamUser) : Model*Cmd<Msg> =
+    AppSync.configure user.AppSyncCfg.Endpoint user.AppSyncCfg.Region user.AppSyncCfg.ApiKey
+    {IsActive = true; Quiz = None; Answers = None; ActiveTab = Question;
+        Error = ""; TimeDiff = TimeSpan.Zero;
+        History = []; TeamResults = []; QuestionResults = []} |> apiCmd api.getState () QuizCardResp Exn
 
 let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
@@ -214,15 +200,14 @@ let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) : Model * Cmd
     | CountdownTick _ -> cm |> sendAnswer api |> setupCountdown
     | QuizChanged evt -> cm |> applyEvent evt |> sendAnswer api |> initAnswers |> setupCountdown
     | AnswerResponse {Value = Ok _} -> cm |> deleteAnswer user |> answerStatus Sent |> ok |> noCmd
-    | SourceError _ -> cm |> connection false |> noCmd
     | UpdateAnswer (qwIdx,txt) -> cm |> answerText qwIdx txt |> saveAnswer user |> noCmd
     | ToggleJeopardy qwIdx -> cm |> toggleJpd qwIdx |> saveAnswer user |> noCmd
-    | Heartbeat -> cm |> connection true |> noCmd
     | ChangeTab Question -> {cm with ActiveTab = Question} |> noCmd
     | ChangeTab History -> {cm with ActiveTab = History} |> apiCmd api.getHistory () GetHistoryResp Exn
     | ChangeTab Results -> {cm with ActiveTab = Results} |> apiCmd api.getResults () GetResultsResp Exn
     | GetHistoryResp {Value = Ok res} -> {cm with History = res} |> noCmd
     | GetResultsResp {Value = Ok res} -> {cm with TeamResults = res.Teams; QuestionResults = res.Questions} |> noCmd
+    | ConnectionErrors errors -> cm |> error (String.Join("/", errors)) |> noCmd
     | Exn ex when ex.Message = Errors.SessionIsNotActive ->
         unsubscribe cm
         {cm with IsActive = false} |> noCmd
@@ -262,7 +247,7 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
     div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
             MainTemplates.mixlrFrame quiz.Mxlr
-            MainTemplates.playTitle user.QuizName quiz.Img model.IsConnectionOk quiz.Mxlr.IsNone
+            MainTemplates.playTitle user.QuizName quiz.Img quiz.Mxlr.IsNone
 
             h4 [Class "subtitle is-4" ] [ str user.TeamName ]
 

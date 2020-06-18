@@ -285,14 +285,14 @@ let loginAdminUser secret quizId token =
             loginResp secret claims user
         else Error "Wrong entry token" |> AR.fromResult)
 
-let loginTeamUser secret quizId teamId token =
+let loginTeamUser secret appsyncCfg quizId teamId token =
     Data2.Teams.getDescriptor quizId teamId
     |> AR.bind (fun team ->
         if team.EntryToken = token then
             Data2.Quizzes.getDescriptor quizId
             |> AR.bind (fun quiz ->
                 let sessionId = rand.Next(Int32.MaxValue)
-                let user = {QuizId = team.QuizId; QuizName = quiz.Name; TeamId = team.TeamId; TeamName = team.Name}
+                let user = {QuizId = team.QuizId; QuizName = quiz.Name; TeamId = team.TeamId; TeamName = team.Name; AppSyncCfg = appsyncCfg}
                 let claims = [
                     Claim(CustomClaims.Name, user.TeamName)
                     Claim(CustomClaims.Role, CustomRoles.Team)
@@ -316,12 +316,12 @@ let loginRegUser secret quizId token =
             loginResp secret claims user
         else Error "Wrong entry token" |> AR.fromResult)
 
-let loginAudUser secret quizId token =
+let loginAudUser secret appsyncCfg quizId token =
     Data2.Quizzes.getDescriptor quizId
     |> AR.bind (fun quiz ->
         if quiz.ListenToken = System.Web.HttpUtility.UrlDecode token then
             let claims = [Claim(CustomClaims.Role, CustomRoles.Aud); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
-            let user = RegUser {QuizId = quiz.QuizId}
+            let user = AudUser {QuizId = quiz.QuizId; AppSyncCfg = appsyncCfg}
             loginResp secret claims user
         else Error "Wrong entry token" |> AR.fromResult)
 
@@ -345,6 +345,6 @@ let login secret (cfg:IConfiguration) (token:string) (req : LoginReq) =
         let redirectUri = Config.getRedirectUrl cfg
         loginMainUser secret token clientId clientName redirectUri data.Code
     | LoginReq.AdminUser data -> loginAdminUser secret data.QuizId data.Token
-    | LoginReq.TeamUser data -> loginTeamUser secret data.QuizId data.TeamId data.Token
+    | LoginReq.TeamUser data -> loginTeamUser secret (Config.getAppSyncCfg cfg) data.QuizId data.TeamId data.Token
     | LoginReq.RegUser data -> loginRegUser secret data.QuizId data.Token
-    | LoginReq.AudUser data -> loginAudUser secret data.QuizId data.Token
+    | LoginReq.AudUser data -> loginAudUser secret (Config.getAppSyncCfg cfg) data.QuizId data.Token

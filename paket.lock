@@ -828,6 +828,7 @@ NUGET
       AWS.Logger.Core (>= 1.6)
       Microsoft.Extensions.Configuration.Abstractions (>= 1.0)
       Serilog (>= 2.5)
+    Aws4RequestSigner (1.0.1)
     AWSSDK.CloudWatchLogs (3.3.101.108)
       AWSSDK.Core (>= 3.3.106.2 < 3.4)
     AWSSDK.Core (3.3.107.3)

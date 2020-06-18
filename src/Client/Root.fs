@@ -5,6 +5,7 @@ open Fable.React
 
 open Shared
 open Common
+open AppSync
 
 type CurrentPage =
     | EmptyPage of string
@@ -52,7 +53,7 @@ let initChildPage user cm =
         let submodel, subcmd = Team.init teamApi u
         {cm with CurrentPage = TeamPage submodel; CurrentUser = Some user}, Cmd.map TeamMsg subcmd
     | AudUser u->
-        let submodel, subcmd = Aud.init audApi
+        let submodel, subcmd = Aud.init audApi u
         {cm with CurrentPage = AudPage submodel; CurrentUser = Some user}, Cmd.map AudMsg subcmd
 
 let saveUser token refreshToken user =

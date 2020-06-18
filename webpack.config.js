@@ -29,10 +29,6 @@ var CONFIG = {
             target: 'http://localhost:' + (process.env.SERVER_PROXY_PORT || "8085"),
                changeOrigin: true
            },
-        '/sse': {
-        target: 'http://localhost:' + (process.env.SERVER_PROXY_PORT || "8085"),
-            changeOrigin: true
-        },
         // redirect requests that start with /img/* to the server on port 8085
         '/img/*': {
             target: 'http://localhost:' + (process.env.SERVER_PROXY_PORT || "8085"),
