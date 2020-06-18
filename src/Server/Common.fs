@@ -318,19 +318,22 @@ module Diag =
             (Threading.Monitor.LockContentionCount)
 
     let run command =
-        use proc = new Diagnostics.Process()
-        proc.StartInfo.FileName <- "/bin/sh"
-        proc.StartInfo.Arguments <- "-c \" " + command + " \""
-        proc.StartInfo.UseShellExecute <- false
-        proc.StartInfo.RedirectStandardOutput <- true
-        proc.StartInfo.RedirectStandardError <- true
-        proc.Start() |> ignore
+        try
+            use proc = new Diagnostics.Process()
+            proc.StartInfo.FileName <- "/bin/sh"
+            proc.StartInfo.Arguments <- "-c \" " + command + " \""
+            proc.StartInfo.UseShellExecute <- false
+            proc.StartInfo.RedirectStandardOutput <- true
+            proc.StartInfo.RedirectStandardError <- true
+            proc.Start() |> ignore
 
-        let output =
-            sprintf "%s\n%s"
-                (proc.StandardOutput.ReadToEnd())
-                (proc.StandardError.ReadToEnd())
+            let output =
+                sprintf "%s\n%s"
+                    (proc.StandardOutput.ReadToEnd())
+                    (proc.StandardError.ReadToEnd())
 
-        proc.WaitForExit();
+            proc.WaitForExit();
 
-        output
+            output
+        with
+        | ex -> ex.ToString()
