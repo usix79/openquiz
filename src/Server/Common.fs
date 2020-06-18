@@ -225,11 +225,21 @@ module Aws =
 
         }
 
+    let private publishQuery = sprintf """
+        { "query": "mutation quizMessage {
+            quizMessage(quizId: %i, token: \"%s\", body: \"%s\", version: %i){
+                quizId,
+                token,
+                body,
+                version
+            }
+           }"
+        }"""
+
     let publishQuizMessage (endpoint:string) region quizId token version evt =
         async {
             try
                 let! creds = Amazon.Runtime.FallbackCredentialsFactory.GetCredentials().GetCredentialsAsync() |> Async.AwaitTask
-                printfn "AK: %s SK: %s TK: %s" creds.AccessKey creds.SecretKey creds.Token
 
                 let signer = new Aws4RequestSigner.AWS4RequestSigner(creds.AccessKey, creds.SecretKey)
 
@@ -238,9 +248,8 @@ module Aws =
                     |> Text.UTF8Encoding.UTF8.GetBytes
                     |> Convert.ToBase64String
 
-                let data = sprintf """{ "query": "mutation quizMessage {quizMessage(quizId: %i, token: \"%s\", body: \"%s\", version: %i){quizId,token,body,version}}" }""" quizId token body version
 
-                let content = new StringContent(data, Text.Encoding.UTF8, "application/graphql")
+                let content = new StringContent((publishQuery quizId token body version), Text.Encoding.UTF8, "application/graphql")
 
                 let origReq = new HttpRequestMessage(HttpMethod.Post, endpoint, Content = content)
 
