@@ -77,7 +77,7 @@ type SecurityFacade (server) =
 
             return
                 match resp.Value with
-                | Ok v -> v.Token
+                | Ok v -> v
                 | Error txt -> failwithf "LOGIN ERROR: %s" txt
         }
 

@@ -225,16 +225,7 @@ module Aws =
 
         }
 
-    let private publishQuery = sprintf """
-        { "query": "mutation quizMessage {
-            quizMessage(quizId: %i, token: \"%s\", body: \"%s\", version: %i){
-                quizId,
-                token,
-                body,
-                version
-            }
-           }"
-        }"""
+    let private publishQuery = sprintf """{ "query": "mutation quizMessage {quizMessage(quizId: %i, token: \"%s\", body: \"%s\", version: %i){quizId, token, body, version} }"}"""
 
     let publishQuizMessage (endpoint:string) region quizId token version evt =
         async {
@@ -248,8 +239,9 @@ module Aws =
                     |> Text.UTF8Encoding.UTF8.GetBytes
                     |> Convert.ToBase64String
 
+                let data = publishQuery quizId token body version
 
-                let content = new StringContent((publishQuery quizId token body version), Text.Encoding.UTF8, "application/graphql")
+                let content = new StringContent(data, Text.Encoding.UTF8, "application/graphql")
 
                 let origReq = new HttpRequestMessage(HttpMethod.Post, endpoint, Content = content)
 

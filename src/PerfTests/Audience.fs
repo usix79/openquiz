@@ -30,9 +30,9 @@ let audience server quizId opts (securytyFacade:SecurityFacade)  (adminFacade: A
                 printfn "initializing audience %i" idx
 
                 let req = Shared.AudUser {|QuizId=quizId; Token=listenToken|}
-                let! token = securytyFacade.Login req
+                let! loginResp = securytyFacade.Login req
 
-                let audFacade = AudienceFacade (server, token)
+                let audFacade = AudienceFacade (server, loginResp.Token)
                 let! resp = audFacade.GetQuiz ()
 
                 match resp with

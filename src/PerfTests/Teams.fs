@@ -102,71 +102,75 @@ let teams server quizId opts (securytyFacade:SecurityFacade) (adminFacade: Admin
                     printfn "initializing team %i" team.TeamId
 
                     let req = Shared.TeamUser {|QuizId=quizId; TeamId = team.TeamId; Token=team.EntryToken|}
-                    let! token = securytyFacade.Login req
+                    let! loginResp = securytyFacade.Login req
 
-                    let teamFacade = TeamFacade (server, token)
+                    match loginResp.User with
+                    | TeamUser u ->
 
-                    let! _ = teamFacade.TakeActiveSession ()
+                        let teamFacade = TeamFacade (server, loginResp.Token)
 
-                    //do! Task.Delay(1000) |> Async.AwaitTask // wait for session to be applyed
+                        let! _ = teamFacade.TakeActiveSession ()
 
-                    let! resp = teamFacade.GetState ()
+                        //do! Task.Delay(1000) |> Async.AwaitTask // wait for session to be applyed
 
-                    match resp with
-                    | Ok {Value = Ok quiz; ST = serverTime} ->
-                        let initModel = {
-                            QuizStatus = quiz.QS
-                            CurrentTour = quiz.TC
-                            CurrentTourIndex = if quiz.TC.IsSome then quiz.TC.Value.Idx else 0;
-                            TimeDiff = timeDiff serverTime;
-                            IsAnswerSent = quiz.Aw.Count > 0}
+                        let! resp = teamFacade.GetState ()
 
-                        let agent = startAgent team teamFacade initModel
+                        match resp with
+                        | Ok {Value = Ok quiz; ST = serverTime} ->
+                            let initModel = {
+                                QuizStatus = quiz.QS
+                                CurrentTour = quiz.TC
+                                CurrentTourIndex = if quiz.TC.IsSome then quiz.TC.Value.Idx else 0;
+                                TimeDiff = timeDiff serverTime;
+                                IsAnswerSent = quiz.Aw.Count > 0}
 
-                        let converter = FableJsonConverter()
+                            let agent = startAgent team teamFacade initModel
 
-                        let appSyncClient = AppSyncClient("https://7bhbyvhbfzezhj7jrxmnllg7ca.appsync-api.eu-central-1.amazonaws.com/graphql", AuthOptions(APIKey = "da2-z2u7n2jhhneejchbkfnipdungq"))
-                        let guid = Guid.NewGuid()
+                            let converter = FableJsonConverter()
 
-                        let query = sprintf """
-                              subscription pqm {
-                                onQuizMessage(quizId: %i, token: \"%s\") {
-                                  body
-                                }
-                              }
-                            """
-                        let opt = QueryOptions(Query = (query quizId quiz.LT), SubscriptionId = guid)
+                            let appSyncClient = AppSyncClient(u.AppSyncCfg.Endpoint, AuthOptions(APIKey = u.AppSyncCfg.ApiKey))
+                            let guid = Guid.NewGuid()
 
-                        let onMessage = Action<obj>(fun obj -> printfn "MESSAGE: %A" obj)
-                        let onError = Action<exn>(fun exn -> printfn "EXCEPTION: %A" exn)
+                            let query = sprintf """
+                                  subscription pqm {
+                                    onQuizMessage(quizId: %i, token: "%s") {
+                                      body
+                                    }
+                                  }
+                                """
+                            let opt = QueryOptions(Query = (query quizId quiz.LT), SubscriptionId = guid)
 
-                        let res = appSyncClient.CreateSubscriptionAsync<obj>(opt, onMessage, onError) |> Async.AwaitTask
+                            let onMessage = Action<obj>(fun obj -> printfn "MESSAGE: %A" obj)
+                            let onError = Action<exn>(fun exn -> printfn "EXCEPTION: %A" exn)
 
-                        ()
+                            let res = appSyncClient.CreateSubscriptionAsync<obj>(opt, onMessage, onError) |> Async.AwaitTask
 
-                        // printfn "sse initializing for team %i" team.TeamId
+                            ()
 
-                        // let url = sprintf "%s%s" server (Infra.sseUrl quizId quiz.V quiz.LT)
-                        // let! s = httpClient.GetStreamAsync (url) |> Async.AwaitTask
+                            // printfn "sse initializing for team %i" team.TeamId
 
-                        // printfn "sse established for team %i" team.TeamId
+                            // let url = sprintf "%s%s" server (Infra.sseUrl quizId quiz.V quiz.LT)
+                            // let! s = httpClient.GetStreamAsync (url) |> Async.AwaitTask
 
-                        // Connection.Receive (fun () -> s)
-                        // //let s = Http.RequestStream( url )
-                        // //Connection.Receive (fun () -> s.ResponseStream)
-                        // |> Observable.subscribe ( fun evt ->
-                        //     match evt.EventName, evt.Data with
-                        //     | Some "message", Some (SSEData json) ->
-                        //         try
-                        //             let evt = JsonConvert.DeserializeObject<QuizChangedEvent>(json, converter)
-                        //             agent.Post (QuizChanged evt)
-                        //         with
-                        //         | ex -> printfn "EXCEPTION: %s" ex.Message
-                        //     | _ -> ()
-                        // ) |> ignore
+                            // printfn "sse established for team %i" team.TeamId
 
-                    | Ok {Value = Result.Error txt} -> failwithf "Init agent error for team %i %s" team.TeamId txt
-                    | Result.Error exn -> failwithf "Init agent exception for team %i %s" team.TeamId exn.Message
+                            // Connection.Receive (fun () -> s)
+                            // //let s = Http.RequestStream( url )
+                            // //Connection.Receive (fun () -> s.ResponseStream)
+                            // |> Observable.subscribe ( fun evt ->
+                            //     match evt.EventName, evt.Data with
+                            //     | Some "message", Some (SSEData json) ->
+                            //         try
+                            //             let evt = JsonConvert.DeserializeObject<QuizChangedEvent>(json, converter)
+                            //             agent.Post (QuizChanged evt)
+                            //         with
+                            //         | ex -> printfn "EXCEPTION: %s" ex.Message
+                            //     | _ -> ()
+                            // ) |> ignore
+
+                        | Ok {Value = Result.Error txt} -> failwithf "Init agent error for team %i %s" team.TeamId txt
+                        | Result.Error exn -> failwithf "Init agent exception for team %i %s" team.TeamId exn.Message
+                    | _ -> printfn "ERROR: wrong user type"
                 with
                 | ex -> printfn "EXCEPTION: %s %A" ex.Message ex
             }

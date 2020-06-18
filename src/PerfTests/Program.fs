@@ -57,8 +57,8 @@ let main argv =
 
         let securityFacade = SecurityFacade options.Server
         let req = Shared.AdminUser {|QuizId=options.QuizId; Token=options.Token|}
-        let token = securityFacade.Login req |> Async.RunSynchronously
-        let adminFacade = AdminFacade (options.Server, token)
+        let loginResp = securityFacade.Login req |> Async.RunSynchronously
+        let adminFacade = AdminFacade (options.Server, loginResp.Token)
 
         match options.Mode with
         | Some (Setup opt) -> setup opt adminFacade
