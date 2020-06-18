@@ -229,6 +229,7 @@ module Aws =
         async {
             try
                 let! creds = Amazon.Runtime.FallbackCredentialsFactory.GetCredentials().GetCredentialsAsync() |> Async.AwaitTask
+                printfn "AK: %s SK: %s TK: %s" creds.AccessKey creds.SecretKey creds.Token
 
                 let signer = new Aws4RequestSigner.AWS4RequestSigner(creds.AccessKey, creds.SecretKey)
 
@@ -244,6 +245,9 @@ module Aws =
                 let origReq = new HttpRequestMessage(HttpMethod.Post, endpoint, Content = content)
 
                 let! signedReq = signer.Sign(origReq, "appsync", region) |> Async.AwaitTask
+
+                if creds.UseToken then
+                    signedReq.Headers.Add("X-Amz-Security-Token", creds.Token)
 
                 let! resp = httpClient.SendAsync(signedReq) |> Async.AwaitTask
                 let! respStr = resp.Content.ReadAsStringAsync() |> Async.AwaitTask

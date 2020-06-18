@@ -23,6 +23,7 @@ group PTests
     source https://api.nuget.org/v3/index.json
     framework: netcoreapp3.1
     storage: none
+nuget DotNetCSharp.AWS.AppSync.Client 1.1.1
 nuget Fable.Remoting.DotnetClient
 nuget FSharp.Control.Reactive
 nuget FSharpx.Async
