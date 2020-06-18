@@ -316,3 +316,19 @@ module Diag =
             (GC.GetGCMemoryInfo().MemoryLoadBytes)
             (GC.GetGCMemoryInfo().TotalAvailableMemoryBytes)
             (Threading.Monitor.LockContentionCount)
+
+    let ulimit () =
+        let command = "ulimit -a";
+
+        use proc = new System.Diagnostics.Process()
+        proc.StartInfo.FileName <- "/bin/bash"
+        proc.StartInfo.Arguments <- "-c \" " + command + " \""
+        proc.StartInfo.UseShellExecute <- false
+        proc.StartInfo.RedirectStandardOutput <- true
+        proc.StartInfo.RedirectStandardError <- true
+        proc.Start() |> ignore
+
+        printfn "ULIMITS: %s" (proc.StandardOutput.ReadToEnd())
+        printfn "ULIMITS ERROR: %s" (proc.StandardError.ReadToEnd())
+
+        proc.WaitForExit();

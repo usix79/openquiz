@@ -117,6 +117,8 @@ let configureServices (services : IServiceCollection) =
 let main _ =
     printfn "Working directory - %s" (Directory.GetCurrentDirectory())
 
+    Diag.ulimit()
+
     // async{
     //     while true do
     //         Diag.status()
