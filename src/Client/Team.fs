@@ -260,7 +260,7 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
                         | History -> yield historyView dispatch model
                         | Question ->
                             match quiz.QS, model.Answers with
-                            | Live, Some answers -> yield quiestionView dispatch quiz answers isCountdownFinished
+                            | Live, Some answers -> yield quiestionView dispatch quiz answers isCountdownActive isCountdownFinished
                             | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg
                         | Results -> yield resultsView dispatch user model
                     ]
@@ -273,12 +273,12 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
             MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
     ]
 
-let quiestionView (dispatch : Msg -> unit) quiz answers isCountdownFinished =
+let quiestionView (dispatch : Msg -> unit) quiz answers isCountdownActive isCountdownFinished =
     div [] [
         match quiz.TC with
         | Some tour ->
             match tour.Slip with
-            | SS slip -> yield singleQwView dispatch tour slip answers isCountdownFinished
+            | SS slip -> yield singleQwView dispatch tour slip answers isCountdownActive isCountdownFinished
             | MS (name,slips) -> yield multipleQwView dispatch tour name slips answers isCountdownFinished
         | None -> ()
     ]
@@ -308,7 +308,7 @@ let awArea dispatch aw jpd status withChoice readOnly =
         answerStatusIcon status aw
     ]
 
-let singleQwView dispatch tour slip answers isCountdownFinished =
+let singleQwView dispatch tour slip answers isCountdownActive isCountdownFinished =
     div[][
         MainTemplates.singleTourInfo tour.Name slip
 
@@ -317,8 +317,9 @@ let singleQwView dispatch tour slip answers isCountdownFinished =
         match slip with
         | X3 -> ()
         | QW slip ->
-            label [Class "label"][str "Your answer"]
-            awArea dispatch txt jpd answers.Status slip.Ch isCountdownFinished
+            if isCountdownActive then
+                label [Class "label"][str "Your answer"]
+                awArea dispatch txt jpd answers.Status slip.Ch isCountdownFinished
         | AW slip ->
             label [Class "label"][str "Your answer"]
             awArea dispatch txt jpd answers.Status slip.Ch true

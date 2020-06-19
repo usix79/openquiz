@@ -1,5 +1,10 @@
 # Release Notes
 
+## 1.6.0 - 2020-06-19
+
+* Change of the lobby's appearance
+* Automatic adjustment of the seconds in case of blitzes and doublets
+
 ## 1.5.0 - 2020-06-19
 
 * OpenQuiz has been ported to a new architecture that allows 5,000 teams to participate simultaneously in a quiz

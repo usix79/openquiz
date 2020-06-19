@@ -114,6 +114,10 @@ with
         match x with
         | Single slip -> if qwIdx = 0 then slip.QuestionsCount else 1
         | Multiple (_,slips) -> slips |> List.tryItem qwIdx |> Option.map (fun slip -> slip.QuestionsCount) |> Option.defaultValue 0
+    member x.SecondsDevider =
+        match x with
+        | Single slip -> slip.QuestionsCount
+        | _ -> 1
 
 type QuestionText =
     | Solid of string
@@ -303,14 +307,17 @@ module Quizzes =
 
     let getNextTourSeconds (quiz:Quiz) =
         match quiz.CurrentTour with
-        | Some qw -> qw.Seconds
+        | Some tour ->
+            match tour.Slip with
+            | Single slip -> tour.Seconds * slip.QuestionsCount
+            | _ -> tour.Seconds
         | None -> 60
 
     let addSlip (slip:Slip) (quiz:Quiz) =
         {quiz with
             Tours = {
                 Name = quiz |> getNextTourName
-                Seconds = quiz |> getNextTourSeconds
+                Seconds = (quiz |> getNextTourSeconds) / (slip.SecondsDevider)
                 Status = Announcing
                 Slip = slip
                 QwIdx = 0
