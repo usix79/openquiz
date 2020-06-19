@@ -1,4 +1,5 @@
 module Setup
+open FSharpx.Control
 
 open Shared
 open Common
@@ -7,8 +8,8 @@ let setup opts (adminFacade:AdminFacade)  =
 
     randomNames "team"
     |> Seq.take opts.TeamsCount
-    |> Array.ofSeq
-    |> Array.Parallel.map (adminFacade.CreateTeam >> Async.RunSynchronously)
-    |> ignore
+    |> List.ofSeq
+    |> adminFacade.CreateTeamBatch
+    |> Async.RunSynchronously
 
     System.Threading.Thread.Sleep(1000)

@@ -15,3 +15,4 @@ release.sh
 deploy
 bundle
 .ionide/
+src/Server/aws-logger-errors.txt

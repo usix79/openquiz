@@ -565,6 +565,7 @@ type IMainApi = {
 type IAdminApi = {
     getTeams : REQ<unit> -> ARESP<AdminModels.TeamRecord list>
     createTeam : REQ<{|TeamName : string|}> -> ARESP<{|Record : AdminModels.TeamRecord|}>
+    createTeamBatch : REQ<{|TeamNames : string list|}> -> ARESP<unit>
     getTeamCard : REQ<{|TeamId : int|}> -> ARESP<AdminModels.TeamCard>
     updateTeamCard : REQ<AdminModels.TeamCard> -> ARESP<AdminModels.TeamRecord>
     changeTeamStatus : REQ<{|TeamId : int; TeamStatus : TeamStatus|}> -> ARESP<AdminModels.TeamRecord>

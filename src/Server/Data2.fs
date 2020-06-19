@@ -53,7 +53,7 @@ let private putOptimistic' get put id logic  =
 
 let client = new AmazonDynamoDBClient()
 
-let semaphore = new SemaphoreSlim(256, 256);
+let semaphore = new SemaphoreSlim(512, 512);
 
 let fullTableName name = sprintf "OQ-%s" name
 

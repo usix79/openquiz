@@ -88,10 +88,10 @@ type AdminFacade (server, token) =
     let mutable token = token
     let proxy = createProxy<IAdminApi> server
 
-    member x.CreateTeam teamName =
+    member x.CreateTeamBatch teamNames =
         async {
-            let req = serverRequest token {|TeamName = teamName|}
-            let! resp = proxy.call <@ fun server -> server.createTeam req @>
+            let req = serverRequest token {|TeamNames = teamNames|}
+            let! resp = proxy.call <@ fun server -> server.createTeamBatch req @>
             return
                 match resp.Value with
                 | Ok res -> res

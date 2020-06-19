@@ -371,6 +371,7 @@ module Infra =
             {
                 getTeams = x.Wrap adminApi.getTeams
                 createTeam = x.Wrap adminApi.createTeam
+                createTeamBatch = x.Wrap adminApi.createTeamBatch
                 getTeamCard = x.Wrap adminApi.getTeamCard
                 updateTeamCard = x.Wrap adminApi.updateTeamCard
                 changeTeamStatus = x.Wrap adminApi.changeTeamStatus

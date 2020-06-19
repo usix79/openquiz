@@ -36,6 +36,7 @@ let api (context:HttpContext) : IAdminApi =
     let api : IAdminApi = {
         getTeams = ex  "getTeams" getTeams
         createTeam = ex  "createTeam" createTeam
+        createTeamBatch = ex  "createTeamBatch" createTeamBatch
         getTeamCard = ex  "getTeamCard" getTeamCard
         updateTeamCard = ex  "updateTeamCard" updateTeamCard
         changeTeamStatus = ex  "changeTeamStatus" changeTeamStatus
@@ -75,6 +76,17 @@ let createTeam quiz req =
     |> AR.bind (fun teamsInQuiz ->
         Data2.Teams.create quiz.QuizId (creator teamsInQuiz)
         |> AR.map (fun team -> {|Record = Admin.teamRecord team.Dsc|}))
+
+let createTeamBatch quiz req =
+
+    let creator teamName teamId =
+        Domain.Teams.createNewAdmin teamId teamName quiz Domain.Admitted  |> Ok
+
+    req.TeamNames
+    |> List.map (fun teamName -> Data2.Teams.create quiz.QuizId (creator teamName))
+    |> List.iter (Async.RunSynchronously >> ignore)
+
+    AR.retn ()
 
 let getTeamCard quiz req =
     Data2.Teams.getDescriptor quiz.QuizId req.TeamId

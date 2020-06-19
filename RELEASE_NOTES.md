@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.5.0 - 2020-06-19
+
+* OpenQuiz has been ported to a new architecture that allows 5,000 teams to participate simultaneously in a quiz
+
 ## 1.4.0 - 2020-05-15
 
 * Replaced text "Comming soon..."
