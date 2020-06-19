@@ -90,39 +90,38 @@ let update (api:IMainApi)(user:MainUser) (msg : Msg) (cm : Model) : Model * Cmd<
     | _ -> cm |> noCmd
 
 let levelWithRegisterBtn dispatch = [
-    div [Class "level is-mobile"][
-        div [Class "level-left"][]
-        div [Class "level-right"][
-            p [Class "level-item is-light"][
-                a [Class "button is-small"; OnClick (fun _ -> OpenRegForm |> dispatch) ][str "Register"]
-            ]
-        ]
-    ]
+    a [Class "button is-primary is-fullwidth"; OnClick (fun _ -> OpenRegForm |> dispatch) ][str "Register"]
 ]
 
 let levelWithRegistrationInfo dispatch (quiz : QuizRegRecord) (comp:ExpertCompetition) = [
-    small [Class "has-text-weight-light"][
-        str "Registered as"
-        a [Href (urlForTeam quiz.QuizId comp.TeamId comp.EntryToken); Target "_blank";
-            Style [MarginLeft "5px"; MarginRight "5px"]][
-            str comp.TeamName; str " "; Fa.i [Fa.Solid.ExternalLinkAlt][]
-       ]
-    ]
-    if (quiz.Status <> Finished) then
-        div [Class "level is-mobile"][
-            div [Class "level-left"][
-                match comp.TeamStatus with
-                | New -> span [Class "tag is-warning is-light"][str "waiting confirmation"]
-                | Admitted -> span [Class "tag is-success is-light"][str "confirmed"]
-                | Rejected -> span [Class "tag is-danger is-light"][str "rejected"]
-            ]
-            div [Class "level-right"][
-                if (quiz.Status = Setup) then
-                    p [Class "level-item is-light"][
-                        a [Class "button is-small"; Title "Edit"; OnClick (fun _ -> OpenRegForm |> dispatch) ][Fa.i [Fa.Regular.Edit][]]
-                    ]
+    table [Class "table"][
+        thead[][
+            tr[][
+                th[] [str "registered as"]
+                th[] [str "status"]
+                th[] []
             ]
         ]
+        tbody[][
+            tr [][
+                td[] [
+                    str comp.TeamName
+                ]
+                td[] [
+                    match comp.TeamStatus with
+                    | New -> span [Class "tag is-warning is-light"][str "pending"]
+                    | Admitted -> span [Class "tag is-success is-light"][str "confirmed"]
+                    | Rejected -> span [Class "tag is-danger is-light"][str "rejected"]
+                ]
+                td[][
+                    if (quiz.Status = Setup) then
+                        a [Class "button is-small"; Title "Edit"; OnClick (fun _ -> OpenRegForm |> dispatch) ][Fa.i [Fa.Regular.Edit][]]
+                ]
+            ]
+        ]
+    ]
+    if comp.TeamStatus = Admitted then
+        a [Class "button is-success is-light is-fullwidth"; Href (urlForTeam quiz.QuizId comp.TeamId comp.EntryToken)][str ("Enter " + quiz.Name)]
 ]
 
 let levelWithEditForm dispatch (quiz : QuizRegRecord) (regForm : RegForm ) = [
@@ -177,6 +176,7 @@ let quizView (dispatch : Msg -> unit) (quiz : QuizRegRecord) (regForm : RegForm 
     figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Infra.urlForImgSafe quiz.ImgKey ] ]
     br []
     h3 [Class "title is-3"] [str quiz.Name]
+    h4 [Class "subtitle is-4" ] [Fa.i [Fa.Solid.DoorOpen] [ str " registration"] ]
 
     div [Class "notification is-white"][
         p [Class "subtitle is-5"][
@@ -191,6 +191,8 @@ let quizView (dispatch : Msg -> unit) (quiz : QuizRegRecord) (regForm : RegForm 
         ]
 
         p [] (splitByLines quiz.Description)
+        if quiz.EventPage <> "" then
+            a[Href quiz.EventPage][str "details"]
     ]
 
     div [Style [Width "320px"; Display DisplayOptions.InlineBlock]] [
