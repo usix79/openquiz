@@ -1,0 +1,24 @@
+﻿schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+type Mutation {
+  quizMessage(body: String!, quizId: Int!, token: String!, version: Int!): QuizMessage
+}
+
+type Query {
+  dummy: String
+}
+
+type QuizMessage {
+  body: String!
+  quizId: Int!
+  token: String!
+  version: Int!
+}
+
+type Subscription @aws_api_key {
+  onQuizMessage(quizId: Int!, token: String!): QuizMessage @aws_subscribe(mutations : ["quizMessage"])
+}
