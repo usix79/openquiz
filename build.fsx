@@ -11,17 +11,15 @@ open System
 open Fake.Core
 open Fake.DotNet
 open Fake.IO
-open System.IO.Compression;
 
 Target.initEnvironment ()
 
 let serverPath = Path.getFullName "./src/Server"
 let clientPath = Path.getFullName "./src/Client"
+let ptestsPath = Path.getFullName "./src/PerfTests"
 let clientDeployPath = Path.combine clientPath "deploy"
 let clientPublicPath = Path.combine clientPath "public"
 let deployDir = Path.getFullName "./deploy"
-let bundleDir = Path.getFullName "./bundle"
-let ptestsPath = Path.getFullName "./src/PerfTests"
 
 let release = ReleaseNotes.load "RELEASE_NOTES.md"
 
@@ -68,9 +66,7 @@ let openBrowser url =
 
 
 Target.create "Clean" (fun _ ->
-    [ deployDir
-      clientDeployPath
-      bundleDir ]
+    [deployDir; clientDeployPath]
     |> Shell.cleanDirs
 )
 
@@ -84,24 +80,11 @@ Target.create "InstallClient" (fun _ ->
 
 Target.create "Build" (fun _ ->
     runDotNet "build" serverPath
-    runDotNet "build" ptestsPath
 
     Shell.regexReplaceInFileWithEncoding
         "let app = \".+\""
        ("let app = \"" + release.NugetVersion + "\"")
-        System.Text.Encoding.UTF8
-        (Path.combine clientPath "Version.fs")
-    runTool yarnTool "webpack-cli -p" __SOURCE_DIRECTORY__
-)
-
-Target.create "BuildDebug" (fun _ ->
-    runDotNet "build -c Debug" serverPath
-    runDotNet "build" ptestsPath
-
-    Shell.regexReplaceInFileWithEncoding
-        "let app = \".+\""
-       ("let app = \"" + release.NugetVersion + "\"")
-        System.Text.Encoding.UTF8
+        Text.Encoding.UTF8
         (Path.combine clientPath "Version.fs")
     runTool yarnTool "webpack-cli -p" __SOURCE_DIRECTORY__
 )
@@ -132,7 +115,13 @@ Target.create "Run" (fun _ ->
     |> ignore
 )
 
-Target.create "Bundle" (fun _ ->
+Target.create "PTests" (fun p ->
+    runDotNet "build" ptestsPath
+
+    runDotNetWithArgs "run -c Release" ptestsPath p.Context.Arguments
+)
+
+Target.create "Docker" (fun _ ->
     let publicDir = Path.combine deployDir "public"
     let publishArgs = sprintf "publish -c Release -o \"%s\"" deployDir
     runDotNet publishArgs serverPath
@@ -140,45 +129,12 @@ Target.create "Bundle" (fun _ ->
     Shell.copyDir publicDir clientPublicPath FileFilter.allFiles
     Shell.copyDir publicDir clientDeployPath FileFilter.allFiles
 
-    let bundleInputDir = Path.combine bundleDir "input"
-    let bundleFile = Path.combine bundleDir "openquiz-bundle.zip"
-    Shell.mkdir bundleDir
-    Shell.mkdir bundleInputDir
-    ZipFile.CreateFromDirectory (deployDir, (Path.combine bundleInputDir "openquiz.zip"))
-    Shell.copyFile bundleInputDir "aws-windows-deployment-manifest.json"
-    Shell.copyDir (Path.combine bundleInputDir ".ebextensions") ".ebextensions" FileFilter.allFiles
+    let dockerUser = "usix"
+    let dockerImageName = "openquiz"
+    let tag = sprintf "%s/%s" dockerUser dockerImageName
 
-    Shell.rm bundleFile
-    ZipFile.CreateFromDirectory (bundleInputDir, bundleFile)
-)
-
-Target.create "BundleDockerLocal" (fun _ ->
-    let publicDir = Path.combine deployDir "public"
-    let publishArgs = sprintf "publish -c Debug -o \"%s\"" deployDir
-    runDotNet publishArgs serverPath
-
-    Shell.copyDir publicDir clientPublicPath FileFilter.allFiles
-    Shell.copyDir publicDir clientDeployPath FileFilter.allFiles
-)
-
-Target.create "PTests" (fun p ->
-    runDotNetWithArgs "run -c Release" ptestsPath p.Context.Arguments
-)
-
-let buildDocker tag =
     let args = sprintf "build -t %s ." tag
     runTool "docker" args __SOURCE_DIRECTORY__
-
-let dockerUser = "usix"
-let dockerImageName = "openquiz"
-let dockerFullName = sprintf "%s/%s" dockerUser dockerImageName
-
-Target.create "Docker" (fun _ ->
-    buildDocker dockerFullName
-)
-
-Target.create "DockerLocal" (fun _ ->
-    buildDocker dockerFullName
 )
 
 open Fake.Core.TargetOperators
@@ -186,14 +142,7 @@ open Fake.Core.TargetOperators
 "Clean"
     ==> "InstallClient"
     ==> "Build"
-    ==> "Bundle"
     ==> "Docker"
-
-"Clean"
-    ==> "InstallClient"
-    ==> "BuildDebug"
-    ==> "BundleDockerLocal"
-    ==> "DockerLocal"
 
 "Clean"
     ==> "InstallClient"

@@ -544,7 +544,7 @@ module Quizzes =
         dscBuilder
         <!> (req Fields.Id A.number >-> P.int)
         <*> (req Fields.Producer A.string)
-        <*> (opt Fields.StartTime A.string ?>-> P.dateTime)
+        <*> (opt Fields.StartTime (A.nullOr A.string) ??>-> P.dateTime)
         <*> (req Fields.Name A.string)
         <*> (req Fields.Status A.string >- P.enum<Domain.QuizStatus>)
         <*> (optDef Fields.WelcomeText "" A.string)
