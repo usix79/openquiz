@@ -24,31 +24,31 @@ let uploadFile bucketName (cat:ImgCategory) (fileType:string) (fileBody : byte[]
             InputStream = stream,
             ContentType = fileType
         )
-    client.PutObjectAsync(req)
-    |> Async.AwaitTask
-    |> Async.map (fun resp ->
-        if (resp.HttpStatusCode = System.Net.HttpStatusCode.OK) then Ok {|BucketKey = key|}
-        else Error <| resp.HttpStatusCode.ToString())
-    |> Async.Catch
-    |> Async.map (
-        function
-        | Choice1Of2 a -> a
-        | Choice2Of2 ex ->
-            Log.Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
-            Error ex.Message)
+    // client.PutObjectAsync(req)
+    // |> Async.AwaitTask
+    // |> Async.map (fun resp ->
+    //     if (resp.HttpStatusCode = System.Net.HttpStatusCode.OK) then Ok {|BucketKey = key|}
+    //     else Error <| resp.HttpStatusCode.ToString())
+    // |> Async.Catch
+    // |> Async.map (
+    //     function
+    //     | Choice1Of2 a -> a
+    //     | Choice2Of2 ex ->
+    //         Log.Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
+    //         Error ex.Message)
 
-    // try
-    //     let resp = client.PutObjectAsync(req).Result
+    try
+        let resp = client.PutObjectAsync(req).Result
 
-    //     if (resp.HttpStatusCode = System.Net.HttpStatusCode.OK) then
-    //         Ok {|BucketKey = key|}
-    //     else
-    //         Error <| resp.HttpStatusCode.ToString()
-    // with
-    // | ex ->
-    //     printfn "EXCEPTION %A" ex
-    //     Error ex.Message
-    // |> AsyncResult.fromResult
+        if (resp.HttpStatusCode = System.Net.HttpStatusCode.OK) then
+            Ok {|BucketKey = key|}
+        else
+            Error <| resp.HttpStatusCode.ToString()
+    with
+    | ex ->
+        printfn "EXCEPTION %A" ex
+        Error ex.Message
+    |> AsyncResult.fromResult
 
 
 let downloadFile buketName key =
