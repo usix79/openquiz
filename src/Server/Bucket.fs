@@ -15,41 +15,24 @@ let prefix = "pub/"
 let uploadFile bucketName (cat:ImgCategory) (fileType:string) (fileBody : byte[]) : Async<Result<{|BucketKey:string|}, string>> =
     use client = new AmazonS3Client()
     let key = cat.Prefix + "/" + Common.generateRandomToken().Replace("/", "_").Replace("+", "-")
-    use stream = new MemoryStream(fileBody)
 
     let req =
         PutObjectRequest (
             BucketName = bucketName,
             Key = prefix + key,
-            InputStream = stream,
-            ContentType = fileType
-        )
-    // client.PutObjectAsync(req)
-    // |> Async.AwaitTask
-    // |> Async.map (fun resp ->
-    //     if (resp.HttpStatusCode = System.Net.HttpStatusCode.OK) then Ok {|BucketKey = key|}
-    //     else Error <| resp.HttpStatusCode.ToString())
-    // |> Async.Catch
-    // |> Async.map (
-    //     function
-    //     | Choice1Of2 a -> a
-    //     | Choice2Of2 ex ->
-    //         Log.Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
-    //         Error ex.Message)
-
-    try
-        let resp = client.PutObjectAsync(req).Result
-
-        if (resp.HttpStatusCode = System.Net.HttpStatusCode.OK) then
-            Ok {|BucketKey = key|}
-        else
-            Error <| resp.HttpStatusCode.ToString()
-    with
-    | ex ->
-        printfn "EXCEPTION %A" ex
-        Error ex.Message
-    |> AsyncResult.fromResult
-
+            InputStream = new MemoryStream(fileBody),
+            ContentType = fileType)
+    client.PutObjectAsync(req)
+    |> Async.AwaitTask
+    |> Async.Catch
+    |> Async.map (
+        function
+        | Choice1Of2 resp ->
+            if resp.HttpStatusCode = System.Net.HttpStatusCode.OK then Ok {|BucketKey = key|}
+            else Error <| resp.HttpStatusCode.ToString()
+        | Choice2Of2 ex ->
+            Log.Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
+            Error ex.Message)
 
 let downloadFile buketName key =
     task {
