@@ -51,16 +51,6 @@ let loginHandler _next (ctx: HttpContext)  =
         return! redirectTo false url _next ctx
     }
 
-let imgHandler (dir,key) : HttpHandler =
-    fun (next : HttpFunc) (ctx : HttpContext)  ->
-        task {
-            let cfg = ctx.GetService<IConfiguration>()
-            let buketName = Config.getFilesAccessPoint cfg
-
-            let! data = Bucket.downloadFile buketName (sprintf "%s/%s" dir key)
-            ctx.SetContentType data.ContentType
-            return! ctx.WriteStreamAsync true data.Body None None
-        }
 
 let appRouter =
     choose [
@@ -68,7 +58,6 @@ let appRouter =
         route "/index.html" >=> redirectTo false "/"
         route "/default.html" >=> redirectTo false "/"
         route "/login" >=> loginHandler
-        routef "/img/%s/%s" imgHandler
         apiHandler SecurityService.api
         apiHandler MainService.api
         apiHandler AdminService.api

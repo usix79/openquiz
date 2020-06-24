@@ -338,6 +338,10 @@ let api (context:HttpContext) : ISecurityApi =
     api
 
 let login secret (cfg:IConfiguration) (token:string) (req : LoginReq) =
+
+    let resolveSttings() =
+        {MediaHost = Config.getMediaHostName cfg}
+
     match req with
     | LoginReq.MainUser data ->
         let clientId = Config.getCognitoClientId cfg
@@ -348,3 +352,4 @@ let login secret (cfg:IConfiguration) (token:string) (req : LoginReq) =
     | LoginReq.TeamUser data -> loginTeamUser secret (Config.getAppSyncCfg cfg) data.QuizId data.TeamId data.Token
     | LoginReq.RegUser data -> loginRegUser secret data.QuizId data.Token
     | LoginReq.AudUser data -> loginAudUser secret (Config.getAppSyncCfg cfg) data.QuizId data.Token
+    |> AR.map (fun res ->{|RefreshToken = res.RefreshToken; Token = res.Token; User = res.User; Settings = resolveSttings()|})

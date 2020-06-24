@@ -215,11 +215,11 @@ let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) : Model * Cmd
     | Err txt -> cm |> error txt |> noCmd
     | _ -> cm |> noCmd
 
-let view (dispatch : Msg -> unit) (user:TeamUser) (model : Model) =
+let view (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) (model : Model) =
     match model.IsActive with
     | true ->
         match model.Quiz with
-        | Some quiz -> activeView dispatch user quiz model
+        | Some quiz -> activeView dispatch user settings quiz model
         | None -> str model.Error
     | false -> notActiveView dispatch user model.Error
 
@@ -237,7 +237,7 @@ let notActiveView (dispatch : Msg -> unit) (user:TeamUser) error =
         ]
     ]
 
-let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
+let activeView (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) quiz model =
     let serverTime = serverTime model.TimeDiff
     let secondsLeft, isCountdownActive, isCountdownFinished =
         match quiz.TC with
@@ -247,7 +247,7 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
     div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
             MainTemplates.mixlrFrame quiz.Mxlr
-            MainTemplates.playTitle user.QuizName quiz.Img quiz.Mxlr.IsNone
+            MainTemplates.playTitle user.QuizName settings.MediaHost quiz.Img quiz.Mxlr.IsNone
 
             h4 [Class "subtitle is-4" ] [ str user.TeamName ]
 
@@ -260,7 +260,7 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
                         | History -> yield historyView dispatch model
                         | Question ->
                             match quiz.QS, model.Answers with
-                            | Live, Some answers -> yield quiestionView dispatch quiz answers isCountdownActive isCountdownFinished
+                            | Live, Some answers -> yield quiestionView dispatch settings quiz answers isCountdownActive isCountdownFinished
                             | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg
                         | Results -> yield resultsView dispatch user model
                     ]
@@ -273,13 +273,13 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) quiz model =
             MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
     ]
 
-let quiestionView (dispatch : Msg -> unit) quiz answers isCountdownActive isCountdownFinished =
+let quiestionView (dispatch : Msg -> unit) (settings:Settings) quiz answers isCountdownActive isCountdownFinished =
     div [] [
         match quiz.TC with
         | Some tour ->
             match tour.Slip with
-            | SS slip -> yield singleQwView dispatch tour slip answers isCountdownActive isCountdownFinished
-            | MS (name,slips) -> yield multipleQwView dispatch tour name slips answers isCountdownFinished
+            | SS slip -> yield singleQwView dispatch settings tour slip answers isCountdownActive isCountdownFinished
+            | MS (name,slips) -> yield multipleQwView dispatch settings tour name slips answers isCountdownFinished
         | None -> ()
     ]
 
@@ -308,9 +308,9 @@ let awArea dispatch aw jpd status withChoice readOnly =
         answerStatusIcon status aw
     ]
 
-let singleQwView dispatch tour slip answers isCountdownActive isCountdownFinished =
+let singleQwView dispatch (settings:Settings) tour slip answers isCountdownActive isCountdownFinished =
     div[][
-        MainTemplates.singleTourInfo tour.Name slip
+        MainTemplates.singleTourInfo settings.MediaHost tour.Name slip
 
         let (txt,jpd) = answers.Get 0
 
@@ -342,7 +342,7 @@ let awInput dispatch idx aw jpd status withChoice readOnly =
         ]
     ]
 
-let multipleQwView dispatch tour name slips answers isCountdownFinished =
+let multipleQwView dispatch settings tour name slips answers isCountdownFinished =
     div [][
         h5 [Class "subtitle is-5"] [str name]
         for (idx,slip) in slips |> List.indexed do
@@ -350,7 +350,7 @@ let multipleQwView dispatch tour name slips answers isCountdownFinished =
             match slip with
             | QW slip ->
                 p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
-                yield! MainTemplates.imgEl slip.Img
+                yield! MainTemplates.imgEl settings.MediaHost slip.Img
                 p [] (splitByLines slip.Txt)
                 awInput dispatch idx aw jpd answers.Status slip.Ch isCountdownFinished
                 br[]
@@ -363,7 +363,7 @@ let multipleQwView dispatch tour name slips answers isCountdownFinished =
                     str "correct answer: "
                     str (slip.Txt.Split('\n').[0])
                 ]
-                yield! MainTemplates.imgEl slip.Img
+                yield! MainTemplates.imgEl settings.MediaHost slip.Img
                 p [Class "is-italic has-text-weight-light is-family-secondary is-size-7"] (splitByLines slip.Com)
                 br[]
 
@@ -423,4 +423,3 @@ let resultsView dispatch (user:TeamUser) model =
         |> List.tryFind (fun r -> r.TeamId = user.TeamId)
 
     MainTemplates.resultsView currentRes model.TeamResults
-

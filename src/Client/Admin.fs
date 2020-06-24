@@ -75,14 +75,14 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | _ -> cm |> noCmd
 
 
-let view (dispatch : Msg -> unit) (user:AdminUser) (model : Model) =
+let view (dispatch : Msg -> unit) (user:AdminUser) (settings:Settings) (model : Model) =
     section [Class "hero is-shadowless is-fullheight is-light"] [
         div [Class "hero-head"] [
             div [Class "container"][
                 nav [Class "navbar is-transparent is-spaced"; Role "navigation"; AriaLabel "dropdown navigation"] [
                     div [Class "navbar-brand"] [
                         a [Class "navbar-item"; Style [MarginRight "auto"]] [
-                            let imgSrc =  if not (String.IsNullOrWhiteSpace user.QuizImg) then Infra.urlForImg user.QuizImg else "/logo.png"
+                            let imgSrc = Infra.urlForMediaOrDefault settings.MediaHost user.QuizImg Infra.defaultMediaImg
                             figure [Class "image is-64x64"][
                                 img [Src imgSrc; Alt "logo"; Style [Height "64px"; Width "64px"; MaxHeight "64px"]]
                             ]
@@ -102,7 +102,7 @@ let view (dispatch : Msg -> unit) (user:AdminUser) (model : Model) =
                 match model with
                 | Empty -> str "empty"
                 | Teams subModel -> AdminTeams.view (Msg.Teams >> dispatch) user subModel
-                | CP subModel -> AdminCP.view (Msg.CP >> dispatch) user subModel
+                | CP subModel -> AdminCP.view (Msg.CP >> dispatch) user settings subModel
                 | Answers subModel -> AdminAnswers.view (Msg.Answers >> dispatch) user subModel
                 | Results subModel -> AdminResults.view (Msg.Results >> dispatch) user subModel
             ]

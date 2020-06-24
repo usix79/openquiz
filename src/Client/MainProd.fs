@@ -63,13 +63,13 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
         let subModel,subCmd = MainProdSettings.update api user subMsg subModel
         {cm with Area = Settings subModel}, Cmd.map Msg.Settings subCmd
     | ToggleBurger, _ -> {cm with IsBurgerOpen = not cm.IsBurgerOpen} |> noCmd
-    | Logout, _ ->  Infra.clearUserAndRedirect "/"; cm|> noCmd
+    | Logout, _ ->  Infra.clearUserAndSettingsAndRedirect "/"; cm|> noCmd
     | Err txt, _ -> cm |> addError txt |> noCmd
     | Exn ex, _ -> cm |> addError ex.Message |> noCmd
 
     | _ -> cm |> noCmd
 
-let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
+let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : Model) =
     let isQuizzesActive = match model.Area with Quizzes _ -> true | _ -> false
     let isQuestionsActive = match model.Area with Questions _ -> true | _ -> false
     let isSettingsActive = match model.Area with Settings _ -> true | _ -> false
@@ -140,9 +140,9 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                     ]
                     div [Class "column"][
                         match model.Area with
-                        | Quizzes subModel -> MainProdQuizzes.view (Msg.Quizzes >> dispatch) user subModel
-                        | Questions subModel -> MainProdQuestions.view (Msg.Questions >> dispatch) user subModel
-                        | Settings subModel -> MainProdSettings.view (Msg.Settings >> dispatch) user subModel
+                        | Quizzes subModel -> MainProdQuizzes.view (Msg.Quizzes >> dispatch) user settings subModel
+                        | Questions subModel -> MainProdQuestions.view (Msg.Questions >> dispatch) user settings subModel
+                        | Settings subModel -> MainProdSettings.view (Msg.Settings >> dispatch) user settings subModel
                     ]
                 ]
             ]

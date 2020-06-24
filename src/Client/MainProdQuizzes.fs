@@ -31,9 +31,9 @@ type Msg =
     | CancelCard
     | SubmitCard
     | SubmitCardResp of RESP<QuizProdRecord>
-    | QuizImgChanged of {|Type:string; Body:byte[]; Tag:int|}
+    | QuizImgChanged of {|File:Browser.Types.File; Tag:int|}
     | QuizImgClear of unit
-    | UploadQuizImgResp of TRESP<int, {|BucketKey:string|}>
+    | QuizImgUploaded of quizId:int*bucketKey:string
     | ToggleDeleteForm
     | DeleteFormUpdateText of string
     | DeleteQuiz of int
@@ -97,11 +97,9 @@ let submitCard api model =
 let replaceRecord record model =
     {model with Quizzes = record :: (model.Quizzes |> List.filter (fun q -> q.QuizId <> record.QuizId))}
 
-let uploadFile quizId (api:IMainApi) respMsg fileType body model =
-    if Array.length body > (1024*128) then
-        model |> addError "max image size is 128K" |> noCmd
-    else
-        model |> loading quizId |> apiCmd api.uploadFile {|Cat = Quiz; FileType=fileType; FileBody=body|} respMsg Exn
+let uploadFile quizId (api:IMainApi) (file:Browser.Types.File) model =
+    if file.size > (1024*128) then model |> addError "max image size is 128K" |> noCmd
+    else model |> loading quizId, uploadFileToS3Cmd api.getUploadUrl QuizImg file (fun key -> QuizImgUploaded (quizId,key)) Exn
 
 let updateMixlrCode txt model =
     model |> updateCard (fun c ->
@@ -144,8 +142,8 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | SubmitCard -> cm |> submitCard api
     | SubmitCardResp {Value = Ok res } -> {cm with Card = None} |> editing |> replaceRecord res |> noCmd
     | QuizImgClear _ ->  cm |> updateCard (fun c -> {c with ImgKey = ""}) |> noCmd
-    | QuizImgChanged res -> cm |> uploadFile res.Tag api (taggedMsg UploadQuizImgResp res.Tag) res.Type res.Body
-    | UploadQuizImgResp {Tag = _; Rsp = {Value = Ok res}} -> cm |> editing |> updateCard (fun c -> {c with ImgKey = res.BucketKey}) |> noCmd
+    | QuizImgChanged res -> cm |> uploadFile res.Tag api res.File
+    | QuizImgUploaded (_,bucketKey) -> cm |> editing |> updateCard (fun c -> {c with ImgKey = bucketKey}) |> noCmd
     | ToggleDeleteForm -> cm |> toggleDeleteForm |> noCmd
     | DeleteFormUpdateText txt -> cm |> updateDeleteForm (fun form -> {form with ConfirmText = txt; FormError = ""}) |> noCmd
     | DeleteQuiz quizId -> cm |> updateDeleteForm (fun form -> {form with IsSending = true}) |> apiCmd api.deleteQuiz {|QuizId = quizId|} (taggedMsg DeleteQuizResp quizId) Exn
@@ -156,7 +154,7 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | Err txt -> cm |> addError txt |> editing |> noCmd
     | _ -> cm |> noCmd
 
-let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
+let view (dispatch : Msg -> unit) (user:MainUser) (appSettings:Settings) (model : Model) =
     div[][
         nav [Class "level"][
             div [Class "level-left"][
@@ -205,13 +203,13 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                     if hasCard then
                         tr [][
                             th [][]
-                            td [ColSpan 5] [ card dispatch model.Card.Value model.Form isLoading]
+                            td [ColSpan 5] [ card dispatch appSettings model.Card.Value model.Form isLoading]
                         ]
             ]
         ]
     ]
 
-let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) (form : DeleteForm option) isLoading =
+let card (dispatch : Msg -> unit) (appSettings:Settings) (card : MainModels.QuizProdCard) (form : DeleteForm option) isLoading =
     div[][
         div [Class "columns"][
             div [Class "column"][
@@ -288,7 +286,7 @@ let card (dispatch : Msg -> unit) (card : MainModels.QuizProdCard) (form : Delet
                 div [Class "field"][
                     label [Class "label"][str "Quiz picture (128x128) 128K size max"]
 
-                    yield! MainTemplates.imgArea128 card.QuizId isLoading (QuizImgChanged>>dispatch) (QuizImgClear>>dispatch) card.ImgKey "/logo256.png" "Reset to default"
+                    yield! MainTemplates.imgArea128 card.QuizId isLoading (QuizImgChanged>>dispatch) (QuizImgClear>>dispatch) appSettings.MediaHost card.ImgKey "logo256.png" "Reset to default"
                 ]
 
                 div [Class "field"][

@@ -32,7 +32,7 @@ let apiCmd proc arg ofSucccess ofExn model =
     model, Cmd.OfAsync.either proc (Infra.REQ arg) ofSucccess ofExn
 
 let apiCmd' proc arg ofSucccess ofExn =
-    Cmd.OfAsync.either proc (Infra.REQ arg) ofSucccess ofExn
+    Cmd. OfAsync.either proc (Infra.REQ arg) ofSucccess ofExn
 
 let timeoutCmd msg timeout =
     let mutable isTickScheduled = false
@@ -42,6 +42,19 @@ let timeoutCmd msg timeout =
             window.setTimeout((fun _ -> isTickScheduled <- false; dispatch msg), timeout) |> ignore
 
     Cmd.ofSub sub
+
+let uploadFileToS3Cmd (getUrlMethod : GetUrlMethod) cat (file:Types.File) onSuccess onError =
+    let action () =
+        async{
+            let! resp = getUrlMethod {Token = ""; Arg = {|Cat = cat|}}
+            match resp with
+            | {Value = Ok res} ->
+                let! _ = uploadFileToS3 file res.Url
+                return res.BucketKey
+            | {Value = Error txt} -> return raise (exn txt)
+        }
+
+    Cmd.OfAsync.either action () onSuccess onError
 
 let inline fromString<'a> (s:string) =
     match Reflection.FSharpType.GetUnionCases typeof<'a> |> Array.filter (fun case -> case.Name = s) with
@@ -79,6 +92,26 @@ let fileOnChange tag callback (ev:Types.Event) =
         callback {|Type=t; Body=ba; Tag=tag|}
 
     reader.readAsArrayBuffer file
+
+let fileOnChangeS3 tag callback (ev:Types.Event) =
+    let files : Types.FileList = !!ev.target.["files"]
+    let file = files.[0]
+
+    callback {|File = file; Tag = tag|}
+
+let uploadFileToS3 (file:Types.File) presignedUrl =
+    Async.FromContinuations <| fun (resolve, _, _) ->
+
+    let xhr = XMLHttpRequest.Create()
+    xhr.``open``("PUT", presignedUrl)
+    //xhr.setRequestHeader("Content-Type", !!file.["type"])
+    xhr.onreadystatechange <- fun _ ->
+        match xhr.readyState with
+        | Types.ReadyState.Done when xhr.status = 200 -> resolve (xhr.responseText)
+        | Types.ReadyState.Done -> raise <| exn xhr.responseText
+        | _ -> ignore()
+    xhr.send(file)
+
 
 type TRESP<'T, 'P> = {
     Tag : 'T
@@ -231,8 +264,15 @@ module Infra =
     let loadUser () =
         Infra.loadFromSessionStorage<User> "USER"
 
-    let clearUserAndRedirect url =
+    let saveSettings settings =
+        saveToSessionStorage "SETTINGS" settings
+
+    let loadSettings () =
+        Infra.loadFromSessionStorage<Settings> "SETTINGS"
+
+    let clearUserAndSettingsAndRedirect url =
         sessionStorage.removeItem "USER"
+        sessionStorage.removeItem "SETTINGS"
         redirect url
 
     let currentQueryString () =
@@ -351,7 +391,6 @@ module Infra =
                 getProdQuizzes = x.Wrap mainApi.getProdQuizzes
                 getProdQuizCard = x.Wrap mainApi.getProdQuizCard
                 updateProdQuizCard = x.Wrap mainApi.updateProdQuizCard
-                uploadFile = x.Wrap mainApi.uploadFile
                 getRegModel = x.Wrap mainApi.getRegModel
                 registerTeam = x.Wrap mainApi.registerTeam
                 getProdPackages = x.Wrap mainApi.getProdPackages
@@ -365,6 +404,7 @@ module Infra =
                 updateSettings = x.Wrap mainApi.updateSettings
                 sharePackage = x.Wrap mainApi.sharePackage
                 removePackageShare = x.Wrap mainApi.removePackageShare
+                getUploadUrl = x.Wrap mainApi.getUploadUrl
             }
 
         member x.CreateAdminApi () =
@@ -380,7 +420,6 @@ module Infra =
                 getPackages = x.Wrap adminApi.getPackages
                 setPackage = x.Wrap adminApi.setPackage
                 getPackageCard = x.Wrap adminApi.getPackageCard
-                uploadFile = x.Wrap adminApi.uploadFile
                 startCountDown = x.Wrap adminApi.startCountDown
                 pauseCountDown = x.Wrap adminApi.pauseCountDown
                 settleTour = x.Wrap adminApi.settleTour

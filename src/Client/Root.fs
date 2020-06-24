@@ -17,7 +17,7 @@ type CurrentPage =
     | PrivatePage
 
 type Msg =
-    | LoginResponse of RESP<{|Token: string; RefreshToken: string; User: User|}>
+    | LoginResponse of RESP<{|Token: string; RefreshToken: string; User: User; Settings: Settings|}>
     | Exn of exn
     | MainMsg of Main.Msg
     | AdminMsg of Admin.Msg
@@ -27,6 +27,7 @@ type Msg =
 
 type Model = {
     CurrentUser : User option
+    CurrentSettings : Settings option
     CurrentPage : CurrentPage
 }
 
@@ -38,7 +39,8 @@ let teamApi = apiFactory.CreateTeamApi()
 let regApi = apiFactory.CreateRegApi()
 let audApi = apiFactory.CreateAudApi()
 
-let initChildPage user cm =
+let initChildPage user settings cm =
+    let cm = {cm with CurrentSettings = Some settings}
     match user with
     | RegUser _ ->
         let submodel, subcmd = Reg.init regApi
@@ -56,9 +58,10 @@ let initChildPage user cm =
         let submodel, subcmd = Aud.init audApi u
         {cm with CurrentPage = AudPage submodel; CurrentUser = Some user}, Cmd.map AudMsg subcmd
 
-let saveUser token refreshToken user =
+let saveUser token refreshToken user settings =
     apiFactory.UpdateTokens token refreshToken |> ignore
     Infra.saveUser user
+    Infra.saveSettings settings
 
 let evaluateLoginReq (query : Map<string,string>) =
     let qs x = query.TryFind x
@@ -83,13 +86,14 @@ let isReqForSameUser (req:LoginReq) (user:User) =
     | _ -> false
 
 let init (): Model * Cmd<Msg> =
-    let cm =  {CurrentPage = EmptyPage "Initializing..."; CurrentUser = None}
+    let cm =  {CurrentPage = EmptyPage "Initializing..."; CurrentUser = None; CurrentSettings = None}
 
     let u = Infra.loadUser()
-    match u, evaluateLoginReq (Infra.currentQueryString()) with
-    | Some user, Some req when isReqForSameUser req user -> cm |> initChildPage user
-    | _, Some req -> cm |> apiCmd securityApi.login req LoginResponse Exn
-    | Some user, None -> cm |> initChildPage user
+    let s = Infra.loadSettings()
+    match u, s, evaluateLoginReq (Infra.currentQueryString()) with
+    | Some user, Some settings, Some req when isReqForSameUser req user -> cm |> initChildPage user settings
+    | _, _, Some req -> cm |> apiCmd securityApi.login req LoginResponse Exn
+    | Some user, Some settings, None -> cm |> initChildPage user settings
     | _ ->
         Infra.redirect "/"
         cm |> noCmd
@@ -97,13 +101,13 @@ let init (): Model * Cmd<Msg> =
 let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match cm.CurrentPage, cm.CurrentUser, msg with
     | EmptyPage _, _, LoginResponse {Value = Ok res} ->
-            saveUser res.Token res.RefreshToken res.User
+            saveUser res.Token res.RefreshToken res.User res.Settings
 
             match res.User with
             | MainUser _ -> Infra.clearQueryString()
             | _ -> ()
 
-            cm |> initChildPage res.User
+            cm |> initChildPage res.User res.Settings
     | EmptyPage _, _, LoginResponse {Value = Error txt} -> {cm with CurrentPage = EmptyPage txt} |> noCmd
     | EmptyPage _,  _, Exn ex -> {cm with CurrentPage = EmptyPage ex.Message} |> noCmd
     | MainPage subModel, Some (MainUser user), MainMsg subMsg ->
@@ -132,13 +136,13 @@ let update (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
 
 let view (model : Model) (dispatch : Msg -> unit) =
     let pageHtml =
-        match model.CurrentPage, model.CurrentUser with
-        | EmptyPage txt, None -> str txt
-        | MainPage subModel, Some (MainUser user) -> Main.view (MainMsg >> dispatch) user subModel
-        | AdminPage subModel, Some (AdminUser user) -> Admin.view (AdminMsg >> dispatch) user subModel
-        | TeamPage subModel, Some (TeamUser user) -> Team.view (TeamMsg >> dispatch) user subModel
-        | RegPage subModel, Some (RegUser user) -> Reg.view (RegMsg >> dispatch) subModel
-        | AudPage subModel, Some (AudUser user) -> Aud.view (AudMsg >> dispatch) subModel
+        match model.CurrentPage, model.CurrentUser, model.CurrentSettings with
+        | EmptyPage txt, None, None -> str txt
+        | MainPage subModel, Some (MainUser user), Some settings -> Main.view (MainMsg >> dispatch) user settings subModel
+        | AdminPage subModel, Some (AdminUser user), Some settings -> Admin.view (AdminMsg >> dispatch) user settings subModel
+        | TeamPage subModel, Some (TeamUser user), Some settings -> Team.view (TeamMsg >> dispatch) user settings subModel
+        | RegPage subModel, Some (RegUser user), Some settings -> Reg.view (RegMsg >> dispatch) settings subModel
+        | AudPage subModel, Some (AudUser user), Some settings -> Aud.view (AudMsg >> dispatch) settings subModel
         | _ -> str "Oops"
 
     div [] [pageHtml]

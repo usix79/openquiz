@@ -21,11 +21,14 @@ let executedResponse f req =
         return {Status = Executed; Value = v; ST = DateTime.UtcNow}
     }
 
-let generateRandomToken () =
+let generateRandomToken'() =
     let randomNumber =  Array.zeroCreate 32
     use rng = RandomNumberGenerator.Create()
     rng.GetBytes(randomNumber)
     System.Convert.ToBase64String(randomNumber)
+
+let generateRandomToken() =
+    generateRandomToken'()
         .Replace("/", "_")
         .Replace("+", "-")
 
@@ -139,6 +142,8 @@ module Config =
     let getAppsyncEndpoint (cfg:IConfiguration) = cfg.["appsync-endpoint"]
     let getAppsyncApiKey (cfg:IConfiguration) = cfg.["appsync-apikey"]
     let getAppsyncRegion (cfg:IConfiguration) = cfg.["appsync-region"]
+    let getMediaBucketName (cfg:IConfiguration) = cfg.["mediaBucketName"]
+    let getMediaHostName (cfg:IConfiguration) = cfg.["mediaHostName"]
     let getRedirectUrl (cfg:IConfiguration) =
 #if DEBUG
         cfg.["redirectUrlDebug"]

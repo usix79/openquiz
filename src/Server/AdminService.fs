@@ -45,7 +45,6 @@ let api (context:HttpContext) : IAdminApi =
         getPackages = ex "getPackages" getPackages
         setPackage = ex "setPackage" setPackage
         getPackageCard = ex "getPackageCard" getPackageCard
-        uploadFile = ex "uploadFile" <| uploadFile (Config.getFilesAccessPoint cfg)
         startCountDown = ex "startCountDown" startCountDown
         pauseCountDown = ex "pauseCountDown" pauseCountDown
         settleTour = ex "settleTour" settleTour
@@ -149,9 +148,6 @@ let getPackageCard quiz req =
     |> AR.bind (Domain.Experts.authorizePackageRead req.PackageId >> AR.fromResult)
     |> AR.next (Data2.Packages.get req.PackageId)
     |> AR.map packageCard
-
-let uploadFile bucketName _ req =
-    Bucket.uploadFile  bucketName req.Cat req.FileType req.FileBody
 
 let nextQuestion quiz req =
     let logic quiz =

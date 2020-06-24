@@ -124,7 +124,7 @@ let levelWithRegistrationInfo dispatch (quiz : QuizRegRecord) (comp:ExpertCompet
         a [Class "button is-success is-light is-fullwidth"; Href (urlForTeam quiz.QuizId comp.TeamId comp.EntryToken)][str ("Enter " + quiz.Name)]
 ]
 
-let levelWithEditForm dispatch (quiz : QuizRegRecord) (regForm : RegForm ) = [
+let levelWithEditForm dispatch settings (quiz : QuizRegRecord) (regForm : RegForm ) = [
     div [Class "field has-addons is-light"; Style [Width "100%"]][
         p [classList ["control", true; "is-expanded", true; "is-loading", regForm.IsSending]][
             input [classList ["input", true; "is-small", true; "is-danger", regForm.Error <> ""]; Type "text"; Placeholder "Team Name"; MaxLength 64.0;
@@ -141,7 +141,7 @@ let levelWithEditForm dispatch (quiz : QuizRegRecord) (regForm : RegForm ) = [
     p [Class "help is-danger"][str regForm.Error]
 ]
 
-let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
+let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : Model) =
     section [Class "hero is-shadowless is-fullheight"] [
         div [Class "hero-head"] [
             div [Class "container has-text-centered"][
@@ -162,7 +162,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
                 ]
 
                 match model.Quiz with
-                | Some quiz -> yield! quizView dispatch quiz model.RegForm
+                | Some quiz -> yield! quizView dispatch settings quiz model.RegForm
                 | None when model.Error <> "" -> span [Class "has-text-danger"][ str model.Error]
                 | None  -> str "Loading ..."
             ]
@@ -171,9 +171,9 @@ let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
         MainTemplates.footerHero
     ]
 
-let quizView (dispatch : Msg -> unit) (quiz : QuizRegRecord) (regForm : RegForm option) = [
+let quizView (dispatch : Msg -> unit) (settings:Settings) (quiz : QuizRegRecord) (regForm : RegForm option) = [
     br []
-    figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Infra.urlForImgSafe quiz.ImgKey ] ]
+    figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Infra.urlForMediaImgSafe settings.MediaHost quiz.ImgKey ] ]
     br []
     h3 [Class "title is-3"] [str quiz.Name]
     h4 [Class "subtitle is-4" ] [Fa.i [Fa.Solid.DoorOpen] [ str " registration"] ]
@@ -197,7 +197,7 @@ let quizView (dispatch : Msg -> unit) (quiz : QuizRegRecord) (regForm : RegForm 
 
     div [Style [Width "320px"; Display DisplayOptions.InlineBlock]] [
         match regForm with
-        | Some form ->  yield! levelWithEditForm dispatch quiz form
+        | Some form ->  yield! levelWithEditForm dispatch settings quiz form
         | None ->
             match quiz.Comp with
             | Some comp -> yield! levelWithRegistrationInfo dispatch quiz comp

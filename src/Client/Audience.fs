@@ -94,13 +94,13 @@ let update (api:IAudApi) (user:AudUser) (msg : Msg) (cm : Model) : Model * Cmd<M
     | Exn ex -> cm |> error ex.Message |> noCmd
     | _ -> cm |> noCmd
 
-let view (dispatch : Msg -> unit) (model : Model) =
+let view (dispatch : Msg -> unit) settings (model : Model) =
     match model.Quiz with
-    | Some quiz -> quizView dispatch model quiz
+    | Some quiz -> quizView dispatch settings model quiz
     | None when model.Error = "" -> str "Initializing..."
     | None -> str model.Error
 
-let quizView (dispatch : Msg -> unit) (model:Model) (quiz:QuizCard) =
+let quizView (dispatch : Msg -> unit) settings (model:Model) (quiz:QuizCard) =
     let serverTime = serverTime model.TimeDiff
     let secondsLeft, isCountdownActive =
         match quiz.TC with
@@ -111,7 +111,7 @@ let quizView (dispatch : Msg -> unit) (model:Model) (quiz:QuizCard) =
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
 
             MainTemplates.mixlrFrame quiz.Mxlr
-            MainTemplates.playTitle quiz.QN quiz.Img quiz.Mxlr.IsNone
+            MainTemplates.playTitle quiz.QN settings.MediaHost quiz.Img quiz.Mxlr.IsNone
 
             h4 [Class "subtitle is-4" ] [Fa.i [Fa.Solid.Users] [ str " audience"] ]
 
@@ -124,8 +124,8 @@ let quizView (dispatch : Msg -> unit) (model:Model) (quiz:QuizCard) =
                         match quiz.TC with
                         | Some tour ->
                             match tour.Slip with
-                            | SS slip ->  yield MainTemplates.singleTourInfo tour.Name slip
-                            | MS (name,slips) -> yield multipleQwView tour name slips
+                            | SS slip ->  yield MainTemplates.singleTourInfo settings.MediaHost tour.Name slip
+                            | MS (name,slips) -> yield multipleQwView settings tour name slips
                         | None -> ()
                     | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg
                 | Results -> yield MainTemplates.resultsView None model.TeamResults
@@ -140,14 +140,14 @@ let quizView (dispatch : Msg -> unit) (model:Model) (quiz:QuizCard) =
         MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
     ]
 
-let multipleQwView tour name slips =
+let multipleQwView (settings:Settings) tour name slips =
     div [][
         h5 [Class "subtitle is-5"] [str name]
         for (idx,slip) in slips |> List.indexed do
             match slip with
             | QW slip ->
                 p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
-                yield! MainTemplates.imgEl slip.Img
+                yield! MainTemplates.imgEl settings.MediaHost slip.Img
                 p [] (splitByLines slip.Txt)
                 br[]
                 br[]
@@ -158,7 +158,7 @@ let multipleQwView tour name slips =
                     str "correct answer: "
                     str (slip.Txt.Split('\n').[0])
                 ]
-                yield! MainTemplates.imgEl slip.Img
+                yield! MainTemplates.imgEl settings.MediaHost slip.Img
                 p [Class "is-italic has-text-weight-light is-family-secondary is-size-7"] (splitByLines slip.Com)
                 br[]
 

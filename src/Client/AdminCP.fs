@@ -31,12 +31,6 @@ type Msg =
     | UpdateQwPoints of key:QwKey * txt:string
     | UpdateQwJpdPoints of key:QwKey * txt:string
     | UpdateQwWithChoice of key:QwKey * bool
-    | QwImgChanged of {|Type:string; Body:byte[]; Tag:QwKey|}
-    | QwImgClear of key:QwKey
-    | UploadQwImgResp of TRESP<QwKey, {|BucketKey:string|}>
-    | QwCommentImgChanged of {|Type:string; Body:byte[]; Tag:QwKey|}
-    | QwCommentImgClear of key:QwKey
-    | UploadQwCommentImgResp of TRESP<QwKey,{|BucketKey:string|}>
     | NextQw
     | NextQwPart
     | Start
@@ -128,12 +122,6 @@ let updateSlip (qwKey:QwKey) (f:SingleAwSlip -> SingleAwSlip) (model:Model) =
         | Multiple (name, slips) -> {tour with Slip = (name, slips |> List.mapi (fun idx slip -> if idx = qwKey.QwIdx then f slip else slip)) |> Multiple}
     )
 
-let uploadFile api respMsg fileType body model =
-    if Array.length body > (1024*128) then
-        model |> addError "max image size is 128K" |> noCmd
-    else
-        model |> loading |> apiCmd api.uploadFile {|Cat = Question; FileType=fileType; FileBody=body|} respMsg Exn
-
 let scheduleTick (model : Model,  cmd : Cmd<Msg>) =
     match model.Quiz with
     | Some quiz when quiz.QuizStatus = Live ->
@@ -166,12 +154,6 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | UpdateQwPoints (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Points = System.Decimal.Parse(txt)}) |> noCmd
     | UpdateQwJpdPoints (key,txt) -> cm |> updateSlip key (fun slip -> {slip with JeopardyPoints = ofDecimal (Some txt) }) |> noCmd
     | UpdateQwWithChoice (key,v) -> cm |> updateSlip key (fun slip -> {slip with WithChoice = v}) |> noCmd
-    | QwImgClear key -> cm |> updateSlip key (fun slip -> {slip with ImgKey = ""}) |> noCmd
-    | QwImgChanged res -> cm |> uploadFile api (taggedMsg UploadQwImgResp res.Tag) res.Type res.Body
-    | UploadQwImgResp {Tag = key; Rsp = {Value = Ok res}} -> cm |> editing |> updateSlip key (fun slip -> {slip with ImgKey = res.BucketKey}) |> noCmd
-    | QwCommentImgClear key -> cm |> updateSlip key (fun slip -> {slip with CommentImgKey = ""}) |> noCmd
-    | QwCommentImgChanged res -> cm |> uploadFile api (taggedMsg UploadQwCommentImgResp res.Tag) res.Type res.Body
-    | UploadQwCommentImgResp {Tag = key; Rsp = {Value = Ok res}} -> cm |> updateSlip key (fun slip -> {slip with CommentImgKey = res.BucketKey}) |> noCmd
     | NextQw -> cm |> loading |> apiCmd api.nextQuestion cm.Quiz.Value QuizCardResp Exn
     | NextQwPart -> cm |> loading |> apiCmd api.nextQuestionPart cm.Quiz.Value QuizCardResp Exn
     | Start -> cm |> loading |> apiCmd api.startCountDown cm.Quiz.Value QuizCardResp Exn
@@ -183,7 +165,7 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | Err txt -> cm |> addError txt |> editing |> noCmd
     | _ -> cm |> noCmd
 
-let view (dispatch : Msg -> unit) (user:AdminUser) (model : Model) =
+let view (dispatch : Msg -> unit) (user:AdminUser) (settings:Settings) (model : Model) =
     div [Class "columns"][
         div [Class "column"][
             if model.IsLoading then
@@ -192,7 +174,7 @@ let view (dispatch : Msg -> unit) (user:AdminUser) (model : Model) =
         div [Class "column"][
             div [][
                 match model.Quiz with
-                | Some quiz -> yield quizView dispatch user model quiz
+                | Some quiz -> yield quizView dispatch user settings model quiz
                 | None -> ()
             ]
         ]
@@ -205,7 +187,7 @@ let view (dispatch : Msg -> unit) (user:AdminUser) (model : Model) =
         ]
     ]
 
-let quizView (dispatch : Msg -> unit) (user:AdminUser) (model : Model) (quiz : QuizControlCard) =
+let quizView (dispatch : Msg -> unit) (user:AdminUser) (settings:Settings) (model : Model) (quiz : QuizControlCard) =
 
     let changesNotAllowed =
         match quiz.CurrentTour with
@@ -280,7 +262,7 @@ let quizView (dispatch : Msg -> unit) (user:AdminUser) (model : Model) (quiz : Q
             match quiz.CurrentTour with
             | Some qw ->
                 yield hr[Class "has-background-grey"]
-                yield qwView dispatch user qw model.TimeDiff isReadOnly model.IsLoading model.IsLastSlip
+                yield qwView dispatch user settings qw model.TimeDiff isReadOnly model.IsLoading model.IsLastSlip
             | None -> ()
         ]
 
@@ -319,7 +301,7 @@ let cmtTextArea dispatch key txt isReadOnly =
         ]
     ]
 
-let singleSlipEl dispatch status (qwIdx:int) (slip:SingleAwSlip) nextQwPartIdx isReadOnly =
+let singleSlipEl dispatch settings status (qwIdx:int) (slip:SingleAwSlip) nextQwPartIdx isReadOnly =
     let key = {TourIdx = -1; QwIdx = qwIdx}
     div [][
 
@@ -348,15 +330,15 @@ let singleSlipEl dispatch status (qwIdx:int) (slip:SingleAwSlip) nextQwPartIdx i
                     qwInput dispatch (sprintf "Question part %i" (idx + 1)) qw key idx (idx < nextQwPartIdx || status <> Announcing)
             ]
 
-        yield! MainTemplates.imgArea key isReadOnly (QwImgChanged >> dispatch) (fun () -> dispatch (QwImgClear key))  slip.ImgKey "" "Clear"
+        yield! MainTemplates.imgEl settings.MediaHost slip.ImgKey
         br[]
         awTextArea dispatch key slip.Answer isReadOnly
         br[]
         cmtTextArea dispatch key slip.Comment isReadOnly
-        yield! MainTemplates.imgArea key isReadOnly (QwCommentImgChanged >> dispatch) (fun () -> dispatch (QwCommentImgClear key))   slip.CommentImgKey "" "Clear"
+        yield! MainTemplates.imgEl settings.MediaHost slip.CommentImgKey
     ]
 
-let multipleSlipEl dispatch status (name:string) (slips:SingleAwSlip list) nextQwIdx nextQwPartIdx isReadOnly =
+let multipleSlipEl dispatch settings status (name:string) (slips:SingleAwSlip list) nextQwIdx nextQwPartIdx isReadOnly =
     div[][
         div [Class "control"][
             label [Class "label"][str "Tour Name"]
@@ -376,7 +358,7 @@ let multipleSlipEl dispatch status (name:string) (slips:SingleAwSlip list) nextQ
                     tr[][
                         for (idx,slip) in slips |> List.indexed do
                             td [classList ["has-background-success", idx = nextQwIdx ]][
-                                singleSlipEl dispatch status idx slip 0 (isReadOnly || (idx < nextQwIdx))
+                                singleSlipEl dispatch settings status idx slip 0 (isReadOnly || (idx < nextQwIdx))
                             ]
                     ]
                 ]
@@ -389,7 +371,7 @@ let secondsLeftToString sec =
     then (sec - 10).ToString() + " + 10"
     else sec.ToString()
 
-let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) timeDiff isReadOnly isLoading isLastQw =
+let qwView (dispatch : Msg -> unit) (user:AdminUser) (settings:Settings) (tour : TourControlCard) timeDiff isReadOnly isLoading isLastQw =
 
     div[][
         div [Class "field is-grouped"][
@@ -426,6 +408,6 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (tour : TourControlCard) ti
         hr[Class "has-background-grey"]
 
         match tour.Slip with
-        | Single slip -> singleSlipEl dispatch tour.Status 0 slip tour.QwPartIdx isReadOnly
-        | Multiple (name,slips) -> multipleSlipEl dispatch tour.Status name slips tour.QwIdx tour.QwPartIdx isReadOnly
+        | Single slip -> singleSlipEl dispatch settings tour.Status 0 slip tour.QwPartIdx isReadOnly
+        | Multiple (name,slips) -> multipleSlipEl dispatch settings tour.Status name slips tour.QwIdx tour.QwPartIdx isReadOnly
     ]

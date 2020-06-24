@@ -42,7 +42,7 @@ let init api (user:MainUser) : Model*Cmd<Msg> =
 
 let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg, cm.Area with
-    | CancelTermsOfUse, TermOfUse _ -> Infra.clearUserAndRedirect "/"; cm|> noCmd
+    | CancelTermsOfUse, TermOfUse _ -> Infra.clearUserAndSettingsAndRedirect "/"; cm|> noCmd
     | AcceptTermsOfUse, TermOfUse _ -> cm |> apiCmd api.becomeProducer () BecomeProducerResp Exn
     | BecomeProducerResp {Value = Ok _}, TermOfUse _ ->
         let subModel,subCmd = MainProd.init api user
@@ -57,10 +57,10 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
         {cm with Area = Prod subModel}, Cmd.map Msg.Prod subCmd
     | _ -> cm |> noCmd
 
-let view (dispatch : Msg -> unit) (user:MainUser) (model : Model) =
+let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : Model) =
     match model.Area with
-    | Public subModel -> MainReg.view (Msg.Reg >> dispatch) user subModel
-    | Prod subModel -> MainProd.view (Msg.Prod >> dispatch) user subModel
+    | Public subModel -> MainReg.view (Msg.Reg >> dispatch) user settings subModel
+    | Prod subModel -> MainProd.view (Msg.Prod >> dispatch) user settings subModel
     | TermOfUse txt ->
         div[][
             if txt <> "" then

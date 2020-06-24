@@ -44,16 +44,16 @@ let inputModal dispatch title txt changeMsg okMsg cancelMsg =
         ]
     ]
 
-let imgArea' style tag disabled changeMsg clearMsg imgKey defaultImg clearText =
+let imgArea' style tag disabled changeMsg clearMsg mediaHost imgKey defaultImg clearText =
     [
         if not (System.String.IsNullOrWhiteSpace imgKey) then
-            figure [classList ["image", true; style, true]; Style[MaxWidth "320px"]][ img [Shared.Infra.urlForImg imgKey |> Src]]
+            figure [classList ["image", true; style, true]; Style[MaxWidth "320px"]][ img [Shared.Infra.urlForMedia mediaHost imgKey |> Src]]
         else if not (System.String.IsNullOrWhiteSpace defaultImg) then
-            figure [classList ["image", true; style, true]; Style[MaxWidth "320px"]][ img [defaultImg |> Src]]
+            figure [classList ["image", true; style, true]; Style[MaxWidth "320px"]][ img [Shared.Infra.urlForMedia mediaHost defaultImg |> Src]]
 
         div [Class "file"; Style [MarginTop "8px"]][
             label [Class "file-label"][
-                input [Class "file-input"; Type "file"; Name "picture"; Disabled disabled; OnChange(fileOnChange tag changeMsg)]
+                input [Class "file-input"; Type "file"; Name "picture"; Disabled disabled; OnChange(fileOnChangeS3 tag changeMsg)]
                 span [Class "file-cta"][
                     span [Class "file-icon"][ Fa.i [Fa.Solid.Upload][]]
                     span [Class "file-label"][ str "Choose a file…"]
@@ -63,17 +63,18 @@ let imgArea' style tag disabled changeMsg clearMsg imgKey defaultImg clearText =
         ]
     ]
 
-let imgArea tag disabled changeMsg clearMsg imgKey defaultImg clearText =
-    imgArea' "" tag disabled changeMsg clearMsg imgKey defaultImg clearText
+let imgArea tag disabled changeMsg clearMsg mediaHost imgKey defaultImg clearText =
+    imgArea' "" tag disabled changeMsg clearMsg mediaHost imgKey defaultImg clearText
 
-let imgArea128 tag disabled changeMsg clearMsg imgKey defaultImg clearText =
-    imgArea' "is-128x128" tag disabled changeMsg clearMsg imgKey defaultImg clearText
+let imgArea128 tag disabled changeMsg clearMsg mediaHost imgKey defaultImg clearText =
+    imgArea' "is-128x128" tag disabled changeMsg clearMsg mediaHost imgKey defaultImg clearText
 
-
-let imgEl imgKey =
+let imgEl mediaHost imgKey =
     seq {
         if not (System.String.IsNullOrWhiteSpace imgKey) then
-            figure [Class "image"; Style[MaxWidth "320px"; Display DisplayOptions.InlineBlock]][ img [Shared.Infra.urlForImg imgKey |> Src]]
+            figure [Class "image"; Style[MaxWidth "320px"; Display DisplayOptions.InlineBlock]][
+                img [Shared.Infra.urlForMedia mediaHost imgKey |> Src]
+            ]
     }
 
 let footer =
@@ -129,11 +130,11 @@ let playFooter dispatch history questions results current isCountdownActive seco
             ]
         ]
 
-let playTitle quizName quizImg showImg =
+let playTitle quizName mediaHost quizImg showImg =
     div [][
         br []
         if showImg then
-            figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Shared.Infra.urlForImgSafe quizImg ] ]
+            figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Shared.Infra.urlForMediaImgSafe mediaHost quizImg ] ]
             br []
         h3 [Class "title is-3"] [ str quizName ]
     ]
@@ -149,17 +150,17 @@ let playQuiz status msg =
         p [] (splitByLines msg)
      ]
 
-let singleTourInfo tourName (slip:Shared.SingleSlipCard) =
+let singleTourInfo mediaHost tourName (slip:Shared.SingleSlipCard) =
     div [] [
         h5 [Class "title is-5"] [ str <| "Question " + tourName]
 
         match slip with
         | Shared.X3 -> ()
         | Shared.QW slip ->
-            yield! imgEl slip.Img
+            yield! imgEl mediaHost slip.Img
             p [ Class "has-text-weight-semibold" ] (splitByLines slip.Txt)
         | Shared.AW slip ->
-            yield! imgEl slip.Img
+            yield! imgEl mediaHost slip.Img
             p [ Class "has-text-weight-bold" ] [ str "Answer" ]
             p [ Class "has-text-weight-semibold" ] (splitByLines slip.Txt)
             if (slip.Com <> "") then
@@ -234,14 +235,6 @@ let deleteForm dispatch placeholder validText inputText isSending error toggleMs
         ]
         p [Class "help is-danger"][str error]
     ]
-
-let qwCell dispatch key idx txt imgKey isLoading txtChangeMsg imgChangeMsg imgClearMsg=
-    div[Class "field"] [
-        textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> txtChangeMsg (idx,ev.Value) |> dispatch)][]
-        br[]
-        yield! imgArea key isLoading (imgChangeMsg >> dispatch) (fun _ -> imgClearMsg idx |> dispatch) imgKey "" "Clear"
-    ]
-
 
 let errors dispatch msg (errors : Map<string,string>) =
     div[][

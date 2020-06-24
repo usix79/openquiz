@@ -78,14 +78,20 @@ type RegUser = {
     QuizId : int
 }
 
-type ImgCategory =
-    | Quiz
-    | Question
+type Settings = {
+    MediaHost : string
+}
+
+type MediaCategory =
+    | QuizImg
+    | QuestionImg
+    | QuestionVideo
 with
     member x.Prefix =
         match x with
-        | Quiz -> "qz"
-        | Question -> "qw"
+        | QuizImg -> "media/qz"
+        | QuestionImg -> "media/qwi"
+        | QuestionVideo -> "media/qwv"
 
 type QuizStatus =
     | Setup
@@ -527,18 +533,24 @@ module Infra =
     let sseUrl quizId lastQuizVersion listenToken =
         sprintf "/sse?quiz=%i&start=%i&token=%s" quizId lastQuizVersion listenToken
 
-    let urlForImg key =
-        sprintf "/img/%s" key
+    let urlForMedia mediaHost key =
+        sprintf "%s/%s" mediaHost key
 
-    let urlForImgSafe key =
-        if key <> "" then sprintf "/img/%s" key else defaultImg
+    let urlForMediaOrDefault mediaHost key defaultKey=
+        urlForMedia mediaHost (if key <> "" then key else defaultKey)
 
-    let defaultImg = "/logo256.png"
+    let urlForMediaImgSafe mediaHost key =
+        urlForMedia mediaHost (if key <> "" then key else defaultMediaImg256)
+
+    let defaultMediaImg256 = "media/logo256.png"
+    let defaultMediaImg = "media/logo.png"
 
 type ISecurityApi = {
-    login : REQ<LoginReq> -> ARESP<{|Token: string; RefreshToken: string; User: User|}>
+    login : REQ<LoginReq> -> ARESP<{|Token: string; RefreshToken: string; User: User; Settings: Settings|}>
     refreshToken : REQ<{|RefreshToken: string|}> -> ARESP<{|Token: string; RefreshToken: string|}>
 }
+
+type GetUrlMethod = REQ<{|Cat:MediaCategory|}> -> ARESP<{|BucketKey:string; Url: string|}>
 
 type IMainApi = {
     becomeProducer : REQ<unit> -> ARESP<unit>
@@ -547,7 +559,6 @@ type IMainApi = {
     getProdQuizCard : REQ<{|QuizId:int|}> -> ARESP<MainModels.QuizProdCard>
     updateProdQuizCard : REQ<MainModels.QuizProdCard> -> ARESP<MainModels.QuizProdRecord>
     deleteQuiz : REQ<{|QuizId : int|}> -> ARESP<unit>
-    uploadFile : REQ<{|Cat:ImgCategory; FileType : string; FileBody : byte[]|}> -> ARESP<{|BucketKey: string|}>
     getRegModel : REQ<unit> -> ARESP<MainModels.QuizRegRecord>
     registerTeam : REQ<{|TeamName: string|}> -> ARESP<MainModels.QuizRegRecord>
     getProdPackages : REQ<unit> -> ARESP<PackageRecord list>
@@ -560,6 +571,7 @@ type IMainApi = {
     updateSettings : REQ<MainModels.SettingsCard> -> ARESP<MainModels.SettingsCard>
     sharePackage : REQ<{|PackageId : int; UserId:string|}> -> ARESP<MainModels.ExpertRecord>
     removePackageShare : REQ<{|PackageId : int; UserId:string|}> -> ARESP<unit>
+    getUploadUrl : GetUrlMethod
 }
 
 type IAdminApi = {
@@ -574,7 +586,6 @@ type IAdminApi = {
     getPackages : REQ<unit> -> ARESP<PackageRecord list>
     setPackage : REQ<{|PackageId: int option|}> -> ARESP<AdminModels.QuizControlCard>
     getPackageCard : REQ<{|PackageId: int|}> -> ARESP<PackageCard>
-    uploadFile : REQ<{|Cat:ImgCategory; FileType : string; FileBody : byte[]|}> -> ARESP<{|BucketKey: string|}>
     startCountDown : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     pauseCountDown : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
     settleTour : REQ<unit> -> ARESP<AdminModels.QuizControlCard>

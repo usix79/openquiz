@@ -46,7 +46,6 @@ let api (context:HttpContext) : IMainApi =
         getProdQuizzes = exPublisher "getProdQuizzes" getProdQuizzes
         getProdQuizCard = exPublisher "getProdQuizCard" getProdQuizCard
         updateProdQuizCard = exPublisher "updateProdQuizCard" updateProdQuizCard
-        uploadFile = exPublisher "uploadFile" <| uploadFile (Config.getFilesAccessPoint cfg)
         getProdPackages = exPublisher "getProdPackages" getProdPackages
         getProdPackageCard = exPublisher  "getProdPackageCard" getProdPackageCard
         createPackage = exPublisher  "createPackage" createPackage
@@ -58,6 +57,7 @@ let api (context:HttpContext) : IMainApi =
         updateSettings = exPublisher "updateSettings" updateSettings
         sharePackage = exPublisher "sharePackage" sharePackage
         removePackageShare = exPublisher "removePackageShare" removePackageShare
+        getUploadUrl = exPublisher "getUploadUrl" <| getUploadUrl (Config.getMediaBucketName cfg)
     }
 
     api
@@ -118,9 +118,6 @@ let deleteQuiz expert req =
     |> AR.next (Data2.Quizzes.delete req.QuizId)
     |> AR.next (Data2.Experts.update expert.Id (Domain.Experts.removeQuiz req.QuizId))
     |> AR.map ignore
-
-let uploadFile bucketName _ req =
-    Bucket.uploadFile  bucketName req.Cat req.FileType req.FileBody
 
 let getRegModel expId username name quizId _ =
     quizId |> Result.fromOption "Quiz not defined"
@@ -276,3 +273,7 @@ let removePackageShare expert req =
     |> AR.side (fun _ -> Data2.Packages.update req.PackageId (Domain.Packages.removeShareWith req.UserId))
     |> AR.next (Data2.Experts.update req.UserId (Domain.Experts.removeSharedPackage req.PackageId))
     |> AR.map ignore
+
+let getUploadUrl bucketName expert req  =
+    let key,url = Bucket.getSignedUrl bucketName req.Cat
+    AR.retn  {|Url = url; BucketKey = key|}

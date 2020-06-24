@@ -38,7 +38,7 @@ let update (api:IRegApi) (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | Exn ex -> cm |> addError ex.Message |> noCmd
     | _ -> cm |> noCmd
 
-let view (dispatch : Msg -> unit) (model : Model) =
+let view (dispatch : Msg -> unit) (settings:Settings) (model : Model) =
     section [Class "hero is-shadowless is-fullheight"] [
         div [Class "hero-head"] [
             div [Class "container has-text-centered"][
@@ -49,7 +49,7 @@ let view (dispatch : Msg -> unit) (model : Model) =
 
                 div[][
                     match model.Quiz with
-                    | Some quiz -> yield! quizView dispatch quiz
+                    | Some quiz -> yield! quizView dispatch settings quiz
                     | None -> ()
                 ]
 
@@ -70,9 +70,9 @@ let view (dispatch : Msg -> unit) (model : Model) =
         MainTemplates.footerHero
     ]
 
-let quizView (dispatch : Msg -> unit) (quiz:QuizRecord) = [
+let quizView (dispatch : Msg -> unit) (settings:Settings) (quiz:QuizRecord) = [
     br []
-    figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Infra.urlForImgSafe quiz.ImgKey ] ]
+    figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Infra.urlForMediaImgSafe settings.MediaHost quiz.ImgKey ] ]
     br []
     h3 [Class "title is-3"] [str quiz.Name]
 
