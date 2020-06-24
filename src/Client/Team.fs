@@ -271,6 +271,8 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) quiz
         ]
         if quiz.TS = Admitted then
             MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
+            MainTemplates.playCountdown settings.MediaHost secondsLeft
+
     ]
 
 let quiestionView (dispatch : Msg -> unit) (settings:Settings) quiz answers isCountdownActive isCountdownFinished =
