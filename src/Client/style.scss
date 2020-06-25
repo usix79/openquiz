@@ -6,12 +6,12 @@ $fa_font_path: "~@fortawesome/fontawesome-free/webfonts";
 @import '~@fortawesome/fontawesome-free/scss/fontawesome.scss';
 @import '~@fortawesome/fontawesome-free/scss/regular.scss';
 @import '~@fortawesome/fontawesome-free/scss/solid.scss';
-@import '~@fortawesome/fontawesome-free/scss/brands.scss';
+//@import '~@fortawesome/fontawesome-free/scss/brands.scss';
 
 // OpenSans
-$FontPathOpenSans: "~open-sans-fonts/open-sans";
-@import '~open-sans-fonts/open-sans';
-$family-primary: 'Open Sans';
+// $FontPathOpenSans: "~open-sans-fonts/open-sans";
+// @import '~open-sans-fonts/open-sans';
+// $family-primary: 'Open Sans';
 
 // Bulma
 @import "~bulma/bulma";
