@@ -319,7 +319,7 @@ let singleQwView dispatch (settings:Settings) tour slip answers isCountdownActiv
         match slip with
         | X3 -> ()
         | QW slip ->
-            if isCountdownActive then
+            if isCountdownActive || isCountdownFinished then
                 label [Class "label"][str "Your answer"]
                 awArea dispatch txt jpd answers.Status slip.Ch isCountdownFinished
         | AW slip ->

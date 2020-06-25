@@ -2,7 +2,7 @@
 
 ## 1.7.0 - 2020-06-25
 
-* Added last call sound (google chrome only)
+* Added last call sound (not supported in Safari)
 
 ## 1.6.0 - 2020-06-19
 
