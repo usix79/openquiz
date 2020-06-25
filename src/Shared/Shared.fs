@@ -89,9 +89,9 @@ type MediaCategory =
 with
     member x.Prefix =
         match x with
-        | QuizImg -> "media/qz"
-        | QuestionImg -> "media/qwi"
-        | QuestionVideo -> "media/qwv"
+        | QuizImg -> "qz"
+        | QuestionImg -> "qw"
+        | QuestionVideo -> "qv"
 
 type QuizStatus =
     | Setup
@@ -527,14 +527,19 @@ module AudModels =
     }
 
 module Infra =
+    let private prefix = "media"
+
     let routeBuilder clientPath (typeName: string) (methodName: string) =
         sprintf "%s/app/api/%s/%s" clientPath typeName methodName
 
     let sseUrl quizId lastQuizVersion listenToken =
         sprintf "/sse?quiz=%i&start=%i&token=%s" quizId lastQuizVersion listenToken
 
+    let s3KeyForMedia key =
+        sprintf "%s/%s" prefix key
+
     let urlForMedia mediaHost key =
-        sprintf "%s/%s" mediaHost key
+        sprintf "%s/%s/%s" mediaHost prefix key
 
     let urlForMediaOrDefault mediaHost key defaultKey=
         urlForMedia mediaHost (if key <> "" then key else defaultKey)
@@ -542,8 +547,8 @@ module Infra =
     let urlForMediaImgSafe mediaHost key =
         urlForMedia mediaHost (if key <> "" then key else defaultMediaImg256)
 
-    let defaultMediaImg256 = "media/logo256.png"
-    let defaultMediaImg = "media/logo.png"
+    let defaultMediaImg256 = "logo256.png"
+    let defaultMediaImg = "logo.png"
 
 type ISecurityApi = {
     login : REQ<LoginReq> -> ARESP<{|Token: string; RefreshToken: string; User: User; Settings: Settings|}>

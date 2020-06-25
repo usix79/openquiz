@@ -131,7 +131,7 @@ let playFooter dispatch history questions results current isCountdownActive seco
         ]
 
 let playCountdown mediaHost secondsLeft =
-    if secondsLeft = 11 then Infra.play (Shared.Infra.urlForMedia mediaHost "media/countdown.mp3")
+    if secondsLeft = 11 then Infra.play (Shared.Infra.urlForMedia mediaHost "countdown.mp3")
 
 let playTitle quizName mediaHost quizImg showImg =
     div [][

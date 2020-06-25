@@ -13,6 +13,6 @@ let getSignedUrl bucketName (cat:MediaCategory) =
     client.GetPreSignedURL(
         GetPreSignedUrlRequest(
             BucketName = bucketName,
-            Key = key,
+            Key = Infra.s3KeyForMedia key,
             Verb = HttpVerb.PUT,
             Expires = System.DateTime.UtcNow.AddDays(1.0)))
