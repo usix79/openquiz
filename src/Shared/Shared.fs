@@ -438,6 +438,8 @@ module AdminModels =
         Pt : decimal
         JpdPt : decimal option
         Ch : bool
+        Ann : string
+        Awr : string
     }
 
     type TeamAnswersRecord = {

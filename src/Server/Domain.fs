@@ -137,6 +137,11 @@ type SingleAwSlip = {
         match x.Question with
         | Solid _ -> 1
         | Split list -> list.Length
+    member x.QuestionText idx =
+        match x.Question with
+        | Solid qw -> qw
+        | Split list -> list |> List.tryItem idx |> Option.defaultValue ""
+
     static member InitEmpty qwCount =
         {
             Question =

@@ -311,6 +311,8 @@ module Admin =
             Pt = slip.Points
             JpdPt = slip.JeopardyPoints
             Ch = slip.WithChoice
+            Ann = slip.QuestionText 0 |> Common.trimEnd 64 "..."
+            Awr = slip.Answer
         }
 
     let questionRecords  (quiz:Quiz) : AdminModels.QuestionRecord list =

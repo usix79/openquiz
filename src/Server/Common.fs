@@ -47,6 +47,16 @@ let fromEpoch (epoch:decimal) =
     |> Convert.ToDouble
     |> DateTime.UnixEpoch.AddSeconds
 
+let trimEnd n suffix (str:string) =
+    if str.Length < n then str
+    else
+       str.Substring(0, n) + suffix
+
+let trimMiddle n suffix (str:string) =
+    if str.Length < n then str
+    else
+       str.Substring(0, n / 2) + suffix + str.Substring(str.Length - (n / 2), n / 2)
+
 module Result =
     let toOption = function
     | Ok entity -> Some entity
@@ -74,7 +84,7 @@ module Async =
 
     let ParallelThrottle throttle workflows =
             Async.Parallel(workflows, throttle)
-            
+
 module AsyncResult =
 
     let fromResult x = async { return x }

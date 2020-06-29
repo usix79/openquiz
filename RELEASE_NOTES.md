@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.8.0 - 2020-06-30
+
+* Hint with correct answers are displayed on Admin's Answers page
+
 ## 1.7.0 - 2020-06-25
 
 * Added last call sound (not supported in Safari)

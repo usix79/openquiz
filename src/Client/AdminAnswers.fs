@@ -199,7 +199,12 @@ let menuView dispatch (bundle:AnswersBundle) model =
     ]
 
 let answersTable dispatch  (bundle:AnswersBundle) (qw:QuestionRecord)  cq = [
-    h5[Class "title is-5"] [ str <| "Question: " + qw.Nm ]
+    h5[Class "title is-5"] [str <| sprintf "Question: %s  \"%s\"" qw.Nm qw.Ann]
+    if qw.Awr <> "" then
+        p [Class "content"][
+            b[][str "Answer(s): "]
+            p [] (splitByLines qw.Awr)
+        ]
 
     table [Class "table is-hoverable is-fullwidth"][
         thead [ ] [
