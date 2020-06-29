@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.9.0 - 2020-07-01
+
+* Maximum size of pictures is increased to 256K
+
 ## 1.8.0 - 2020-06-30
 
 * Added embedded media player. [Supported media](https://www.npmjs.com/package/react-player#supported-media)

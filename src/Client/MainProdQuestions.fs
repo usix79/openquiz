@@ -137,7 +137,7 @@ let replaceRecord record model =
     {model with Packages = record :: (model.Packages |> List.filter (fun q -> q.PackageId <> record.PackageId))}
 
 let uploadFile (api:IMainApi) (tag:PkgQwKey) (file:Browser.Types.File) msg model =
-    if file.size > (1024*128) then model |> addError "max image size is 128K" |> noCmd
+    if file.size > (1024*256) then model |> addError "max image size is 256K" |> noCmd
     else model |> loading tag.PackageId, uploadFileToS3Cmd api.getUploadUrl QuestionImg file msg Exn
 
 let toggleAquiringForm model =
