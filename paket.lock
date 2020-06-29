@@ -802,15 +802,10 @@ NUGET
     Fable.Remoting.Json (2.6)
       FSharp.Core (>= 4.6.2)
       Newtonsoft.Json (>= 12.0.2)
-    FSharp.Control.AsyncSeq (2.0.23)
-      FSharp.Core (>= 4.3.2)
     FSharp.Control.Reactive (4.2)
       FSharp.Core (>= 4.2.3)
       System.Reactive (>= 4.0)
     FSharp.Core (4.7.1)
-    FSharpx.Async (1.14.1)
-      FSharp.Control.AsyncSeq (>= 2.0.21)
-      FSharp.Core (>= 4.6.2)
     Microsoft.NETCore.Platforms (3.1.1)
     Microsoft.NETCore.Targets (3.1)
     Microsoft.Win32.Primitives (4.3)
@@ -865,9 +860,7 @@ NUGET
       Microsoft.NETCore.Platforms (>= 1.1)
       Microsoft.NETCore.Targets (>= 1.1)
       System.Runtime (>= 4.3)
-GITHUB
-  remote: deapsquatter/FSharp.SSEClient
-    src/SSEClient.fs (8242236730a29db6e812264689f20410367dd7aa)
+
 GROUP Server
 STORAGE: NONE
 RESTRICTION: == netcoreapp3.1
@@ -910,12 +903,7 @@ NUGET
     Fable.Remoting.Server (4.10.2)
       Fable.Remoting.Json (>= 2.6)
       FSharp.Core (>= 4.6.2)
-    FSharp.Control.AsyncSeq (2.0.24)
-      FSharp.Core (>= 4.3.2)
     FSharp.Core (4.7.2)
-    FSharpx.Async (1.14.1)
-      FSharp.Control.AsyncSeq (>= 2.0.21)
-      FSharp.Core (>= 4.6.2)
     Giraffe (4.0.1)
       FSharp.Core (>= 4.7)
       Microsoft.IO.RecyclableMemoryStream (>= 1.2.2)

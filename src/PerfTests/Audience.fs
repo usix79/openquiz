@@ -1,7 +1,6 @@
 module rec Audience
 
 open System
-open FSharpx.Control
 
 open Shared
 open Common
@@ -44,7 +43,7 @@ let audience server quizId opts (securytyFacade:SecurityFacade)  (adminFacade: A
             | ex -> printfn "EXCEPTION for %i %s %A" idx ex.Message ex
         }
     ]
-    |> Async.ParallelCatchWithThrottle 10
+    |> Async.ParallelThrottle 10
     |> Async.RunSynchronously
     |> ignore
 

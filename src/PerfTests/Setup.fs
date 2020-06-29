@@ -1,5 +1,4 @@
 module Setup
-open FSharpx.Control
 
 open Shared
 open Common

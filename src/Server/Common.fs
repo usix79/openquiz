@@ -72,6 +72,9 @@ module Async =
             return! f x
         }
 
+    let ParallelThrottle throttle workflows =
+            Async.Parallel(workflows, throttle)
+            
 module AsyncResult =
 
     let fromResult x = async { return x }

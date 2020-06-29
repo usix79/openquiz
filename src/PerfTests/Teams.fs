@@ -2,7 +2,6 @@ module Teams
 
 open System
 open System.Threading.Tasks
-open FSharpx.Control
 
 open Shared
 open Common
@@ -129,7 +128,7 @@ let teams server quizId opts (securytyFacade:SecurityFacade) (adminFacade: Admin
                 with
                 | ex -> printfn "EXCEPTION: %s %A" ex.Message ex
             }
-    )  |> Async.ParallelCatchWithThrottle 20
+    )  |> Async.ParallelThrottle 20
     |> Async.RunSynchronously
     |> ignore
 

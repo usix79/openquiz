@@ -32,6 +32,11 @@ type TestOptions = {
     Token : string
     Mode : TestModeOptions option }
 
+module Async =
+
+    let ParallelThrottle throttle workflows =
+            Async.Parallel(workflows, throttle)
+
 let nextIdGenerator () =
     let mutable id = 0
     fun () -> Threading.Interlocked.Increment(&id)

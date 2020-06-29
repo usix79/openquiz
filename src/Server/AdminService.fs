@@ -237,7 +237,7 @@ let settleAnswers (quiz : Domain.Quiz) =
         |> AR.bind (fun list ->
             list
             |> List.map (fun teamId -> Data2.Teams.update {QuizId = quiz.Dsc.QuizId; TeamId = teamId} (logic items))
-            |> FSharpx.Control.Async.ParallelCatchWithThrottle 20
+            |> Async.ParallelThrottle 20
             //|> Async.Sequential
             |> Async.map (fun _ ->
                 sw.Stop()
