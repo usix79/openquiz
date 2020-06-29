@@ -130,16 +130,24 @@ let playFooter dispatch history questions results current isCountdownActive seco
             ]
         ]
 
-let playCountdown mediaHost secondsLeft =
-    if secondsLeft = 11 then Infra.play (Shared.Infra.urlForMedia mediaHost "countdown.mp3")
+let playSounds mediaHost secondsLeft =
+    if secondsLeft = 11 then Infra.play (Shared.Infra.urlForMedia mediaHost "chgk2-sig2.mp3")
+    if secondsLeft = 1 then Infra.play (Shared.Infra.urlForMedia mediaHost "chgk2-sig3.mp3")
 
-let playTitle quizName mediaHost quizImg showImg =
-    div [][
-        br []
-        if showImg then
-            figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Shared.Infra.urlForMediaImgSafe mediaHost quizImg ] ]
-            br []
-        h3 [Class "title is-3"] [ str quizName ]
+
+let playTitle mediaHost quizImg mixlr url =
+    div[Style [Margin "5px"]][
+        match url with
+        | Some url -> figure [Class "image is-16by9"][div[Class "has-ratio"][ReactPlayer.player url]]
+        | None ->
+            match mixlr with
+            | Some mixlrUserId ->
+                let src = sprintf "https://mixlr.com/users/%i/embed" mixlrUserId
+                iframe[Src src; Style[Width "100%"; Height "180px"]; Scrolling "no"; FrameBorder "no"; MarginHeight 0.0; MarginWidth 0.0][]
+            | None ->
+                br []
+                figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Shared.Infra.urlForMediaImgSafe mediaHost quizImg ] ]
+                br []
     ]
 
 let playQuiz status msg =
@@ -212,12 +220,6 @@ let resultsView (currentRes:Shared.TeamResult option) (teamResults:Shared.TeamRe
         ]
     ]
 
-let mixlrFrame (userId : int option) =
-    match userId with
-    | Some id ->
-        let src = sprintf "https://mixlr.com/users/%i/embed" id
-        iframe[Src src; Style[Width "100%"; Height "180px"]; Scrolling "no"; FrameBorder "no"; MarginHeight 0.0; MarginWidth 0.0][]
-    | None -> div [][]
 
 let deleteForm dispatch placeholder validText inputText isSending error toggleMsg updateMsg deleteMsg =
     div[][

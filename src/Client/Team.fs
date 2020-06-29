@@ -246,12 +246,13 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) quiz
 
     div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
-            MainTemplates.mixlrFrame quiz.Mxlr
-            MainTemplates.playTitle user.QuizName settings.MediaHost quiz.Img quiz.Mxlr.IsNone
-
-            h4 [Class "subtitle is-4" ] [ str user.TeamName ]
 
             div [Class "container"] [
+                MainTemplates.playTitle settings.MediaHost quiz.Img quiz.Mxlr quiz.Url
+
+                h3 [Class "title is-3"] [ str user.QuizName ]
+                h4 [Class "subtitle is-4" ] [ str user.TeamName ]
+
                 match quiz.TS with
                 | New -> div [Class "notification is-white"][str "Waiting for confirmation of the registration..."]
                 | Admitted ->
@@ -268,11 +269,11 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) quiz
             ]
             p [Class "help is-danger"][ str model.Error ]
             div [ Style [Height "66px"]] []
-        ]
-        if quiz.TS = Admitted then
-            MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
-            MainTemplates.playCountdown settings.MediaHost secondsLeft
 
+            if quiz.TS = Admitted then
+                MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
+                MainTemplates.playSounds settings.MediaHost secondsLeft
+        ]
     ]
 
 let quiestionView (dispatch : Msg -> unit) (settings:Settings) quiz answers isCountdownActive isCountdownFinished =

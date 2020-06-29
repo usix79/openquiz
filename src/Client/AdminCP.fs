@@ -16,6 +16,7 @@ type Msg =
     | DeleteError of string
     | Exn of exn
     | ChangeStatus of string
+    | ChangeStreamUrl of string
     | PackagesClick
     | PackagesResp of RESP<PackageRecord list>
     | SelectPackage of string
@@ -139,6 +140,7 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | DeleteError id -> cm |> delError id |> noCmd
     | QuizCardResp {Value = Ok res; ST = st } -> cm |> setCard api res st |> scheduleTick
     | ChangeStatus txt -> cm |> loading |> apiCmd api.changeQuizStatus {|QuizStatus = (defaultArg (fromString txt) Setup)|} QuizCardResp Exn
+    | ChangeStreamUrl txt -> cm |> loading |> apiCmd api.changeStreamUrl txt QuizCardResp Exn
     | PackagesClick -> cm |> uploadPackages api
     | PackagesResp {Value = Ok pkgs} -> {cm with AvailablePackages = Some pkgs} |> editing |> noCmd
     | SelectPackage txt -> cm |> setPackage api txt
@@ -202,7 +204,7 @@ let quizView (dispatch : Msg -> unit) (user:AdminUser) (settings:Settings) (mode
     let isReadOnly = changesNotAllowed || model.IsLoading
 
     div [][
-        div [Class "field"][
+        div [Class "field is-grouped"][
             div [Class "control"][
                 label [Class "label"][str "Status"]
                 div [Class "select"][
@@ -210,6 +212,14 @@ let quizView (dispatch : Msg -> unit) (user:AdminUser) (settings:Settings) (mode
                         for case in Reflection.FSharpType.GetUnionCases typeof<QuizStatus> do
                             option [][str case.Name]
                     ]
+                ]
+            ]
+            div [Class "control is-expanded"][
+                label [Class "label"][str "Stream URL"]
+                div [Class "control is-expanded has-icons-right"][
+                    input [Class "input"; Type "text"; MaxLength 256.0;
+                        Value (quiz.StreamUrl |> Option.defaultValue "");
+                        OnChange (fun ev -> dispatch <| ChangeStreamUrl ev.Value)]
                 ]
             ]
         ]

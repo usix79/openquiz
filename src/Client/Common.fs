@@ -417,6 +417,7 @@ module Infra =
                 changeTeamStatus = x.Wrap adminApi.changeTeamStatus
                 getQuizCard = x.Wrap adminApi.getQuizCard
                 changeQuizStatus = x.Wrap adminApi.changeQuizStatus
+                changeStreamUrl = x.Wrap adminApi.changeStreamUrl
                 getPackages = x.Wrap adminApi.getPackages
                 setPackage = x.Wrap adminApi.setPackage
                 getPackageCard = x.Wrap adminApi.getPackageCard

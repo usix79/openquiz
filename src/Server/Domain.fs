@@ -241,6 +241,7 @@ type QuizDescriptor = {
     PkgSlipIdx : int option
     EventPage : string
     MixlrCode : int option
+    StreamUrl : string option
 }
 
 type Quiz = {
@@ -275,6 +276,7 @@ module Quizzes =
                 PkgSlipIdx = None
                 EventPage = ""
                 MixlrCode = defMixlr
+                StreamUrl = None
             }
             Tours = []
             Version = 0

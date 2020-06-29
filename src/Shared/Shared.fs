@@ -418,6 +418,7 @@ module AdminModels =
         PackageId : int option
         PackageSlipIdx : int option
         CurrentTour : TourControlCard option
+        StreamUrl : string option
     }
 
     type Answer = {
@@ -489,6 +490,7 @@ module TeamModels =
         Aw : Map<int,(string*bool)>
         LT : string
         Mxlr : int option
+        Url : string option
         V : int
     } with
         member x.Msg =
@@ -515,6 +517,7 @@ module AudModels =
         TC : TourCard option
         LT : string
         Mxlr : int option
+        Url : string option
         V : int
     } with
         member x.Msg =
@@ -590,6 +593,7 @@ type IAdminApi = {
     changeTeamStatus : REQ<{|TeamId : int; TeamStatus : TeamStatus|}> -> ARESP<AdminModels.TeamRecord>
     getQuizCard : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
     changeQuizStatus : REQ<{|QuizStatus : QuizStatus|}> -> ARESP<AdminModels.QuizControlCard>
+    changeStreamUrl : REQ<string> -> ARESP<AdminModels.QuizControlCard>
     getPackages : REQ<unit> -> ARESP<PackageRecord list>
     setPackage : REQ<{|PackageId: int option|}> -> ARESP<AdminModels.QuizControlCard>
     getPackageCard : REQ<{|PackageId: int|}> -> ARESP<PackageCard>

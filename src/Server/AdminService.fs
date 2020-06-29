@@ -55,6 +55,7 @@ let api (context:HttpContext) : IAdminApi =
         updateResults = ex "updateResults" updateResults
         getResults = ex "getResults" getResults
         getListenToken = ex "getListenToken" getListenToken
+        changeStreamUrl = ex  "changeStreamUrl" changeStreamUrl
     }
 
     api
@@ -276,3 +277,11 @@ let getResults quiz _ =
 
 let getListenToken quiz _ =
     quiz.ListenToken |> AR.retn
+
+
+let changeStreamUrl quiz url =
+    let logic (quiz:Domain.Quiz) =
+        {quiz with Dsc = {quiz.Dsc with StreamUrl = if url <> "" then Some url else None}} |> Ok
+
+    Data2.Quizzes.update quiz.QuizId logic
+    |> AR.map Admin.quizCard

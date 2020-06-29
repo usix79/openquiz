@@ -10,6 +10,7 @@
     <Compile Include="Version.fs" />
     <Compile Include="AppSync.fs" />
     <Compile Include="Common.fs" />
+    <Compile Include="ReactPlayer.fs" />
     <Compile Include="MainTemplates.fs" />
     <Compile Include="MainProdQuizzes.fs" />
     <Compile Include="MainProdQuestions.fs" />

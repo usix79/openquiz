@@ -33,6 +33,7 @@
     },
     "dependencies": {
         "aws-amplify": "^3.0.17",
-        "react-flatpickr": "^3.10.0"
+        "react-flatpickr": "^3.10.0",
+        "react-player": "^2.4.0"
     }
 }

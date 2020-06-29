@@ -110,12 +110,12 @@ let quizView (dispatch : Msg -> unit) settings (model:Model) (quiz:QuizCard) =
     div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
 
-            MainTemplates.mixlrFrame quiz.Mxlr
-            MainTemplates.playTitle quiz.QN settings.MediaHost quiz.Img quiz.Mxlr.IsNone
-
-            h4 [Class "subtitle is-4" ] [Fa.i [Fa.Solid.Users] [ str " audience"] ]
-
             div [Class "container"] [
+                yield MainTemplates.playTitle settings.MediaHost quiz.Img quiz.Mxlr quiz.Url
+
+                yield h3 [Class "title is-3"] [ str quiz.QN ]
+                yield h4 [Class "subtitle is-4" ] [Fa.i [Fa.Solid.Users] [ str " audience"] ]
+
                 match model.ActiveTab with
                 | History -> yield historyView dispatch model
                 | Question ->
@@ -134,8 +134,6 @@ let quizView (dispatch : Msg -> unit) settings (model:Model) (quiz:QuizCard) =
             p [Class "help is-danger"][ str model.Error ]
             div [ Style [Height "66px"]] []
         ]
-
-
 
         MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
     ]

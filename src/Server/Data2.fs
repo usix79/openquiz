@@ -525,20 +525,22 @@ module Quizzes =
         let TourStartTime = "StartTime"
         let TourSlip = "Slip"
         let Version = "Version"
+        let StreamUrl = "StreamUrl"
 
     let private key id = [ Attr (Fields.Id, ScalarInt32 id) ]
 
     let private dscFields = [
         Fields.Id; Fields.Producer; Fields.StartTime; Fields.Name; Fields.Status; Fields.WelcomeText; Fields.FarewellText;
         Fields.ImgKey;  Fields.WithPremoderation; Fields.AdminToken; Fields.RegToken; Fields.ListenToken;
-        Fields.PkgId; Fields.PkgQwIdx; Fields.EventPage; Fields.MixlrCode]
+        Fields.PkgId; Fields.PkgQwIdx; Fields.EventPage; Fields.MixlrCode; Fields.StreamUrl]
 
     let private dscBuilder id producer startTime name status wlcmText frwlText
-        imgKey withPremoderation adminToken regToken listenToken pkgId pkgQwIdx evtPage mixlrCode: Domain.QuizDescriptor =
+        imgKey withPremoderation adminToken regToken listenToken pkgId pkgQwIdx
+        evtPage mixlrCode streamUrl: Domain.QuizDescriptor =
         {QuizId = id; Producer = producer; StartTime = startTime; Name = name; Status = status |> Option.defaultValue Domain.Setup;
          WelcomeText = wlcmText; FarewellText = frwlText; ImgKey = imgKey; WithPremoderation = withPremoderation;
          AdminToken = adminToken; RegToken = regToken; ListenToken = listenToken;
-         PkgId = pkgId; PkgSlipIdx = pkgQwIdx; EventPage = evtPage; MixlrCode = mixlrCode}
+         PkgId = pkgId; PkgSlipIdx = pkgQwIdx; EventPage = evtPage; MixlrCode = mixlrCode; StreamUrl = streamUrl}
 
     let private dscReader =
         dscBuilder
@@ -558,6 +560,7 @@ module Quizzes =
         <*> (opt Fields.PkgQwIdx (A.nullOr A.number) ??>-> P.int)
         <*> (optDef Fields.EventPage "" A.string)
         <*> (opt Fields.MixlrCode (A.nullOr A.number) ??>-> P.int)
+        <*> (opt Fields.StreamUrl (A.nullOr A.string) ??>-> Ok)
 
     let getDescriptor = key >> getItemProjection' dscFields tableName dscReader
 
@@ -611,6 +614,7 @@ module Quizzes =
             yield! BuildAttr.optional Fields.PkgQwIdx ScalarInt32 item.Dsc.PkgSlipIdx
             yield! BuildAttr.string Fields.EventPage item.Dsc.EventPage
             yield! BuildAttr.optional Fields.MixlrCode ScalarInt32 item.Dsc.MixlrCode
+            yield! BuildAttr.optional Fields.StreamUrl ScalarString item.Dsc.StreamUrl
 
             Attr (Fields.Questions, DocList [
                 for tour in item.Tours do

@@ -264,6 +264,7 @@ module Admin =
             QuizStatus = quizStatus quiz.Dsc.Status
             PackageId = quiz.Dsc.PkgId
             PackageSlipIdx = quiz.Dsc.PkgSlipIdx
+            StreamUrl = quiz.Dsc.StreamUrl
             CurrentTour =
                 match quiz.Dsc.Status with
                 | Live -> match quiz.CurrentTour with Some tour -> Some <| quizTour tour | None -> None
@@ -351,6 +352,7 @@ module Teams =
 
             LT = quiz.Dsc.ListenToken
             Mxlr = quiz.Dsc.MixlrCode
+            Url = quiz.Dsc.StreamUrl
             V = quiz.Version
         }
 
@@ -414,6 +416,7 @@ module Audience =
                 | _ -> None
             LT = quiz.Dsc.ListenToken
             Mxlr = quiz.Dsc.MixlrCode
+            Url = quiz.Dsc.StreamUrl
             V = quiz.Version
         }
 

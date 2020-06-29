@@ -2,7 +2,8 @@
 
 ## 1.8.0 - 2020-06-30
 
-* Hint with correct answers are displayed on Admin's Answers page
+* Added embedded media player. [Supported media](https://www.npmjs.com/package/react-player#supported-media)
+* A hint with correct answers is displayed on Admin's Answers page
 
 ## 1.7.0 - 2020-06-25
 
@@ -20,7 +21,7 @@
 ## 1.4.0 - 2020-05-15
 
 * Replaced text "Comming soon..."
-* Changed logic of starting countdown in multi-questions slips. (first last question is displayed, then countdown is started)
+* Changed logic of starting countdown in multi-questions slips. (First, last question is displayed, then countdown is started)
 
 ## 1.3.0 - 2020-05-08
 
