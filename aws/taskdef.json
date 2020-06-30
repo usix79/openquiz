@@ -11,7 +11,7 @@
           "hostPort": 8085,
           "protocol": "tcp",
           "containerPort": 8085
-        }   
+        }
       ],
       "ulimits": [
         {
@@ -19,7 +19,7 @@
           "hardLimit": 65535,
           "name": "nofile"
         }
-      ],      
+      ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "secretOptions": null,
@@ -36,6 +36,6 @@
     "FARGATE"
   ],
   "networkMode": "awsvpc",
-  "cpu": "2048",
-  "memory": "4096"
+  "cpu": "1024",
+  "memory": "2048"
 }
