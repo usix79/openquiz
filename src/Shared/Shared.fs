@@ -169,6 +169,7 @@ type TourCard = {
 type QuizChangedEvent = {
     Id : int
     QS : QuizStatus
+    Url : string option
     T : TourCard option
 }
 

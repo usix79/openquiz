@@ -109,6 +109,7 @@ let quizChangeEvent (quiz:Quiz) =
     {
         Id = quiz.Dsc.QuizId
         QS = quizStatus quiz.Dsc.Status
+        Url = quiz.Dsc.StreamUrl
         T = match quiz.CurrentTour with
              | Some tour -> Some <| tourCard quiz.CurrentTourIndex tour
              | None -> None

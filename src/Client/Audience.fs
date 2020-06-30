@@ -84,7 +84,7 @@ let update (api:IAudApi) (user:AudUser) (msg : Msg) (cm : Model) : Model * Cmd<M
     match msg with
     | GetQuizRsp {Value = Ok res; ST = st} -> {cm with Quiz = Some res; TimeDiff = timeDiff st} |> subscribe user.QuizId |> setupCountdown
     | CountdownTick _ -> cm |> noCmd |> setupCountdown
-    | QuizChanged evt -> cm |> updateQuiz (fun quiz -> {quiz with QS = evt.QS; TC = evt.T}) |> noCmd |> setupCountdown
+    | QuizChanged evt -> cm |> updateQuiz (fun quiz -> {quiz with QS = evt.QS; TC = evt.T; Url = evt.Url}) |> noCmd |> setupCountdown
     | ChangeTab Question -> {cm with ActiveTab = Question} |> ok |> noCmd
     | ChangeTab History -> {cm with ActiveTab = History} |> ok |> apiCmd api.getHistory () GetHistoryResp Exn
     | ChangeTab Results -> {cm with ActiveTab = Results} |> ok |> apiCmd api.getResults () GetResultsResp Exn
@@ -110,7 +110,7 @@ let quizView (dispatch : Msg -> unit) settings (model:Model) (quiz:QuizCard) =
     div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
 
-            div [Class "container"] [
+            div [Class "container"; Style[MaxWidth "800px"]] [
                 yield MainTemplates.playTitle settings.MediaHost quiz.Img quiz.Mxlr quiz.Url
 
                 yield h3 [Class "title is-3"] [ str quiz.QN ]

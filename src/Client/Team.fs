@@ -130,7 +130,7 @@ let unsubscribe (model:Model) =
     AppSync.unsubscribe()
 
 let applyEvent (evt:QuizChangedEvent) (model:Model) =
-    model |> updateQuiz (fun quiz -> {quiz with QS = evt.QS; TC = evt.T})
+    model |> updateQuiz (fun quiz -> {quiz with QS = evt.QS; TC = evt.T; Url = evt.Url})
 
 let answerStatus satus model =
     match model.Answers with
@@ -247,7 +247,7 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) quiz
     div [Style [Width "100%"; Height "100%"; MinWidth "375px"; TextAlign TextAlignOptions.Center; Position PositionOptions.Relative]] [
         div [Style [OverflowY OverflowOptions.Auto; Position PositionOptions.Absolute; Top "0"; Width "100%"]] [
 
-            div [Class "container"] [
+            div [Class "container"; Style[MaxWidth "800px"]] [
                 MainTemplates.playTitle settings.MediaHost quiz.Img quiz.Mxlr quiz.Url
 
                 h3 [Class "title is-3"] [ str user.QuizName ]
