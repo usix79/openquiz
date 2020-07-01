@@ -62,6 +62,12 @@ type Msg =
     | ShareRemove of int * string
     | SharePackageResp of RESP<MainModels.ExpertRecord>
     | RemoveShareResp of TRESP<string,unit>
+    | ToChoiceAnswer of key:QwKey
+    | ToOpenAnswer of key:QwKey
+    | SetCorrectness of key:QwKey*idx:int*bool
+    | DeleteChoice of key:QwKey*idx:int
+    | AppendChoice of key:QwKey
+    | SetChoiceText of key:QwKey*idx:int*string
 
 type AquireForm = {
     PackageId : int
@@ -117,7 +123,7 @@ let updateCard f model =
     | Some card -> {model with Card = Some <| f card}
     | _ -> model
 
-let updateSlip (qwKey:QwKey) (f:SingleAwSlip -> SingleAwSlip) (model:Model) =
+let updateSlip (qwKey:QwKey) (f:SingleSlip -> SingleSlip) (model:Model) =
     model |> updateCard (fun card ->
         match card.GetSlip qwKey.TourIdx with
         | Some (Single slip) -> f slip  |> Single |> card.UpdateSlip qwKey.TourIdx
@@ -189,15 +195,21 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | CancelCard -> {cm with Card = None; ShareForm = None} |> noCmd
     | SubmitCard -> cm |> submitCard api
     | SubmitCardResp {Value = Ok res } -> {cm with Card = None; ShareForm = None} |> editing |> replaceRecord res |> noCmd
-    | AppendSingleSlip qwCount -> cm |> updateCard (fun c -> c.AppendSlip (SingleAwSlip.InitEmpty qwCount |> Single)) |> noCmd
+    | AppendSingleSlip qwCount -> cm |> updateCard (fun c -> c.AppendSlip (SingleSlip.InitEmpty qwCount |> Single)) |> noCmd
     | AppendMultipleSlip -> cm |> updateCard (fun c -> c.AppendSlip (("",[]) |> Multiple)) |> noCmd
     | DelSlip tourIdx -> cm |> updateCard (fun c -> c.DelSlip tourIdx) |> noCmd
     | UpdateTourName (tourIdx,txt) -> cm |> updateCard (fun c -> c.GetSlip tourIdx |> Option.bind (fun slip -> slip.SetMultipleName txt |>  c.UpdateSlip tourIdx |> Some) |> Option.defaultValue c) |> noCmd
-    | AppendQwToMultiple tourIdx -> cm |> updateCard (fun c -> c.GetSlip tourIdx |> Option.bind (fun slip -> SingleAwSlip.InitEmpty 1 |> slip.AppendToMultiple |>  c.UpdateSlip tourIdx |> Some) |> Option.defaultValue c) |> noCmd
+    | AppendQwToMultiple tourIdx -> cm |> updateCard (fun c -> c.GetSlip tourIdx |> Option.bind (fun slip -> SingleSlip.InitEmpty 1 |> slip.AppendToMultiple |>  c.UpdateSlip tourIdx |> Some) |> Option.defaultValue c) |> noCmd
     | DelQwInMultiple key -> cm |> updateCard (fun c -> c.GetSlip key.TourIdx |> Option.bind (fun slip -> slip.RemoveFromMultiple key.QwIdx |>  c.UpdateSlip key.TourIdx |> Some) |> Option.defaultValue c) |> noCmd
     | QwTextChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Question = Solid txt}) |> noCmd
     | QwTextSplitChanged (key,part,txt) -> cm |> updateSlip key (fun slip -> slip.SetQwText part txt) |> noCmd
-    | QwAnswerChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Answer = txt}) |> noCmd
+    | ToOpenAnswer key -> cm |> updateSlip key (fun slip -> {slip with Answer = slip.Answer.ToOpen()}) |> noCmd
+    | ToChoiceAnswer key -> cm |> updateSlip key (fun slip -> {slip with Answer = slip.Answer.ToChoice()}) |> noCmd
+    | QwAnswerChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Answer = OpenAnswer txt}) |> noCmd
+    | AppendChoice key -> cm |> updateSlip key (fun slip -> {slip with Answer = slip.Answer.AppendChoice()})  |> noCmd
+    | DeleteChoice (key,idx) -> cm |> updateSlip key (fun slip -> {slip with Answer = (slip.Answer.DeleteChoice idx)})  |> noCmd
+    | SetCorrectness (key,idx,isCorrect) -> cm |> updateSlip key (fun slip -> {slip with Answer = slip.Answer.SetCorrectness idx isCorrect})  |> noCmd
+    | SetChoiceText (key,idx,txt) -> cm |> updateSlip key (fun slip -> {slip with Answer = slip.Answer.SetText idx txt})  |> noCmd
     | QwCommentChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Comment = txt}) |> noCmd
     | QwPointsChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Points = System.Decimal.Parse(txt)}) |> noCmd
     | QwJpdPointsChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with JeopardyPoints = ofDecimal (Some txt)}) |> noCmd
@@ -457,9 +469,44 @@ let qwInput dispatch placeholder txt key partIdx  =
             valueOrDefault txt; MaxLength 256.0; OnChange (fun ev -> QwTextSplitChanged (key, partIdx, ev.Value) |> dispatch)]
     ]
 
-let awCell dispatch (key:PkgQwKey) txt isLoading =
+let awCell dispatch (key:PkgQwKey) (answer:SlipAnswer) isLoading =
     td[] [
-        textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwAnswerChanged (key.Key,ev.Value) |> dispatch)][]
+        div [Class "buttons has-addons"][
+            button [classList ["button", true; "is-small", true; "has-text-weight-bold", (answer.IsOpen())]
+                    OnClick (fun _ -> dispatch (ToOpenAnswer key.Key))] [str "open answer"]
+            button [classList ["button", true; "is-small", true; "has-text-weight-bold", not (answer.IsOpen())]
+                    OnClick (fun _ -> dispatch (ToChoiceAnswer key.Key))] [str "multiple choices"]
+        ]
+
+        match answer with
+        | OpenAnswer txt ->
+            textarea [Class "textarea"; Rows 2; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwAnswerChanged (key.Key,ev.Value) |> dispatch)][]
+        | ChoiceAnswer list ->
+            ul[][
+                for (idx,ch) in list |> List.mapi (fun idx ch -> idx,ch) do
+                    li [][
+                        div [Class "field has-addons"][
+                            div [Class "control"][
+                                input [Class "input is-small"; Type "text"; valueOrDefault ch.Text;
+                                    OnChange (fun ev -> SetChoiceText (key.Key,idx,ev.Value) |> dispatch)]
+                            ]
+                            div [Class "control"][
+                                a [classList ["button", true; "is-small", true; "is-primary", ch.IsCorrect];
+                                    OnClick (fun _ -> SetCorrectness (key.Key,idx,true) |> dispatch)][str "correct"]
+                            ]
+                            div [Class "control"][
+                                a [classList ["button", true; "is-small", true; "is-danger", not ch.IsCorrect];
+                                    OnClick (fun _ -> SetCorrectness (key.Key,idx,false) |> dispatch)][str "wrong"]
+                            ]
+                            div [Class "control"][
+                                a [Class "button is-small";
+                                    OnClick (fun _ -> DeleteChoice (key.Key,idx) |> dispatch)][Fa.i[Fa.Solid.Trash][]]
+                            ]
+                        ]
+                    ]
+
+            ]
+            button [Class "button is-small"; OnClick (fun _ -> dispatch (AppendChoice key.Key))] [str "append choice"]
     ]
 
 let cmntCell dispatch settings (key:PkgQwKey) txt imgKey isLoading =
@@ -469,7 +516,7 @@ let cmntCell dispatch settings (key:PkgQwKey) txt imgKey isLoading =
         yield! MainTemplates.imgArea key isLoading (CommentImgChanged >> dispatch) (fun _ -> CommentImgClear key.Key |> dispatch) settings.MediaHost imgKey "" "Clear"
     ]
 
-let singleSlipRow dispatch settings isOwned isLoading pkgId tourIdx qwIdx (slip: SingleAwSlip) =
+let singleSlipRow dispatch settings isOwned isLoading pkgId tourIdx qwIdx (slip: SingleSlip) =
 
     let packageKey = {PackageId = pkgId; TourIdx=tourIdx; QwIdx = qwIdx |> Option.defaultValue 0}
 

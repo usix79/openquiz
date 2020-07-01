@@ -99,8 +99,8 @@ type Package = {
         else None
 
 type Slip =
-    | Single of SingleAwSlip
-    | Multiple of name:string * SingleAwSlip list
+    | Single of SingleSlip
+    | Multiple of name:string * SingleSlip list
 with
     member x.Answers =
         match x with
@@ -119,14 +119,28 @@ with
         | Single slip -> slip.QuestionsCount
         | _ -> 1
 
-type QuestionText =
+type Question =
     | Solid of string
     | Split of string list
 
-type SingleAwSlip = {
-    Question : QuestionText
+type ChoiceAnswer = {
+    Text: string
+    IsCorrect: bool
+}
+type Answer =
+    | OpenAnswer of string
+    | ChoiceAnswer of ChoiceAnswer list
+    with
+        member x.ToRawString () =
+            match x with
+            | OpenAnswer txt -> txt
+            | ChoiceAnswer list ->
+                String.Join("\n", list |> List.choose (fun ch -> if ch.IsCorrect then Some ch.Text else None))
+
+type SingleSlip = {
+    Question : Question
     ImgKey : string
-    Answer : string
+    Answer : Answer
     Comment : string
     CommentImgKey : string
     Points : decimal
@@ -149,7 +163,7 @@ type SingleAwSlip = {
                 | 1 -> Solid ""
                 | n -> List.init n (fun i -> "") |> Split
             ImgKey=""
-            Answer=""
+            Answer= OpenAnswer ""
             Comment=""
             CommentImgKey=""
             Points = 1m
@@ -300,7 +314,7 @@ module Quizzes =
         | None -> quiz
 
     let addEmptySlip (quiz:Quiz) =
-        quiz|> addSlip (SingleAwSlip.InitEmpty 1 |> Single)
+        quiz|> addSlip (SingleSlip.InitEmpty 1 |> Single)
 
     let getNextTourName (quiz:Quiz) =
         match quiz.CurrentTour with

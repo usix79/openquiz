@@ -12,8 +12,8 @@
     <Compile Include="Common.fs" />
     <Compile Include="ReactPlayer.fs" />
     <Compile Include="MainTemplates.fs" />
-    <Compile Include="MainProdQuizzes.fs" />
     <Compile Include="MainProdQuestions.fs" />
+    <Compile Include="MainProdQuizzes.fs" />
     <Compile Include="MainProdSettings.fs" />
     <Compile Include="MainProd.fs" />
     <Compile Include="MainReg.fs" />

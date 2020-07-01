@@ -154,7 +154,7 @@ let multipleQwView (settings:Settings) tour name slips =
                 p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
                 p [Class "has-text-weight-light is-family-secondary is-size-6"][
                     str "correct answer: "
-                    str (slip.Txt.Split('\n').[0])
+                    str (slip.Aw.ToRawString().Split('\n').[0])
                 ]
                 yield! MainTemplates.imgEl settings.MediaHost slip.Img
                 p [Class "is-italic has-text-weight-light is-family-secondary is-size-7"] (splitByLines slip.Com)
@@ -162,7 +162,6 @@ let multipleQwView (settings:Settings) tour name slips =
 
             | X3 -> str "x3"
     ]
-
 
 let historyView dispatch model =
     table [Class "table is-hoverable is-fullwidth"][

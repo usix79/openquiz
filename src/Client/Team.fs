@@ -364,7 +364,7 @@ let multipleQwView dispatch settings tour name slips answers isCountdownFinished
                 awInput dispatch idx aw jpd answers.Status slip.Ch isCountdownFinished
                 p [Class "has-text-weight-light is-family-secondary is-size-6"][
                     str "correct answer: "
-                    str (slip.Txt.Split('\n').[0])
+                    str (slip.Aw.ToRawString().Split('\n').[0])
                 ]
                 yield! MainTemplates.imgEl settings.MediaHost slip.Img
                 p [Class "is-italic has-text-weight-light is-family-secondary is-size-7"] (splitByLines slip.Com)

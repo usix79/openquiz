@@ -59,24 +59,38 @@ let packageCard (package: Package) : PackageCard =
         Slips = package.Slips |> List.map slip
     }
 
-let questionText = function
+let question = function
     | Solid qw -> Shared.Solid qw
     | Split list -> Shared.Split list
 
-let questionTextToDomain = function
+let questionToDomain = function
     | Shared.Solid qw -> Solid qw
     | Shared.Split list -> Split list
+
+let choiceAnswer (aw:ChoiceAnswer) : Shared.ChoiceAnswer =
+    {Text = aw.Text; IsCorrect = aw.IsCorrect}
+
+let choiceAnswerToDomain (aw:Shared.ChoiceAnswer) : ChoiceAnswer =
+    {Text = aw.Text; IsCorrect = aw.IsCorrect}
+
+let slipAnswer = function
+    | OpenAnswer aw -> Shared.OpenAnswer aw
+    | ChoiceAnswer list -> Shared.ChoiceAnswer (list |> List.map choiceAnswer)
+
+let slipAnswerToDomain = function
+    | Shared.OpenAnswer aw -> OpenAnswer aw
+    | Shared.ChoiceAnswer list -> ChoiceAnswer (list |> List.map choiceAnswerToDomain)
 
 let qwName tour qwIdx =
     match tour.Slip with
     | Single _ -> tour.Name
     | _ -> sprintf "%s.%i" tour.Name (qwIdx + 1)
 
-let singleAwSlip (slip:SingleAwSlip) : Shared.SingleAwSlip =
+let singleSlip (slip:SingleSlip) : Shared.SingleSlip =
     {
-        Question = questionText slip.Question
+        Question = question slip.Question
         ImgKey = slip.ImgKey
-        Answer = slip.Answer
+        Answer = slipAnswer slip.Answer
         Comment = slip.Comment
         CommentImgKey = slip.CommentImgKey
         Points = slip.Points
@@ -86,24 +100,24 @@ let singleAwSlip (slip:SingleAwSlip) : Shared.SingleAwSlip =
 
 let slip (domainSlip : Slip) : Shared.Slip =
     match domainSlip with
-    | Single sl -> singleAwSlip sl |> Shared.Single
-    | Multiple (name,slips) -> (name, slips |> List.map singleAwSlip) |> Shared.Multiple
+    | Single sl -> singleSlip sl |> Shared.Single
+    | Multiple (name,slips) -> (name, slips |> List.map singleSlip) |> Shared.Multiple
 
-let singleAwSlipToDomain (slip:Shared.SingleAwSlip) =
+let singleSlipToDomain (slip:Shared.SingleSlip) =
     {
-        Question = questionTextToDomain slip.Question
+        Question = questionToDomain slip.Question
         ImgKey = slip.ImgKey
-        Answer = slip.Answer
+        Answer = slipAnswerToDomain slip.Answer
         Comment = slip.Comment
         CommentImgKey = slip.CommentImgKey
         Points = slip.Points
         JeopardyPoints = slip.JeopardyPoints
         WithChoice = slip.WithChoice
-    } : Domain.SingleAwSlip
+    } : Domain.SingleSlip
 let slipToDomain (slip : Shared.Slip) : Slip =
     match slip with
-    | Shared.Single slip -> singleAwSlipToDomain slip |> Single
-    | Shared.Multiple (name, slips) -> (name, slips |> List.map singleAwSlipToDomain) |> Multiple
+    | Shared.Single slip -> singleSlipToDomain slip |> Single
+    | Shared.Multiple (name, slips) -> (name, slips |> List.map singleSlipToDomain) |> Multiple
 
 let quizChangeEvent (quiz:Quiz) =
     {
@@ -129,12 +143,16 @@ let qwText nextQwPartIdx = function
     | Solid qw -> qw
     | Split list -> list |> List.take (max 0 nextQwPartIdx) |> List.mapi (fun idx qw -> sprintf "%i. %s" (idx + 1) qw) |> String.concat "\n"
 
-let slipSingleCard status qwPartIdx (slip:SingleAwSlip) : SingleSlipCard =
+let extractChoices = function
+    | OpenAnswer _ -> None
+    | ChoiceAnswer list -> list |> List.map (fun ach -> ach.Text) |> Some
+
+let slipSingleCard status qwPartIdx (slip:SingleSlip) : SingleSlipCard =
     match status with
     | Announcing when qwPartIdx = 0 -> X3
-    | Announcing -> {Txt=slip.Question |> qwText qwPartIdx; Img=slip.ImgKey; Ch = slip.WithChoice} |> QW
-    | Countdown -> {Txt=slip.Question |> qwText slip.QuestionsCount; Img=slip.ImgKey; Ch = slip.WithChoice} |> QW
-    | Settled -> {Txt=slip.Answer; Com = slip.Comment;  Img=slip.CommentImgKey; Ch = slip.WithChoice} |> AW
+    | Announcing -> {Txt=slip.Question |> qwText qwPartIdx; Choices = None; Img=slip.ImgKey; Ch = slip.WithChoice} |> QW
+    | Countdown -> {Txt=slip.Question |> qwText slip.QuestionsCount; Choices = extractChoices slip.Answer; Img=slip.ImgKey; Ch = slip.WithChoice} |> QW
+    | Settled -> {Aw= slipAnswer slip.Answer; Com = slip.Comment;  Img=slip.CommentImgKey; Ch = slip.WithChoice} |> AW
 
 let slipCard status qwIdx qwPartIdx (slip:Slip) : SlipCard =
     match slip with
@@ -314,7 +332,7 @@ module Admin =
             JpdPt = slip.JeopardyPoints
             Ch = slip.WithChoice
             Ann = slip.QuestionText 0 |> Common.trimEnd 64 "..."
-            Awr = slip.Answer
+            Awr = slip.Answer.ToRawString()
         }
 
     let questionRecords  (quiz:Quiz) : AdminModels.QuestionRecord list =
@@ -372,9 +390,9 @@ module Teams =
                             if idx = quiz.CurrentTourIndex then
                                 match tour.Status with
                                 | Announcing | Countdown -> ""
-                                | Settled -> aw
+                                | Settled -> aw.ToRawString()
                             else
-                                aw
+                                aw.ToRawString()
                         AwTxt = None
                         AwJpd = false
                         Result = None
@@ -434,9 +452,9 @@ module Audience =
                         if idx = quiz.CurrentTourIndex then
                             match tour.Status with
                             | Announcing | Countdown -> ""
-                            | Settled -> aw
+                            | Settled -> aw.ToRawString()
                         else
-                            aw
+                            aw.ToRawString()
                 } : AudModels.HistoryRecord
             ) |> List.rev
         ) |> List.concat

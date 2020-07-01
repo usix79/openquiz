@@ -116,7 +116,7 @@ let updateTour (f : TourControlCard -> TourControlCard) model =
         | None -> model
     | _ -> model
 
-let updateSlip (qwKey:QwKey) (f:SingleAwSlip -> SingleAwSlip) (model:Model) =
+let updateSlip (qwKey:QwKey) (f:SingleSlip -> SingleSlip) (model:Model) =
     model |> updateTour (fun tour ->
         match tour.Slip with
         | Single slip -> {tour with Slip = f slip  |> Single }
@@ -151,7 +151,7 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | UpdateSlipName txt -> cm |> updateTour (fun qw -> {qw with Slip = match qw.Slip with Single _ -> qw.Slip | Multiple (name,slips) -> (txt,slips)|>Multiple}) |> noCmd
     | UpdateQwText (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Question = Solid txt}) |> noCmd
     | UpdateQwTextPart (key,partIdx,txt) -> cm |> updateSlip key (fun slip -> slip.SetQwText partIdx txt) |> noCmd
-    | UpdateQwAnswer (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Answer = txt}) |> noCmd
+    | UpdateQwAnswer (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Answer = OpenAnswer txt}) |> noCmd
     | UpdateQwComment (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Comment = txt}) |> noCmd
     | UpdateQwPoints (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Points = System.Decimal.Parse(txt)}) |> noCmd
     | UpdateQwJpdPoints (key,txt) -> cm |> updateSlip key (fun slip -> {slip with JeopardyPoints = ofDecimal (Some txt) }) |> noCmd
@@ -311,7 +311,7 @@ let cmtTextArea dispatch key txt isReadOnly =
         ]
     ]
 
-let singleSlipEl dispatch settings status (qwIdx:int) (slip:SingleAwSlip) nextQwPartIdx isReadOnly =
+let singleSlipEl dispatch settings status (qwIdx:int) (slip:SingleSlip) nextQwPartIdx isReadOnly =
     let key = {TourIdx = -1; QwIdx = qwIdx}
     div [][
 
@@ -348,7 +348,7 @@ let singleSlipEl dispatch settings status (qwIdx:int) (slip:SingleAwSlip) nextQw
         yield! MainTemplates.imgEl settings.MediaHost slip.CommentImgKey
     ]
 
-let multipleSlipEl dispatch settings status (name:string) (slips:SingleAwSlip list) nextQwIdx nextQwPartIdx isReadOnly =
+let multipleSlipEl dispatch settings status (name:string) (slips:SingleSlip list) nextQwIdx nextQwPartIdx isReadOnly =
     div[][
         div [Class "control"][
             label [Class "label"][str "Tour Name"]

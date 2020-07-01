@@ -217,10 +217,10 @@ let settleAnswers (quiz : Domain.Quiz) =
             | team,true -> Ok team
             | _, false -> Error "Nothing to change")
 
-    let createItem (slip:Domain.SingleAwSlip) qwIdx =
-        if not (String.IsNullOrWhiteSpace slip.Answer) then
+    let createItem (slip:Domain.SingleSlip) qwIdx =
+        if not (String.IsNullOrWhiteSpace (slip.Answer.ToRawString())) then
             let key = {Domain.QwKey.TourIdx = quiz.CurrentTourIndex; Domain.QwKey.QwIdx = qwIdx}
-            Some {Idx = key ; Jury = (Jury.jury slip.Answer); Points = slip.Points; JeopardyPoints = slip.JeopardyPoints; WithChoice = slip.WithChoice}
+            Some {Idx = key ; Jury = (Jury.jury (slip.Answer.ToRawString())); Points = slip.Points; JeopardyPoints = slip.JeopardyPoints; WithChoice = slip.WithChoice}
         else
             None
 

@@ -173,7 +173,7 @@ let singleTourInfo mediaHost tourName (slip:Shared.SingleSlipCard) =
         | Shared.AW slip ->
             yield! imgEl mediaHost slip.Img
             p [ Class "has-text-weight-bold" ] [ str "Answer" ]
-            p [ Class "has-text-weight-semibold" ] (splitByLines slip.Txt)
+            p [ Class "has-text-weight-semibold" ] (splitByLines (slip.Aw.ToRawString()))
             if (slip.Com <> "") then
                 p [ Class "has-text-weight-bold" ] [ str "Comment" ]
                 p [ ] (splitByLines slip.Com)

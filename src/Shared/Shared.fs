@@ -110,16 +110,71 @@ type TourStatus =
 
 type SlipQwCard = {
     Txt : string
+    Choices : string list option
     Img : string
     Ch : bool
 }
 
+type ChoiceAnswer = {
+    Text: string
+    IsCorrect: bool
+}
+
+type SlipAnswer =
+    | OpenAnswer of string
+    | ChoiceAnswer of ChoiceAnswer list
+    with
+        member x.ToRawString () =
+            match x with
+            | OpenAnswer txt -> txt
+            | ChoiceAnswer list ->
+                System.String.Join("\n", list |> List.choose (fun ch -> if ch.IsCorrect then Some ch.Text else None))
+        member x.IsOpen () =
+            match x with
+            | OpenAnswer _ -> true
+            | _ -> false
+        member x.ToOpen() =
+            match x with
+            | OpenAnswer _ -> x
+            | ChoiceAnswer list ->
+                System.String.Join("\n", list |> List.map (fun ch -> ch.Text))
+                |> OpenAnswer
+        member x.ToChoice () =
+            match x with
+            | OpenAnswer txt ->
+                txt.Split ([|'\n'|])|> Array.map (fun txt -> {Text = txt; IsCorrect = false}) |> List.ofArray
+                |> ChoiceAnswer
+            | ChoiceAnswer _ -> x
+        member x.SetCorrectness idx isCorrect =
+            match x with
+            | OpenAnswer _ -> x
+            | ChoiceAnswer list ->
+                list |> List.mapi (fun i ch -> if i = idx then {ch with IsCorrect = isCorrect} else ch) |> ChoiceAnswer
+        member x.SetText idx txt =
+            match x with
+            | OpenAnswer _ -> x
+            | ChoiceAnswer list ->
+                list |> List.mapi (fun i ch -> if i = idx then {ch with Text = txt} else ch) |> ChoiceAnswer
+        member x.AppendChoice () =
+            match x with
+            | OpenAnswer _ -> x
+            | ChoiceAnswer list -> list @ [{Text = ""; IsCorrect = false}] |> ChoiceAnswer
+        member x.DeleteChoice idx =
+            match x with
+            | OpenAnswer _ -> x
+            | ChoiceAnswer list ->
+                list
+                |> List.mapi (fun i ch -> if i = idx then None else Some ch)
+                |> List.choose id
+                |> ChoiceAnswer
+
 type SlipAwCard = {
-    Txt : string
+    Aw : SlipAnswer
     Img : string
     Com : string
     Ch : bool
 }
+
 type SingleSlipCard =
     | X3
     | QW of SlipQwCard
@@ -174,8 +229,8 @@ type QuizChangedEvent = {
 }
 
 type Slip =
-    | Single of SingleAwSlip
-    | Multiple of string * SingleAwSlip list
+    | Single of SingleSlip
+    | Multiple of string * SingleSlip list
 with
     member x.Annotation =
         match x with
@@ -205,14 +260,14 @@ with
             (name, slips) |> Multiple
 
 
-type QuestionText =
+type Question =
     | Solid of string
     | Split of string list
 
-type SingleAwSlip = {
-    Question : QuestionText
+type SingleSlip = {
+    Question : Question
     ImgKey : string
-    Answer : string
+    Answer : SlipAnswer
     Comment : string
     CommentImgKey : string
     Points : decimal
@@ -241,7 +296,7 @@ type SingleAwSlip = {
                 | 1 -> Solid ""
                 | n -> List.init n (fun i -> "") |> Split
             ImgKey = ""
-            Answer = ""
+            Answer = OpenAnswer ""
             Comment = ""
             CommentImgKey = ""
             Points = 1m

@@ -357,6 +357,9 @@ module private Slips =
         let Text = "Text"
         let ImgKey = "ImgKey"
         let Answer = "Answer"
+        let Answers = "Answers"
+        let AnswerText = "Text"
+        let AnswerIsCorrect = "IsCorrect"
         let Comment = "Comment"
         let CommentImgKey = "CommentImgKey"
         let Points = "Points"
@@ -377,7 +380,24 @@ module private Slips =
             AttrReader.run (optDef Fields.Text "" A.string)
             >> Result.map Domain.Solid
 
-    let private singleSlipBuilder question imgKey answer comment commentImgKey points jeopardyPoints withChoice : Domain.SingleAwSlip =
+    let private choiceAnswerBuilder text isCorrect : Domain.ChoiceAnswer =
+        {Text = text; IsCorrect = isCorrect}
+
+    let choiceAnswerReader =
+        choiceAnswerBuilder
+        <!> (optDef Fields.AnswerText "" A.string)
+        <*> (optDef Fields.AnswerIsCorrect false A.bool)
+
+    let private answersInSlipReader =
+        function
+        | Some _ ->
+            AttrReader.run (req Fields.Answers A.docList @>-> (A.docMap, AttrReader.run choiceAnswerReader))
+            >> Result.map Domain.ChoiceAnswer
+        | None ->
+            AttrReader.run (optDef Fields.Answer "" A.string)
+            >> Result.map Domain.OpenAnswer
+
+    let private singleSlipBuilder question imgKey answer comment commentImgKey points jeopardyPoints withChoice : Domain.SingleSlip =
         {Question = question; ImgKey = imgKey; Answer = answer; Comment = comment; CommentImgKey = commentImgKey;
             Points = points; JeopardyPoints = jeopardyPoints; WithChoice = withChoice}
 
@@ -385,7 +405,7 @@ module private Slips =
         singleSlipBuilder
         <!> (choice Fields.Questions A.docList questionsInSlipReader)
         <*> (optDef Fields.ImgKey "" A.string)
-        <*> (optDef Fields.Answer "" A.string)
+        <*> (choice Fields.Answers A.docList answersInSlipReader)
         <*> (optDef Fields.Comment "" A.string)
         <*> (optDef Fields.CommentImgKey "" A.string)
         <*> (optDef Fields.Points "1" A.number >-> P.decimal)
@@ -407,14 +427,20 @@ module private Slips =
 
     let reader = AttrReader.run (choice Fields.Kind A.string slipReader)
 
-    let fieldsOfSingleSlip (slip : Domain.SingleAwSlip) =
+    let fieldsOfSingleSlip (slip : Domain.SingleSlip) =
         [
             Attr (Fields.Kind, ScalarString Fields.KindSingle)
             match slip.Question with
             | Domain.Solid qw -> yield! BuildAttr.string Fields.Text qw
             | Domain.Split list -> Attr (Fields.Questions, DocList (list |> List.map ScalarString))
             yield! BuildAttr.string Fields.ImgKey slip.ImgKey
-            yield! BuildAttr.string Fields.Answer slip.Answer
+            match slip.Answer with
+            | Domain.OpenAnswer aw -> yield! BuildAttr.string Fields.Answer aw
+            | Domain.ChoiceAnswer (list) ->
+                Attr (Fields.Answers, DocList (list
+                    |> List.map (fun aw ->
+                        DocMap [Attr (Fields.AnswerText, ScalarString aw.Text)
+                                Attr (Fields.AnswerIsCorrect, ScalarBool aw.IsCorrect)])))
             yield! BuildAttr.string Fields.Comment slip.Comment
             yield! BuildAttr.string Fields.CommentImgKey slip.CommentImgKey
             Attr (Fields.Points, ScalarDecimal slip.Points)
@@ -422,7 +448,7 @@ module private Slips =
             if slip.WithChoice then Attr (Fields.Choiсe, ScalarBool slip.WithChoice)
         ]
 
-    let fieldsOfMultipleSlip (name:string) (slips : Domain.SingleAwSlip list) =
+    let fieldsOfMultipleSlip (name:string) (slips : Domain.SingleSlip list) =
         [Attr (Fields.Kind, ScalarString Fields.KindMultiple)
          if name <> "" then Attr (Fields.Name, ScalarString name)
          Attr (Fields.Items, DocList (slips |> List.map (fieldsOfSingleSlip >> DocMap)))]
