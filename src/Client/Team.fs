@@ -297,13 +297,15 @@ let answerStatusIcon status txt =
         ]
     ]
 
+let jeopardyControl dispatch jpd readOnly =
+    p [Class "control"][
+        a [classList ["button", true; "has-text-grey-light", not jpd; "has-text-danger", jpd];
+         Title "Jeopardy!"; ReadOnly readOnly; OnClick (fun _ -> dispatch <| ToggleJeopardy 0)][Fa.i [ Fa.Solid.Paw] [str " Jeopardy!" ]]
+    ]
+
 let awArea dispatch aw jpd status withChoice readOnly =
     div [Class "control has-icons-right"][
-        if withChoice then
-            p [Class "control"][
-                a [classList ["button", true; "has-text-grey-light", not jpd; "has-text-danger", jpd];
-                 Title "Jeopardy!"; ReadOnly readOnly; OnClick (fun _ -> dispatch <| ToggleJeopardy 0)][Fa.i [ Fa.Solid.Paw] [str " Jeopardy!" ]]
-            ]
+        if withChoice then jeopardyControl dispatch jpd readOnly
 
         textarea [ Class "textarea"; MaxLength 64.0;
             ReadOnly readOnly; valueOrDefault aw;
@@ -322,10 +324,61 @@ let singleQwView dispatch (settings:Settings) tour slip answers isCountdownActiv
         | QW slip ->
             if isCountdownActive || isCountdownFinished then
                 label [Class "label"][str "Your answer"]
-                awArea dispatch txt jpd answers.Status slip.Ch isCountdownFinished
+                match slip.Choices with
+                | None ->
+                    awArea dispatch txt jpd answers.Status slip.Ch isCountdownFinished
+                | Some list ->
+                    if slip.Ch then jeopardyControl dispatch jpd isCountdownFinished
+                    br[]
+                    div [Class "columns is-centered"][
+                        div [Class "column is-half mx-3"][
+                            ul[][
+                                for ch in list do
+                                    li [][
+                                        div [Class "control has-icons-left has-icons-right"][
+                                            a [classList ["button", true; "is-fullwidth", true; "is-info", txt = ch]; OnClick (fun _ -> dispatch <| UpdateAnswer (0, ch) )][str ch]
+                                            if txt = ch then
+                                                answerStatusIcon answers.Status txt
+
+                                        ]
+                                        br[]
+                                    ]
+                            ]
+                        ]
+                    ]
+
         | AW slip ->
-            label [Class "label"][str "Your answer"]
-            awArea dispatch txt jpd answers.Status slip.Ch true
+            match slip.Aw with
+            | OpenAnswer _ ->
+                label [Class "label"][str "Your answer"]
+                awArea dispatch txt jpd answers.Status slip.Ch true
+            | ChoiceAnswer list ->
+                if slip.Ch then jeopardyControl dispatch jpd true
+                br[]
+                div [Class "columns is-centered"][
+                    div [Class "column is-half mx-3"][
+                        ul[][
+                            for ch in list do
+                                li [][
+                                    div [Class "control has-icons-left has-icons-right"][
+                                        a [classList ["button", true; "is-fullwidth", true;
+                                            "is-success", ch.IsCorrect && txt = ch.Text; "is-danger", (not ch.IsCorrect) && txt = ch.Text]][str ch.Text]
+
+                                        if ch.IsCorrect then
+                                            span [Class "icon is-large is-left has-text-black"][
+                                                Fa.i [Fa.Regular.Grin] [ ]
+                                            ]
+
+                                        if txt = ch.Text then
+                                            answerStatusIcon answers.Status txt
+
+
+                                    ]
+                                    br[]
+                                ]
+                        ]
+                    ]
+                ]
     ]
 
 let awInput dispatch idx aw jpd status withChoice readOnly =
@@ -378,7 +431,7 @@ let historyView dispatch model =
         thead [ ] [
             tr [ ] [
                 th [Style [Width "30px"] ] [ str "#" ]
-                th [ ] [ str "Answer" ]
+                th [Style [TextAlign TextAlignOptions.Left]] [ str "Answer" ]
                 th [ ] [ str "Points" ]
             ]
         ]
@@ -393,7 +446,7 @@ let historyView dispatch model =
 
                 tr [ ][
                     td [] [p [classList modifiers][str aw.QwName]]
-                    td [] [p [classList modifiers][
+                    td [Style [TextAlign TextAlignOptions.Left]] [p [classList modifiers][
                         if aw.AwJpd then Fa.i [Fa.Solid.Paw; Fa.PullRight][]
                         str (defaultArg aw.AwTxt "")]
                     ]
@@ -410,7 +463,7 @@ let historyView dispatch model =
                 if aw.QwAw <> "" then
                     tr [ ][
                         td [] []
-                        td [ColSpan 2] [
+                        td [ColSpan 2; Style [TextAlign TextAlignOptions.Left]] [
                             span [Class "is-italic has-text-weight-light is-family-secondary is-size-7"][
                                 str "correct answer: "
                                 str (aw.QwAw.Split('\n').[0])

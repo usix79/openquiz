@@ -342,7 +342,22 @@ let singleSlipEl dispatch settings status (qwIdx:int) (slip:SingleSlip) nextQwPa
 
         yield! MainTemplates.imgEl settings.MediaHost slip.ImgKey
         br[]
-        awTextArea dispatch key slip.Answer isReadOnly
+        match slip.Answer with
+        | OpenAnswer txt ->
+            awTextArea dispatch key txt isReadOnly
+        | ChoiceAnswer list ->
+            div[Class "content"][
+                strong[][str "Answer"]
+                ul[][
+                    for ch in list do
+                        li [][
+                            str ch.Text
+                            if ch.IsCorrect then
+                                Fa.i[Fa.Solid.Check][]
+                        ]
+                ]
+            ]
+
         br[]
         cmtTextArea dispatch key slip.Comment isReadOnly
         yield! MainTemplates.imgEl settings.MediaHost slip.CommentImgKey

@@ -124,7 +124,7 @@ let quizView (dispatch : Msg -> unit) settings (model:Model) (quiz:QuizCard) =
                         match quiz.TC with
                         | Some tour ->
                             match tour.Slip with
-                            | SS slip ->  yield MainTemplates.singleTourInfo settings.MediaHost tour.Name slip
+                            | SS slip ->  yield singleQwView settings tour slip
                             | MS (name,slips) -> yield multipleQwView settings tour name slips
                         | None -> ()
                     | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg
@@ -136,6 +136,56 @@ let quizView (dispatch : Msg -> unit) settings (model:Model) (quiz:QuizCard) =
         ]
 
         MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
+    ]
+
+let singleQwView (settings:Settings) tour (slip:Shared.SingleSlipCard) =
+    div[][
+        MainTemplates.singleTourInfo settings.MediaHost tour.Name slip
+
+        match slip with
+        | X3 -> ()
+        | QW slip ->
+            match slip.Choices with
+            | None -> ()
+            | Some list ->
+                br[]
+                div [Class "columns is-centered"][
+                    div [Class "column is-half mx-3"][
+                        ul[][
+                            for ch in list do
+                                li [][
+                                    div [Class "control has-icons-left has-icons-right"][
+                                        a [Class "button is-fullwidth"][str ch]
+                                    ]
+                                    br[]
+                                ]
+                        ]
+                    ]
+                ]
+
+        | AW slip ->
+            match slip.Aw with
+            | OpenAnswer _ -> ()
+            | ChoiceAnswer list ->
+                br[]
+                div [Class "columns is-centered"][
+                    div [Class "column is-half mx-3"][
+                        ul[][
+                            for ch in list do
+                                li [][
+                                    div [Class "control has-icons-left"][
+                                        a [Class "button is-fullwidth"][str ch.Text]
+
+                                        if ch.IsCorrect then
+                                            span [Class "icon is-large is-left has-text-black"][
+                                                Fa.i [Fa.Regular.Grin] [ ]
+                                            ]
+                                    ]
+                                    br[]
+                                ]
+                        ]
+                    ]
+                ]
     ]
 
 let multipleQwView (settings:Settings) tour name slips =
