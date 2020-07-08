@@ -112,6 +112,7 @@ type SlipQwCard = {
     Txt : string
     Choices : string list option
     Img : string
+    ImgTyp : MediaType
     Ch : bool
 }
 
@@ -264,9 +265,15 @@ type Question =
     | Solid of string
     | Split of string list
 
+type MediaType =
+    | Picture
+    | Audio
+    | Video
+
 type SingleSlip = {
     Question : Question
-    ImgKey : string
+    MediaKey : string
+    MediaType : MediaType
     Answer : SlipAnswer
     Comment : string
     CommentImgKey : string
@@ -295,7 +302,8 @@ type SingleSlip = {
                 match qwCount with
                 | 1 -> Solid ""
                 | n -> List.init n (fun i -> "") |> Split
-            ImgKey = ""
+            MediaKey = ""
+            MediaType = Picture
             Answer = OpenAnswer ""
             Comment = ""
             CommentImgKey = ""

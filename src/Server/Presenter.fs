@@ -86,10 +86,21 @@ let qwName tour qwIdx =
     | Single _ -> tour.Name
     | _ -> sprintf "%s.%i" tour.Name (qwIdx + 1)
 
+let mediaType = function
+    | Picture -> Shared.Picture
+    | Audio -> Shared.Audio
+    | Video -> Shared.Video
+
+let mediaTypeToDomain = function
+    | Shared.Picture -> Picture
+    | Shared.Audio -> Audio
+    | Shared.Video -> Video
+
 let singleSlip (slip:SingleSlip) : Shared.SingleSlip =
     {
         Question = question slip.Question
-        ImgKey = slip.ImgKey
+        MediaKey = slip.MediaKey
+        MediaType = mediaType slip.MediaType
         Answer = slipAnswer slip.Answer
         Comment = slip.Comment
         CommentImgKey = slip.CommentImgKey
@@ -106,7 +117,8 @@ let slip (domainSlip : Slip) : Shared.Slip =
 let singleSlipToDomain (slip:Shared.SingleSlip) =
     {
         Question = questionToDomain slip.Question
-        ImgKey = slip.ImgKey
+        MediaKey = slip.MediaKey
+        MediaType = mediaTypeToDomain slip.MediaType
         Answer = slipAnswerToDomain slip.Answer
         Comment = slip.Comment
         CommentImgKey = slip.CommentImgKey
@@ -150,8 +162,8 @@ let extractChoices = function
 let slipSingleCard status qwPartIdx (slip:SingleSlip) : SingleSlipCard =
     match status with
     | Announcing when qwPartIdx = 0 -> X3
-    | Announcing -> {Txt=slip.Question |> qwText qwPartIdx; Choices = None; Img=slip.ImgKey; Ch = slip.WithChoice} |> QW
-    | Countdown -> {Txt=slip.Question |> qwText slip.QuestionsCount; Choices = extractChoices slip.Answer; Img=slip.ImgKey; Ch = slip.WithChoice} |> QW
+    | Announcing -> {Txt=slip.Question |> qwText qwPartIdx; Choices = None; Img=slip.MediaKey; ImgTyp =mediaType slip.MediaType; Ch = slip.WithChoice} |> QW
+    | Countdown -> {Txt=slip.Question |> qwText slip.QuestionsCount; Choices = extractChoices slip.Answer; Img=slip.MediaKey; ImgTyp =mediaType slip.MediaType; Ch = slip.WithChoice} |> QW
     | Settled -> {Aw= slipAnswer slip.Answer; Com = slip.Comment;  Img=slip.CommentImgKey; Ch = slip.WithChoice} |> AW
 
 let slipCard status qwIdx qwPartIdx (slip:Slip) : SlipCard =

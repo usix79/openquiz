@@ -40,9 +40,10 @@ type Msg =
     | QwPointsChanged of key:QwKey * txt:string
     | QwJpdPointsChanged of key:QwKey * txt:string
     | QwWithChoiceChanged of key:QwKey * bool
-    | QwImgChanged of {|File:Browser.Types.File; Tag:PkgQwKey|}
-    | QwImgClear of key:QwKey
-    | QwImgUploaded of key:QwKey*bucketKey:string
+    | QwMediaChanged of {|File:Browser.Types.File; Tag:PkgQwKey|}
+    | QwMediaClear of key:QwKey
+    | QwMediaUploaded of key:QwKey*bucketKey:string*mediType:string
+    | QwMediaTypeChanged of key:QwKey*mediaType:string
     | CommentImgChanged of {|File:Browser.Types.File; Tag:PkgQwKey|}
     | CommentImgClear of key:QwKey
     | CommentImgUploaded of key:QwKey*bucketKey:string
@@ -143,7 +144,7 @@ let replaceRecord record model =
     {model with Packages = record :: (model.Packages |> List.filter (fun q -> q.PackageId <> record.PackageId))}
 
 let uploadFile (api:IMainApi) (tag:PkgQwKey) (file:Browser.Types.File) msg model =
-    if file.size > (1024*256) then model |> addError "max image size is 256K" |> noCmd
+    if file.size > (1024*1024*2) then model |> addError "max allowed size is 2Mb" |> noCmd
     else model |> loading tag.PackageId, uploadFileToS3Cmd api.getUploadUrl QuestionImg file msg Exn
 
 let toggleAquiringForm model =
@@ -214,9 +215,10 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | QwPointsChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Points = System.Decimal.Parse(txt)}) |> noCmd
     | QwJpdPointsChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with JeopardyPoints = ofDecimal (Some txt)}) |> noCmd
     | QwWithChoiceChanged (key,v) -> cm |> updateSlip key (fun slip -> {slip with WithChoice = v}) |> noCmd
-    | QwImgChanged res -> cm |> uploadFile api res.Tag res.File (fun key -> QwImgUploaded (res.Tag.Key,key))
-    | QwImgClear key -> cm |> updateSlip key (fun slip -> {slip with ImgKey = ""}) |> noCmd
-    | QwImgUploaded (qwKey,bucketKey) -> cm |> editing |> updateSlip qwKey (fun slip -> {slip with ImgKey = bucketKey}) |> noCmd
+    | QwMediaChanged res -> cm |> uploadFile api res.Tag res.File (fun key -> QwMediaUploaded (res.Tag.Key,key,res.File.``type``))
+    | QwMediaClear key -> cm |> updateSlip key (fun slip -> {slip with MediaKey = ""; MediaType = Picture}) |> noCmd
+    | QwMediaUploaded (qwKey,bucketKey,mediaType) -> cm |> editing |> updateSlip qwKey (fun slip -> {slip with MediaKey = bucketKey; MediaType = mediaTypeFromMiME mediaType}) |> noCmd
+    | QwMediaTypeChanged (qwKey,mediaType) -> cm |> editing |> updateSlip qwKey (fun slip -> {slip with MediaType = (defaultArg (fromString mediaType) Picture)}) |> noCmd
     | CommentImgChanged res -> cm |> uploadFile api res.Tag res.File (fun key -> CommentImgUploaded (res.Tag.Key,key))
     | CommentImgClear key -> cm |> updateSlip key (fun slip -> {slip with CommentImgKey = ""}) |> noCmd
     | CommentImgUploaded (qwKey,bucketKey) -> cm |> editing |> updateSlip qwKey (fun slip -> {slip with CommentImgKey = bucketKey}) |> noCmd
@@ -456,11 +458,11 @@ let delQwCell dispatch qwKey =
         button [Class "button is-small"; OnClick(fun _ -> dispatch <| DelQwInMultiple qwKey)][Fa.i [ Fa.Regular.TrashAlt ] [ ]]
     ]
 
-let qwCell dispatch settings (key:PkgQwKey) txt imgKey isLoading =
+let qwCell dispatch settings (key:PkgQwKey) txt mediaKey mediaType isLoading =
     td[] [
         textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwTextChanged (key.Key,ev.Value) |> dispatch)][]
         br[]
-        yield! MainTemplates.imgArea key isLoading (QwImgChanged >> dispatch) (fun _ -> QwImgClear key.Key |> dispatch) settings.MediaHost imgKey "" "Clear"
+        yield! MainTemplates.mediaArea key isLoading (QwMediaChanged >> dispatch) (fun _ -> QwMediaClear key.Key |> dispatch) settings.MediaHost mediaKey mediaType "Clear"
     ]
 
 let qwInput dispatch placeholder txt key partIdx  =
@@ -509,7 +511,7 @@ let awCell dispatch (key:PkgQwKey) (answer:SlipAnswer) isLoading =
             button [Class "button is-small"; OnClick (fun _ -> dispatch (AppendChoice key.Key))] [str "append choice"]
     ]
 
-let cmntCell dispatch settings (key:PkgQwKey) txt imgKey isLoading =
+let cmntCell dispatch settings (key:PkgQwKey) txt imgKey  isLoading =
     td[] [
         textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwCommentChanged (key.Key,ev.Value) |> dispatch)][]
         br[]
@@ -523,13 +525,13 @@ let singleSlipRow dispatch settings isOwned isLoading pkgId tourIdx qwIdx (slip:
     tr[][
         idxCell tourIdx qwIdx
         match slip.Question with
-        | Solid qw -> qwCell dispatch settings packageKey qw slip.ImgKey isLoading
+        | Solid qw -> qwCell dispatch settings packageKey qw slip.MediaKey slip.MediaType isLoading
         | Split list ->
             td[] [
                 for (idx,qw) in list |> List.indexed do
                     qwInput dispatch (sprintf "Question %i" (idx + 1)) qw packageKey.Key idx
                 br[]
-                yield! MainTemplates.imgArea packageKey isLoading (QwImgChanged >> dispatch) (fun _ -> (QwImgClear packageKey.Key) |> dispatch) settings.MediaHost slip.ImgKey "" "Clear"
+                yield! MainTemplates.mediaArea packageKey isLoading (QwMediaChanged >> dispatch) (fun _ -> (QwMediaClear packageKey.Key) |> dispatch) settings.MediaHost slip.MediaKey slip.MediaType "Clear"
             ]
         awCell dispatch packageKey slip.Answer isLoading
         cmntCell dispatch settings packageKey slip.Comment slip.CommentImgKey isLoading

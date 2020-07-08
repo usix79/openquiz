@@ -137,9 +137,15 @@ type Answer =
             | ChoiceAnswer list ->
                 String.Join("\n", list |> List.choose (fun ch -> if ch.IsCorrect then Some ch.Text else None))
 
+type MediaType =
+    | Picture
+    | Audio
+    | Video
+
 type SingleSlip = {
     Question : Question
-    ImgKey : string
+    MediaKey : string
+    MediaType : MediaType
     Answer : Answer
     Comment : string
     CommentImgKey : string
@@ -162,7 +168,8 @@ type SingleSlip = {
                 match qwCount with
                 | 1 -> Solid ""
                 | n -> List.init n (fun i -> "") |> Split
-            ImgKey=""
+            MediaKey=""
+            MediaType = Picture
             Answer= OpenAnswer ""
             Comment=""
             CommentImgKey=""
@@ -170,7 +177,6 @@ type SingleSlip = {
             JeopardyPoints = None
             WithChoice = false
         }
-
 
 module Packages =
 

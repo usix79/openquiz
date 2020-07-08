@@ -340,7 +340,7 @@ let singleSlipEl dispatch settings status (qwIdx:int) (slip:SingleSlip) nextQwPa
                     qwInput dispatch (sprintf "Question part %i" (idx + 1)) qw key idx (idx < nextQwPartIdx || status <> Announcing)
             ]
 
-        yield! MainTemplates.imgEl settings.MediaHost slip.ImgKey
+        yield! MainTemplates.mediaEl settings.MediaHost slip.MediaKey slip.MediaType false
         br[]
         match slip.Answer with
         | OpenAnswer txt ->

@@ -77,6 +77,44 @@ let imgEl mediaHost imgKey =
             ]
     }
 
+let mediaArea tag disabled changeMsg clearMsg mediaHost mediaKey mediaType clearText =
+    [
+        if not (System.String.IsNullOrWhiteSpace mediaKey) then
+            let url = Shared.Infra.urlForMedia mediaHost mediaKey
+            match mediaType with
+            | Shared.Picture ->
+                figure [Class "image"; Style[MaxWidth "320px"]][ img [Src url]]
+            | Shared.Audio ->
+                ReactPlayer.playerEx false false url
+            | Shared.Video ->
+                ReactPlayer.playerEx true false url
+
+        div [Class "file"; Style [MarginTop "8px"]][
+            label [Class "file-label"][
+                input [Class "file-input"; Type "file"; Name "picture"; Disabled disabled; OnChange(fileOnChangeS3 tag changeMsg)]
+                span [Class "file-cta"][
+                    span [Class "file-icon"][ Fa.i [Fa.Solid.Upload][]]
+                    span [Class "file-label"][ str "Choose a file…"]
+                ]
+            ]
+            button [Class "button"; Disabled disabled; Style [MarginLeft "5px"]; OnClick (fun _ -> clearMsg())] [str clearText]
+        ]
+    ]
+
+let mediaEl mediaHost mediaKey mediaType isPlaying =
+    seq {
+        if not (System.String.IsNullOrWhiteSpace mediaKey) then
+            let url = Shared.Infra.urlForMedia mediaHost mediaKey
+            match mediaType with
+            | Shared.Picture ->
+                figure [Class "image"; Style[MaxWidth "320px"; Display DisplayOptions.InlineBlock]][ img [Src url]]
+            | Shared.Audio ->
+                ReactPlayer.playerEx false isPlaying url
+            | Shared.Video ->
+                ReactPlayer.playerEx true isPlaying url
+    }
+
+
 let footer =
     div [Class "container"; Style [TextAlign TextAlignOptions.Center]][
         str "\u00a9"
@@ -134,7 +172,6 @@ let playSounds mediaHost secondsLeft =
     if secondsLeft = 11 then Infra.play (Shared.Infra.urlForMedia mediaHost "chgk2-sig2.mp3")
     if secondsLeft = 1 then Infra.play (Shared.Infra.urlForMedia mediaHost "chgk2-sig3.mp3")
 
-
 let playTitle mediaHost quizImg mixlr url =
     div[Style [Margin "5px"]][
         match url with
@@ -168,7 +205,7 @@ let singleTourInfo mediaHost tourName (slip:Shared.SingleSlipCard) =
         match slip with
         | Shared.X3 -> ()
         | Shared.QW slip ->
-            yield! imgEl mediaHost slip.Img
+            yield! mediaEl mediaHost slip.Img slip.ImgTyp true
             p [ Class "has-text-weight-semibold" ] (splitByLines slip.Txt)
         | Shared.AW slip ->
             yield! imgEl mediaHost slip.Img
@@ -222,7 +259,6 @@ let resultsView (currentRes:Shared.TeamResult option) (teamResults:Shared.TeamRe
                 yield resultsRow res style
         ]
     ]
-
 
 let deleteForm dispatch placeholder validText inputText isSending error toggleMsg updateMsg deleteMsg =
     div[][

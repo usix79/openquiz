@@ -56,6 +56,13 @@ let uploadFileToS3Cmd (getUrlMethod : GetUrlMethod) cat (file:Types.File) onSucc
 
     Cmd.OfAsync.either action () onSuccess onError
 
+let mediaTypeFromMiME (mime:string) =
+    printfn "MIME: %s" mime
+    let mime = mime.ToLower()
+    if mime.StartsWith("audio") then Audio
+    else if mime.StartsWith("video") then Video
+    else Picture
+
 let inline fromString<'a> (s:string) =
     match Reflection.FSharpType.GetUnionCases typeof<'a> |> Array.filter (fun case -> case.Name = s) with
     |[|case|] -> Some(Reflection.FSharpValue.MakeUnion(case,[||]) :?> 'a)

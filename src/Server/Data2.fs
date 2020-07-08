@@ -355,7 +355,8 @@ module private Slips =
         let Kind = "Kind"
         let Questions = "Questions"
         let Text = "Text"
-        let ImgKey = "ImgKey"
+        let MediaKey = "ImgKey"
+        let MediaType = "MediaType"
         let Answer = "Answer"
         let Answers = "Answers"
         let AnswerText = "Text"
@@ -397,14 +398,15 @@ module private Slips =
             AttrReader.run (optDef Fields.Answer "" A.string)
             >> Result.map Domain.OpenAnswer
 
-    let private singleSlipBuilder question imgKey answer comment commentImgKey points jeopardyPoints withChoice : Domain.SingleSlip =
-        {Question = question; ImgKey = imgKey; Answer = answer; Comment = comment; CommentImgKey = commentImgKey;
+    let private singleSlipBuilder question mediaKey mediaType answer comment commentImgKey points jeopardyPoints withChoice : Domain.SingleSlip =
+        {Question = question; MediaKey = mediaKey; MediaType = mediaType |> Option.defaultValue Domain.MediaType.Picture; Answer = answer; Comment = comment; CommentImgKey = commentImgKey;
             Points = points; JeopardyPoints = jeopardyPoints; WithChoice = withChoice}
 
     let singleSlipReader =
         singleSlipBuilder
         <!> (choice Fields.Questions A.docList questionsInSlipReader)
-        <*> (optDef Fields.ImgKey "" A.string)
+        <*> (optDef Fields.MediaKey "" A.string)
+        <*> (optDef Fields.MediaType "Picture" A.string >- P.enum<Domain.MediaType>)
         <*> (choice Fields.Answers A.docList answersInSlipReader)
         <*> (optDef Fields.Comment "" A.string)
         <*> (optDef Fields.CommentImgKey "" A.string)
@@ -433,7 +435,10 @@ module private Slips =
             match slip.Question with
             | Domain.Solid qw -> yield! BuildAttr.string Fields.Text qw
             | Domain.Split list -> Attr (Fields.Questions, DocList (list |> List.map ScalarString))
-            yield! BuildAttr.string Fields.ImgKey slip.ImgKey
+            yield! BuildAttr.string Fields.MediaKey slip.MediaKey
+            if slip.MediaType <> Domain.MediaType.Picture then
+                Attr (Fields.MediaType, ScalarString (slip.MediaType.ToString()))
+
             match slip.Answer with
             | Domain.OpenAnswer aw -> yield! BuildAttr.string Fields.Answer aw
             | Domain.ChoiceAnswer (list) ->

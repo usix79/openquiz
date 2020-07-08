@@ -1,8 +1,14 @@
 # Release Notes
 
+## 1.10.0 - 2020-07-08
+
+* Support for the multichoice answers
+* Information for registered teams (displayed on the registration page)
+* Support for mediacontent in questions (images/audio/video) (up to 2MB per question)
+
 ## 1.9.0 - 2020-07-01
 
-* Maximum size of the pictures is increased to 256K
+* Maximum size of the pictures is increased to 2MB
 
 ## 1.8.0 - 2020-06-30
 

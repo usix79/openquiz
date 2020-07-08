@@ -195,7 +195,7 @@ let multipleQwView (settings:Settings) tour name slips =
             match slip with
             | QW slip ->
                 p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
-                yield! MainTemplates.imgEl settings.MediaHost slip.Img
+                yield! MainTemplates.mediaEl settings.MediaHost slip.Img slip.ImgTyp true
                 p [] (splitByLines slip.Txt)
                 br[]
                 br[]
