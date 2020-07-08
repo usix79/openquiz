@@ -210,6 +210,10 @@ module Main =
                 match quiz.Status with
                 | Setup | Live -> quiz.WelcomeText
                 | Finished -> quiz.FarewellText
+            Information =
+                match team with
+                | Some team when team.Status = Admitted -> quiz.InfoText
+                | _ -> ""
             ImgKey = quiz.ImgKey
             EventPage = quiz.EventPage
             Comp = team |> Option.map expertCompetition
@@ -235,6 +239,7 @@ module Main =
             RegToken = quiz.Dsc.RegToken
             WelcomeText = quiz.Dsc.WelcomeText
             FarewellText = quiz.Dsc.FarewellText
+            InfoText = quiz.Dsc.InfoText
             WithPremoderation = quiz.Dsc.WithPremoderation
             EventPage = quiz.Dsc.EventPage
             MixlrCode = quiz.Dsc.MixlrCode

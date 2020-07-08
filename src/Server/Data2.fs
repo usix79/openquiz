@@ -533,6 +533,7 @@ module Quizzes =
         let Status = "Status"
         let WelcomeText = "WelcomeText"
         let FarewellText = "FarewellText"
+        let InfoText = "InfoText"
         let ImgKey = "ImgKey"
         let WithPremoderation = "WithPremoderation"
         let AdminToken = "AdminToken"
@@ -556,15 +557,15 @@ module Quizzes =
     let private key id = [ Attr (Fields.Id, ScalarInt32 id) ]
 
     let private dscFields = [
-        Fields.Id; Fields.Producer; Fields.StartTime; Fields.Name; Fields.Status; Fields.WelcomeText; Fields.FarewellText;
+        Fields.Id; Fields.Producer; Fields.StartTime; Fields.Name; Fields.Status; Fields.WelcomeText; Fields.FarewellText; Fields.InfoText;
         Fields.ImgKey;  Fields.WithPremoderation; Fields.AdminToken; Fields.RegToken; Fields.ListenToken;
         Fields.PkgId; Fields.PkgQwIdx; Fields.EventPage; Fields.MixlrCode; Fields.StreamUrl]
 
-    let private dscBuilder id producer startTime name status wlcmText frwlText
+    let private dscBuilder id producer startTime name status wlcmText frwlText infoText
         imgKey withPremoderation adminToken regToken listenToken pkgId pkgQwIdx
         evtPage mixlrCode streamUrl: Domain.QuizDescriptor =
         {QuizId = id; Producer = producer; StartTime = startTime; Name = name; Status = status |> Option.defaultValue Domain.Setup;
-         WelcomeText = wlcmText; FarewellText = frwlText; ImgKey = imgKey; WithPremoderation = withPremoderation;
+         WelcomeText = wlcmText; FarewellText = frwlText; InfoText = infoText; ImgKey = imgKey; WithPremoderation = withPremoderation;
          AdminToken = adminToken; RegToken = regToken; ListenToken = listenToken;
          PkgId = pkgId; PkgSlipIdx = pkgQwIdx; EventPage = evtPage; MixlrCode = mixlrCode; StreamUrl = streamUrl}
 
@@ -577,6 +578,7 @@ module Quizzes =
         <*> (req Fields.Status A.string >- P.enum<Domain.QuizStatus>)
         <*> (optDef Fields.WelcomeText "" A.string)
         <*> (optDef Fields.FarewellText "" A.string)
+        <*> (optDef Fields.InfoText "" A.string)
         <*> (optDef Fields.ImgKey "" A.string)
         <*> (optDef Fields.WithPremoderation false A.bool)
         <*> (optDef Fields.AdminToken "" A.string)
@@ -631,6 +633,7 @@ module Quizzes =
             Attr (Fields.Status, ScalarString (item.Dsc.Status.ToString()))
             yield! BuildAttr.string Fields.WelcomeText item.Dsc.WelcomeText
             yield! BuildAttr.string Fields.FarewellText item.Dsc.FarewellText
+            yield! BuildAttr.string Fields.InfoText item.Dsc.InfoText
             yield! BuildAttr.string Fields.ImgKey item.Dsc.ImgKey
             Attr (Fields.WithPremoderation, ScalarBool item.Dsc.WithPremoderation)
             yield! BuildAttr.string Fields.AdminToken item.Dsc.AdminToken

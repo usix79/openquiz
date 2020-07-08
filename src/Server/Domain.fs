@@ -108,7 +108,7 @@ with
         | Multiple (_,slips) -> slips |> List.map (fun s -> s.Answer)
     member x.QuestionsCount =
         match x with
-        | Single slip -> 1
+        | Single _ -> 1
         | Multiple (_,slips) -> slips.Length
     member x.QuestionsPartCount qwIdx =
         match x with
@@ -246,6 +246,7 @@ type QuizDescriptor = {
     Status : QuizStatus
     WelcomeText : string
     FarewellText : string
+    InfoText : string
     ImgKey : string
     WithPremoderation : bool
     ListenToken : string
@@ -282,6 +283,7 @@ module Quizzes =
                 Status = Setup
                 WelcomeText = ""
                 FarewellText = ""
+                InfoText = ""
                 WithPremoderation = false
                 ListenToken = Common.generateRandomToken()
                 AdminToken = Common.generateRandomToken()

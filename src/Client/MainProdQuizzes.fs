@@ -26,6 +26,7 @@ type Msg =
     | UpdateMixlrCode of string
     | UpdateEventPage of string
     | UpdateWelcomeTxt of string
+    | UpdateInfoTxt of string
     | UpdateFarewellTxt of string
     | UpdateIsPremoderated of bool
     | CancelCard
@@ -136,6 +137,7 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | UpdateEventPage txt -> cm |> updateCard (fun c -> {c with EventPage = txt}) |> noCmd
     | UpdateMixlrCode txt -> cm |> updateMixlrCode txt |> noCmd
     | UpdateWelcomeTxt txt -> cm |> updateCard (fun c -> {c with WelcomeText = txt}) |> noCmd
+    | UpdateInfoTxt txt -> cm |> updateCard (fun c -> {c with InfoText = txt}) |> noCmd
     | UpdateFarewellTxt txt -> cm |> updateCard (fun c -> {c with FarewellText = txt}) |> noCmd
     | UpdateIsPremoderated b -> cm |> updateCard (fun c -> {c with WithPremoderation = b}) |> noCmd
     | CancelCard -> {cm with Card = None} |> noCmd
@@ -252,6 +254,14 @@ let card (dispatch : Msg -> unit) (appSettings:Settings) (card : MainModels.Quiz
                         textarea [Class "textarea"; Placeholder "Say goodbye to your audience"; MaxLength 512.0;
                             valueOrDefault card.FarewellText;
                             OnChange (fun ev -> dispatch <| UpdateFarewellTxt ev.Value )][]
+                    ]
+                ]
+                div [Class "field"][
+                    label [Class "label"][str "Information for the registered teams"]
+                    div [Class "control"][
+                        textarea [Class "textarea"; Placeholder "private zoom link"; MaxLength 512.0;
+                            valueOrDefault card.InfoText;
+                            OnChange (fun ev -> dispatch <| UpdateInfoTxt ev.Value )][]
                     ]
                 ]
             ]

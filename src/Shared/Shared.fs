@@ -367,6 +367,7 @@ module MainModels =
         Name : string
         Status : QuizStatus
         Description : string
+        Information : string
         ImgKey : string
         EventPage : string
         Comp : ExpertCompetition option
@@ -390,6 +391,7 @@ module MainModels =
         RegToken : string
         WelcomeText : string
         FarewellText : string
+        InfoText : string
         WithPremoderation : bool
         EventPage : string
         MixlrCode : int option

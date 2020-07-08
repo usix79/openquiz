@@ -96,7 +96,7 @@ let updateProdQuizCard expert card =
         Domain.Quizzes.authorize expert.Id quiz.Dsc
         |> Result.map (fun _ ->
             let dsc = { quiz.Dsc with Name = card.Name; StartTime = card.StartTime;
-                                    ImgKey = card.ImgKey; WelcomeText = card.WelcomeText; FarewellText = card.FarewellText;
+                                    ImgKey = card.ImgKey; WelcomeText = card.WelcomeText; FarewellText = card.FarewellText; InfoText = card.InfoText;
                                     WithPremoderation = card.WithPremoderation; EventPage = card.EventPage; MixlrCode = card.MixlrCode}
 
             { quiz with Dsc = dsc}

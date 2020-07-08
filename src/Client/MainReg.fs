@@ -193,6 +193,11 @@ let quizView (dispatch : Msg -> unit) (settings:Settings) (quiz : QuizRegRecord)
         p [] (splitByLines quiz.Description)
         if quiz.EventPage <> "" then
             a[Href quiz.EventPage][str "details"]
+        if quiz.Information <> "" then
+            br[]
+            div [Class "notification is-info"][
+                p [] (splitByLines quiz.Information)
+            ]
     ]
 
     div [Style [Width "320px"; Display DisplayOptions.InlineBlock]] [
