@@ -4,7 +4,7 @@
 
 * Support for the multichoice answers
 * Information for registered teams (displayed on the registration page)
-* Support for mediacontent in questions (images/audio/video) (up to 2MB per question)
+* Support for mediacontent in the questions (images/audio/video) (up to 2MB per question)
 
 ## 1.9.0 - 2020-07-01
 
