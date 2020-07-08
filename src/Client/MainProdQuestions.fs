@@ -466,7 +466,7 @@ let qwCell dispatch settings (key:PkgQwKey) txt imgKey isLoading =
 let qwInput dispatch placeholder txt key partIdx  =
     div [Class "control"; Style [MarginBottom "3px"]][
         input [Class "input"; Type "text"; Placeholder placeholder;
-            valueOrDefault txt; MaxLength 256.0; OnChange (fun ev -> QwTextSplitChanged (key, partIdx, ev.Value) |> dispatch)]
+            valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwTextSplitChanged (key, partIdx, ev.Value) |> dispatch)]
     ]
 
 let awCell dispatch (key:PkgQwKey) (answer:SlipAnswer) isLoading =
