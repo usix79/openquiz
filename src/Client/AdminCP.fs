@@ -360,7 +360,7 @@ let singleSlipEl dispatch settings status (qwIdx:int) (slip:SingleSlip) nextQwPa
 
         br[]
         cmtTextArea dispatch key slip.Comment isReadOnly
-        yield! MainTemplates.imgEl settings.MediaHost slip.CommentImgKey
+        yield! MainTemplates.mediaEl settings.MediaHost slip.AnswerMedia false
     ]
 
 let multipleSlipEl dispatch settings status (name:string) (slips:SingleSlip list) nextQwIdx nextQwPartIdx isReadOnly =

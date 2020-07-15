@@ -107,8 +107,8 @@ let singleSlip (slip:SingleSlip) : Shared.SingleSlip =
         Question = question slip.Question
         QuestionMedia = slip.QuestionMedia |> Option.map mediaDsc
         Answer = slipAnswer slip.Answer
+        AnswerMedia = slip.AnswerMedia |> Option.map mediaDsc
         Comment = slip.Comment
-        CommentImgKey = slip.CommentImgKey
         Points = slip.Points
         JeopardyPoints = slip.JeopardyPoints
         WithChoice = slip.WithChoice
@@ -124,8 +124,8 @@ let singleSlipToDomain (slip:Shared.SingleSlip) =
         Question = questionToDomain slip.Question
         QuestionMedia = slip.QuestionMedia |> Option.map mediaDscToDomain
         Answer = slipAnswerToDomain slip.Answer
+        AnswerMedia = slip.AnswerMedia |> Option.map mediaDscToDomain
         Comment = slip.Comment
-        CommentImgKey = slip.CommentImgKey
         Points = slip.Points
         JeopardyPoints = slip.JeopardyPoints
         WithChoice = slip.WithChoice
@@ -168,7 +168,7 @@ let slipSingleCard status qwPartIdx (slip:SingleSlip) : SingleSlipCard =
     | Announcing when qwPartIdx = 0 -> X3
     | Announcing -> {Txt=slip.Question |> qwText qwPartIdx; Choices = None; Media = slip.QuestionMedia |> Option.map mediaDsc; Ch = slip.WithChoice} |> QW
     | Countdown -> {Txt=slip.Question |> qwText slip.QuestionsCount; Choices = extractChoices slip.Answer; Media = slip.QuestionMedia |> Option.map mediaDsc; Ch = slip.WithChoice} |> QW
-    | Settled -> {Aw= slipAnswer slip.Answer; Com = slip.Comment;  Img=slip.CommentImgKey; Ch = slip.WithChoice} |> AW
+    | Settled -> {Aw= slipAnswer slip.Answer; Com = slip.Comment;  Media = slip.AnswerMedia |> Option.map mediaDsc; Ch = slip.WithChoice} |> AW
 
 let slipCard status qwIdx qwPartIdx (slip:Slip) : SlipCard =
     match slip with

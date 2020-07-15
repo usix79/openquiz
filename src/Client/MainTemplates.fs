@@ -212,7 +212,7 @@ let singleTourInfo mediaHost tourName (slip:Shared.SingleSlipCard) =
             yield! mediaEl mediaHost slip.Media true
             p [ Class "has-text-weight-semibold" ] (splitByLines slip.Txt)
         | Shared.AW slip ->
-            yield! imgEl mediaHost slip.Img
+            yield! mediaEl mediaHost slip.Media true
             match slip.Aw with
             | Shared.OpenAnswer txt ->
                 p [ Class "has-text-weight-bold" ] [ str "Answer" ]

@@ -43,9 +43,9 @@ type Msg =
     | QwMediaChanged of {|File:Browser.Types.File; Tag:PkgQwKey|}
     | QwMediaClear of key:QwKey
     | QwMediaUploaded of key:QwKey*bucketKey:string*mediType:string
-    | CommentImgChanged of {|File:Browser.Types.File; Tag:PkgQwKey|}
-    | CommentImgClear of key:QwKey
-    | CommentImgUploaded of key:QwKey*bucketKey:string
+    | AnswerMediaChanged of {|File:Browser.Types.File; Tag:PkgQwKey|}
+    | AnswerMediaClear of key:QwKey
+    | AnswerMediaUploaded of key:QwKey*bucketKey:string*mediType:string
     | ToggleAquireForm
     | AquireFormUpdatePackageId of string
     | AquireFormUpdateTransferToken of string
@@ -217,9 +217,9 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | QwMediaChanged res -> cm |> uploadFile api res.Tag res.File (fun key -> QwMediaUploaded (res.Tag.Key,key,res.File.``type``))
     | QwMediaClear key -> cm |> updateSlip key (fun slip -> {slip with QuestionMedia = None}) |> noCmd
     | QwMediaUploaded (qwKey,bucketKey,mediaType) -> cm |> editing |> updateSlip qwKey (fun slip -> {slip with QuestionMedia = Some {Key = bucketKey; Type = mediaTypeFromMiME mediaType}}) |> noCmd
-    | CommentImgChanged res -> cm |> uploadFile api res.Tag res.File (fun key -> CommentImgUploaded (res.Tag.Key,key))
-    | CommentImgClear key -> cm |> updateSlip key (fun slip -> {slip with CommentImgKey = ""}) |> noCmd
-    | CommentImgUploaded (qwKey,bucketKey) -> cm |> editing |> updateSlip qwKey (fun slip -> {slip with CommentImgKey = bucketKey}) |> noCmd
+    | AnswerMediaChanged res -> cm |> uploadFile api res.Tag res.File (fun key -> AnswerMediaUploaded (res.Tag.Key,key,res.File.``type``))
+    | AnswerMediaClear key -> cm |> updateSlip key (fun slip -> {slip with AnswerMedia = None}) |> noCmd
+    | AnswerMediaUploaded (qwKey,bucketKey,mediaType) -> cm |> editing |> updateSlip qwKey (fun slip -> {slip with AnswerMedia = Some {Key = bucketKey; Type = mediaTypeFromMiME mediaType}}) |> noCmd
     | ToggleAquireForm -> cm |> toggleAquiringForm |> noCmd
     | AquireFormUpdatePackageId txt-> cm |> updateAquiringForm (fun form -> {form with PackageId = System.Int32.Parse(txt)}) |> noCmd
     | AquireFormUpdateTransferToken txt-> cm |> updateAquiringForm (fun form -> {form with TransferToken = txt.Trim()}) |> noCmd
@@ -509,11 +509,12 @@ let awCell dispatch (key:PkgQwKey) (answer:SlipAnswer) isLoading =
             button [Class "button is-small"; OnClick (fun _ -> dispatch (AppendChoice key.Key))] [str "append choice"]
     ]
 
-let cmntCell dispatch settings (key:PkgQwKey) txt imgKey  isLoading =
+let cmntCell dispatch settings (key:PkgQwKey) txt (media:Shared.MediaDsc option)  isLoading =
     td[] [
         textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwCommentChanged (key.Key,ev.Value) |> dispatch)][]
         br[]
-        yield! MainTemplates.imgArea key isLoading (CommentImgChanged >> dispatch) (fun _ -> CommentImgClear key.Key |> dispatch) settings.MediaHost imgKey "" "Clear"
+        yield! MainTemplates.mediaArea key isLoading (AnswerMediaChanged >> dispatch) (fun _ -> AnswerMediaClear key.Key |> dispatch) settings.MediaHost media "Clear"
+
     ]
 
 let singleSlipRow dispatch settings isOwned isLoading pkgId tourIdx qwIdx (slip: SingleSlip) =
@@ -532,7 +533,7 @@ let singleSlipRow dispatch settings isOwned isLoading pkgId tourIdx qwIdx (slip:
                 yield! MainTemplates.mediaArea packageKey isLoading (QwMediaChanged >> dispatch) (fun _ -> (QwMediaClear packageKey.Key) |> dispatch) settings.MediaHost slip.QuestionMedia "Clear"
             ]
         awCell dispatch packageKey slip.Answer isLoading
-        cmntCell dispatch settings packageKey slip.Comment slip.CommentImgKey isLoading
+        cmntCell dispatch settings packageKey slip.Comment slip.AnswerMedia isLoading
         td[][
             div [Class "control"][
                 input [Class "input"; Type "number";

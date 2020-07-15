@@ -170,7 +170,7 @@ type SlipAnswer =
 
 type SlipAwCard = {
     Aw : SlipAnswer
-    Img : string
+    Media : MediaDsc option
     Com : string
     Ch : bool
 }
@@ -278,8 +278,8 @@ type SingleSlip = {
     Question : Question
     QuestionMedia : MediaDsc option
     Answer : SlipAnswer
+    AnswerMedia : MediaDsc option
     Comment : string
-    CommentImgKey : string
     Points : decimal
     JeopardyPoints : decimal option
     WithChoice : bool
@@ -307,8 +307,8 @@ type SingleSlip = {
                 | n -> List.init n (fun i -> "") |> Split
             QuestionMedia = None
             Answer = OpenAnswer ""
+            AnswerMedia = None
             Comment = ""
-            CommentImgKey = ""
             Points = 1m
             JeopardyPoints = None
             WithChoice = false

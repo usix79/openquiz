@@ -362,7 +362,8 @@ module private Slips =
         let AnswerText = "Text"
         let AnswerIsCorrect = "IsCorrect"
         let Comment = "Comment"
-        let CommentImgKey = "CommentImgKey"
+        let AnswerMediaKey = "CommentImgKey"
+        let AnswerMediaType = "AnswerMediaType"
         let Points = "Points"
         let JpdPoints = "JpdPoints"
         let Choiсe = "Choiсe"
@@ -417,17 +418,17 @@ module private Slips =
             AttrReader.run (optDef Fields.Answer "" A.string)
             >> Result.map Domain.OpenAnswer
 
-    let private singleSlipBuilder question questionMedia answer comment commentImgKey points jeopardyPoints withChoice : Domain.SingleSlip =
-        {Question = question; QuestionMedia = questionMedia; Answer = answer; Comment = comment; CommentImgKey = commentImgKey;
-            Points = points; JeopardyPoints = jeopardyPoints; WithChoice = withChoice}
+    let private singleSlipBuilder question questionMedia answer answerMedia comment points jeopardyPoints withChoice : Domain.SingleSlip =
+        {Question = question; QuestionMedia = questionMedia; Answer = answer; AnswerMedia = answerMedia;
+            Comment = comment; Points = points; JeopardyPoints = jeopardyPoints; WithChoice = withChoice}
 
     let singleSlipReader =
         singleSlipBuilder
         <!> (choice Fields.Questions A.docList questionsInSlipReader)
         <*> (readMediaDsc Fields.MediaKey Fields.MediaType)
         <*> (choice Fields.Answers A.docList answersInSlipReader)
+        <*> (readMediaDsc Fields.AnswerMediaKey Fields.AnswerMediaType)
         <*> (optDef Fields.Comment "" A.string)
-        <*> (optDef Fields.CommentImgKey "" A.string)
         <*> (optDef Fields.Points "1" A.number >-> P.decimal)
         <*> (opt Fields.JpdPoints (A.nullOr A.number) ??>-> P.decimal)
         <*> (optDef Fields.Choiсe false A.bool)
@@ -466,8 +467,13 @@ module private Slips =
                     |> List.map (fun aw ->
                         DocMap [Attr (Fields.AnswerText, ScalarString aw.Text)
                                 Attr (Fields.AnswerIsCorrect, ScalarBool aw.IsCorrect)])))
+            match slip.AnswerMedia with
+            | Some media ->
+                yield! BuildAttr.string Fields.AnswerMediaKey media.Key
+                if media.Type <> Domain.MediaType.Picture then
+                    Attr (Fields.AnswerMediaType, ScalarString (media.Type.ToString()))
+            | None -> ()
             yield! BuildAttr.string Fields.Comment slip.Comment
-            yield! BuildAttr.string Fields.CommentImgKey slip.CommentImgKey
             Attr (Fields.Points, ScalarDecimal slip.Points)
             yield! BuildAttr.optional Fields.JpdPoints ScalarDecimal slip.JeopardyPoints
             if slip.WithChoice then Attr (Fields.Choiсe, ScalarBool slip.WithChoice)

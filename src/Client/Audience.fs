@@ -206,7 +206,7 @@ let multipleQwView (settings:Settings) tour name slips =
                     str "correct answer: "
                     str (slip.Aw.ToRawString().Split('\n').[0])
                 ]
-                yield! MainTemplates.imgEl settings.MediaHost slip.Img
+                yield! MainTemplates.mediaEl settings.MediaHost slip.Media true
                 p [Class "is-italic has-text-weight-light is-family-secondary is-size-7"] (splitByLines slip.Com)
                 br[]
 

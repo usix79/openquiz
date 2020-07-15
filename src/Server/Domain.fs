@@ -151,8 +151,8 @@ type SingleSlip = {
     Question : Question
     QuestionMedia : MediaDsc option
     Answer : Answer
+    AnswerMedia : MediaDsc option
     Comment : string
-    CommentImgKey : string
     Points : decimal
     JeopardyPoints : decimal option
     WithChoice : bool
@@ -174,8 +174,8 @@ type SingleSlip = {
                 | n -> List.init n (fun i -> "") |> Split
             QuestionMedia = None
             Answer= OpenAnswer ""
+            AnswerMedia = None
             Comment=""
-            CommentImgKey=""
             Points = 1m
             JeopardyPoints = None
             WithChoice = false
