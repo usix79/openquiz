@@ -372,6 +372,25 @@ module private Slips =
         let [<Literal>] KindWWW = "WWW"
         let [<Literal>] KindSingle = "Single"
 
+    let private mediaDscBuilder key mediaType : Domain.MediaDsc =
+        {Key = key; Type = mediaType}
+
+    let readMediaDsc keyField typeField =
+        choice keyField A.string (
+            function
+            | Some key when key <> "" ->
+                fun m ->
+                    let mediaType =
+                        m
+                        |> Map.tryFind typeField
+                        |> Option.map A.string
+                        |> Option.bind P.enum<Domain.MediaType>
+                        |> Option.defaultValue Domain.MediaType.Picture
+                    Some (mediaDscBuilder key mediaType)
+                    |> Ok
+            | _ -> (fun _ -> Ok None)
+        )
+
     let private questionsInSlipReader =
         function
         | Some _ ->
@@ -398,15 +417,14 @@ module private Slips =
             AttrReader.run (optDef Fields.Answer "" A.string)
             >> Result.map Domain.OpenAnswer
 
-    let private singleSlipBuilder question mediaKey mediaType answer comment commentImgKey points jeopardyPoints withChoice : Domain.SingleSlip =
-        {Question = question; MediaKey = mediaKey; MediaType = mediaType |> Option.defaultValue Domain.MediaType.Picture; Answer = answer; Comment = comment; CommentImgKey = commentImgKey;
+    let private singleSlipBuilder question questionMedia answer comment commentImgKey points jeopardyPoints withChoice : Domain.SingleSlip =
+        {Question = question; QuestionMedia = questionMedia; Answer = answer; Comment = comment; CommentImgKey = commentImgKey;
             Points = points; JeopardyPoints = jeopardyPoints; WithChoice = withChoice}
 
     let singleSlipReader =
         singleSlipBuilder
         <!> (choice Fields.Questions A.docList questionsInSlipReader)
-        <*> (optDef Fields.MediaKey "" A.string)
-        <*> (optDef Fields.MediaType "Picture" A.string >- P.enum<Domain.MediaType>)
+        <*> (readMediaDsc Fields.MediaKey Fields.MediaType)
         <*> (choice Fields.Answers A.docList answersInSlipReader)
         <*> (optDef Fields.Comment "" A.string)
         <*> (optDef Fields.CommentImgKey "" A.string)
@@ -435,10 +453,12 @@ module private Slips =
             match slip.Question with
             | Domain.Solid qw -> yield! BuildAttr.string Fields.Text qw
             | Domain.Split list -> Attr (Fields.Questions, DocList (list |> List.map ScalarString))
-            yield! BuildAttr.string Fields.MediaKey slip.MediaKey
-            if slip.MediaType <> Domain.MediaType.Picture then
-                Attr (Fields.MediaType, ScalarString (slip.MediaType.ToString()))
-
+            match slip.QuestionMedia with
+            | Some media ->
+                yield! BuildAttr.string Fields.MediaKey media.Key
+                if media.Type <> Domain.MediaType.Picture then
+                    Attr (Fields.MediaType, ScalarString (media.Type.ToString()))
+            | None -> ()
             match slip.Answer with
             | Domain.OpenAnswer aw -> yield! BuildAttr.string Fields.Answer aw
             | Domain.ChoiceAnswer (list) ->

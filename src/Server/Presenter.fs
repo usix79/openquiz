@@ -96,11 +96,16 @@ let mediaTypeToDomain = function
     | Shared.Audio -> Audio
     | Shared.Video -> Video
 
+let mediaDsc (mediaDsc : MediaDsc) : Shared.MediaDsc =
+    {Key = mediaDsc.Key; Type = mediaType mediaDsc.Type}
+
+let mediaDscToDomain (mediaDsc : Shared.MediaDsc) : MediaDsc =
+    {Key = mediaDsc.Key; Type = mediaTypeToDomain mediaDsc.Type}
+
 let singleSlip (slip:SingleSlip) : Shared.SingleSlip =
     {
         Question = question slip.Question
-        MediaKey = slip.MediaKey
-        MediaType = mediaType slip.MediaType
+        QuestionMedia = slip.QuestionMedia |> Option.map mediaDsc
         Answer = slipAnswer slip.Answer
         Comment = slip.Comment
         CommentImgKey = slip.CommentImgKey
@@ -117,8 +122,7 @@ let slip (domainSlip : Slip) : Shared.Slip =
 let singleSlipToDomain (slip:Shared.SingleSlip) =
     {
         Question = questionToDomain slip.Question
-        MediaKey = slip.MediaKey
-        MediaType = mediaTypeToDomain slip.MediaType
+        QuestionMedia = slip.QuestionMedia |> Option.map mediaDscToDomain
         Answer = slipAnswerToDomain slip.Answer
         Comment = slip.Comment
         CommentImgKey = slip.CommentImgKey
@@ -162,8 +166,8 @@ let extractChoices = function
 let slipSingleCard status qwPartIdx (slip:SingleSlip) : SingleSlipCard =
     match status with
     | Announcing when qwPartIdx = 0 -> X3
-    | Announcing -> {Txt=slip.Question |> qwText qwPartIdx; Choices = None; Img=slip.MediaKey; ImgTyp =mediaType slip.MediaType; Ch = slip.WithChoice} |> QW
-    | Countdown -> {Txt=slip.Question |> qwText slip.QuestionsCount; Choices = extractChoices slip.Answer; Img=slip.MediaKey; ImgTyp =mediaType slip.MediaType; Ch = slip.WithChoice} |> QW
+    | Announcing -> {Txt=slip.Question |> qwText qwPartIdx; Choices = None; Media = slip.QuestionMedia |> Option.map mediaDsc; Ch = slip.WithChoice} |> QW
+    | Countdown -> {Txt=slip.Question |> qwText slip.QuestionsCount; Choices = extractChoices slip.Answer; Media = slip.QuestionMedia |> Option.map mediaDsc; Ch = slip.WithChoice} |> QW
     | Settled -> {Aw= slipAnswer slip.Answer; Com = slip.Comment;  Img=slip.CommentImgKey; Ch = slip.WithChoice} |> AW
 
 let slipCard status qwIdx qwPartIdx (slip:Slip) : SlipCard =

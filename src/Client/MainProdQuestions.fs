@@ -43,7 +43,6 @@ type Msg =
     | QwMediaChanged of {|File:Browser.Types.File; Tag:PkgQwKey|}
     | QwMediaClear of key:QwKey
     | QwMediaUploaded of key:QwKey*bucketKey:string*mediType:string
-    | QwMediaTypeChanged of key:QwKey*mediaType:string
     | CommentImgChanged of {|File:Browser.Types.File; Tag:PkgQwKey|}
     | CommentImgClear of key:QwKey
     | CommentImgUploaded of key:QwKey*bucketKey:string
@@ -216,9 +215,8 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | QwJpdPointsChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with JeopardyPoints = ofDecimal (Some txt)}) |> noCmd
     | QwWithChoiceChanged (key,v) -> cm |> updateSlip key (fun slip -> {slip with WithChoice = v}) |> noCmd
     | QwMediaChanged res -> cm |> uploadFile api res.Tag res.File (fun key -> QwMediaUploaded (res.Tag.Key,key,res.File.``type``))
-    | QwMediaClear key -> cm |> updateSlip key (fun slip -> {slip with MediaKey = ""; MediaType = Picture}) |> noCmd
-    | QwMediaUploaded (qwKey,bucketKey,mediaType) -> cm |> editing |> updateSlip qwKey (fun slip -> {slip with MediaKey = bucketKey; MediaType = mediaTypeFromMiME mediaType}) |> noCmd
-    | QwMediaTypeChanged (qwKey,mediaType) -> cm |> editing |> updateSlip qwKey (fun slip -> {slip with MediaType = (defaultArg (fromString mediaType) Picture)}) |> noCmd
+    | QwMediaClear key -> cm |> updateSlip key (fun slip -> {slip with QuestionMedia = None}) |> noCmd
+    | QwMediaUploaded (qwKey,bucketKey,mediaType) -> cm |> editing |> updateSlip qwKey (fun slip -> {slip with QuestionMedia = Some {Key = bucketKey; Type = mediaTypeFromMiME mediaType}}) |> noCmd
     | CommentImgChanged res -> cm |> uploadFile api res.Tag res.File (fun key -> CommentImgUploaded (res.Tag.Key,key))
     | CommentImgClear key -> cm |> updateSlip key (fun slip -> {slip with CommentImgKey = ""}) |> noCmd
     | CommentImgUploaded (qwKey,bucketKey) -> cm |> editing |> updateSlip qwKey (fun slip -> {slip with CommentImgKey = bucketKey}) |> noCmd
@@ -458,11 +456,11 @@ let delQwCell dispatch qwKey =
         button [Class "button is-small"; OnClick(fun _ -> dispatch <| DelQwInMultiple qwKey)][Fa.i [ Fa.Regular.TrashAlt ] [ ]]
     ]
 
-let qwCell dispatch settings (key:PkgQwKey) txt mediaKey mediaType isLoading =
+let qwCell dispatch settings (key:PkgQwKey) txt (media:Shared.MediaDsc option) isLoading =
     td[] [
         textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwTextChanged (key.Key,ev.Value) |> dispatch)][]
         br[]
-        yield! MainTemplates.mediaArea key isLoading (QwMediaChanged >> dispatch) (fun _ -> QwMediaClear key.Key |> dispatch) settings.MediaHost mediaKey mediaType "Clear"
+        yield! MainTemplates.mediaArea key isLoading (QwMediaChanged >> dispatch) (fun _ -> QwMediaClear key.Key |> dispatch) settings.MediaHost media "Clear"
     ]
 
 let qwInput dispatch placeholder txt key partIdx  =
@@ -525,13 +523,13 @@ let singleSlipRow dispatch settings isOwned isLoading pkgId tourIdx qwIdx (slip:
     tr[][
         idxCell tourIdx qwIdx
         match slip.Question with
-        | Solid qw -> qwCell dispatch settings packageKey qw slip.MediaKey slip.MediaType isLoading
+        | Solid qw -> qwCell dispatch settings packageKey qw slip.QuestionMedia isLoading
         | Split list ->
             td[] [
                 for (idx,qw) in list |> List.indexed do
                     qwInput dispatch (sprintf "Question %i" (idx + 1)) qw packageKey.Key idx
                 br[]
-                yield! MainTemplates.mediaArea packageKey isLoading (QwMediaChanged >> dispatch) (fun _ -> (QwMediaClear packageKey.Key) |> dispatch) settings.MediaHost slip.MediaKey slip.MediaType "Clear"
+                yield! MainTemplates.mediaArea packageKey isLoading (QwMediaChanged >> dispatch) (fun _ -> (QwMediaClear packageKey.Key) |> dispatch) settings.MediaHost slip.QuestionMedia "Clear"
             ]
         awCell dispatch packageKey slip.Answer isLoading
         cmntCell dispatch settings packageKey slip.Comment slip.CommentImgKey isLoading

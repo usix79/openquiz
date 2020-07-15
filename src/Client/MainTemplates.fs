@@ -77,17 +77,19 @@ let imgEl mediaHost imgKey =
             ]
     }
 
-let mediaArea tag disabled changeMsg clearMsg mediaHost mediaKey mediaType clearText =
+let mediaArea tag disabled changeMsg clearMsg mediaHost (media:Shared.MediaDsc option) clearText =
     [
-        if not (System.String.IsNullOrWhiteSpace mediaKey) then
-            let url = Shared.Infra.urlForMedia mediaHost mediaKey
-            match mediaType with
+        match media with
+        | Some media ->
+            let url = Shared.Infra.urlForMedia mediaHost media.Key
+            match media.Type with
             | Shared.Picture ->
                 figure [Class "image"; Style[MaxWidth "320px"]][ img [Src url]]
             | Shared.Audio ->
                 ReactPlayer.playerEx false false url
             | Shared.Video ->
                 ReactPlayer.playerEx true false url
+        | None -> ()
 
         div [Class "file"; Style [MarginTop "8px"]][
             label [Class "file-label"][
@@ -101,17 +103,19 @@ let mediaArea tag disabled changeMsg clearMsg mediaHost mediaKey mediaType clear
         ]
     ]
 
-let mediaEl mediaHost mediaKey mediaType isPlaying =
+let mediaEl mediaHost (media:Shared.MediaDsc option) isPlaying =
     seq {
-        if not (System.String.IsNullOrWhiteSpace mediaKey) then
-            let url = Shared.Infra.urlForMedia mediaHost mediaKey
-            match mediaType with
+        match media with
+        | Some media ->
+            let url = Shared.Infra.urlForMedia mediaHost media.Key
+            match media.Type with
             | Shared.Picture ->
                 figure [Class "image"; Style[MaxWidth "320px"; Display DisplayOptions.InlineBlock]][ img [Src url]]
             | Shared.Audio ->
                 ReactPlayer.playerEx false isPlaying url
             | Shared.Video ->
                 ReactPlayer.playerEx true isPlaying url
+        | None -> ()
     }
 
 
@@ -205,7 +209,7 @@ let singleTourInfo mediaHost tourName (slip:Shared.SingleSlipCard) =
         match slip with
         | Shared.X3 -> ()
         | Shared.QW slip ->
-            yield! mediaEl mediaHost slip.Img slip.ImgTyp true
+            yield! mediaEl mediaHost slip.Media true
             p [ Class "has-text-weight-semibold" ] (splitByLines slip.Txt)
         | Shared.AW slip ->
             yield! imgEl mediaHost slip.Img

@@ -142,10 +142,14 @@ type MediaType =
     | Audio
     | Video
 
+type MediaDsc = {
+    Key : string
+    Type : MediaType
+}
+
 type SingleSlip = {
     Question : Question
-    MediaKey : string
-    MediaType : MediaType
+    QuestionMedia : MediaDsc option
     Answer : Answer
     Comment : string
     CommentImgKey : string
@@ -168,8 +172,7 @@ type SingleSlip = {
                 match qwCount with
                 | 1 -> Solid ""
                 | n -> List.init n (fun i -> "") |> Split
-            MediaKey=""
-            MediaType = Picture
+            QuestionMedia = None
             Answer= OpenAnswer ""
             Comment=""
             CommentImgKey=""

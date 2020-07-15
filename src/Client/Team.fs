@@ -406,7 +406,7 @@ let multipleQwView dispatch settings tour name slips answers isCountdownFinished
             match slip with
             | QW slip ->
                 p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
-                yield! MainTemplates.mediaEl settings.MediaHost slip.Img slip.ImgTyp true
+                yield! MainTemplates.mediaEl settings.MediaHost slip.Media true
                 p [] (splitByLines slip.Txt)
                 awInput dispatch idx aw jpd answers.Status slip.Ch isCountdownFinished
                 br[]
