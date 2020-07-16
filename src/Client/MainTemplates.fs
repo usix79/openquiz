@@ -209,6 +209,8 @@ let singleTourInfo mediaHost tourName (slip:Shared.SingleSlipCard) =
         match slip with
         | Shared.X3 -> ()
         | Shared.QW slip ->
+            if slip.Points <> 1m then
+                p[][span [Class "tag"][str (sprintf "%s points" (slip.Points.ToString()))]]
             yield! mediaEl mediaHost slip.Media true
             p [ Class "has-text-weight-semibold" ] (splitByLines slip.Txt)
         | Shared.AW slip ->

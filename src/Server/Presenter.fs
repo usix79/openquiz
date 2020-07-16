@@ -166,8 +166,18 @@ let extractChoices = function
 let slipSingleCard status qwPartIdx (slip:SingleSlip) : SingleSlipCard =
     match status with
     | Announcing when qwPartIdx = 0 -> X3
-    | Announcing -> {Txt=slip.Question |> qwText qwPartIdx; Choices = None; Media = slip.QuestionMedia |> Option.map mediaDsc; Ch = slip.WithChoice} |> QW
-    | Countdown -> {Txt=slip.Question |> qwText slip.QuestionsCount; Choices = extractChoices slip.Answer; Media = slip.QuestionMedia |> Option.map mediaDsc; Ch = slip.WithChoice} |> QW
+    | Announcing ->
+        {   Txt=slip.Question |> qwText qwPartIdx
+            Choices = None
+            Media = slip.QuestionMedia |> Option.map mediaDsc
+            Ch = slip.WithChoice
+            Points = slip.Points} |> QW
+    | Countdown ->
+        {   Txt=slip.Question |> qwText slip.QuestionsCount
+            Choices = extractChoices slip.Answer
+            Media = slip.QuestionMedia |> Option.map mediaDsc
+            Ch = slip.WithChoice
+            Points = slip.Points} |> QW
     | Settled -> {Aw= slipAnswer slip.Answer; Com = slip.Comment;  Media = slip.AnswerMedia |> Option.map mediaDsc; Ch = slip.WithChoice} |> AW
 
 let slipCard status qwIdx qwPartIdx (slip:Slip) : SlipCard =

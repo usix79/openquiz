@@ -113,6 +113,7 @@ type SlipQwCard = {
     Choices : string list option
     Media : MediaDsc option
     Ch : bool
+    Points : decimal
 }
 
 type ChoiceAnswer = {
