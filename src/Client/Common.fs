@@ -225,8 +225,31 @@ module Infra =
     [<Emit("(new Audio($0)).play();")>]
     let play (fileName: string) = jsNative
 
+    [<Emit("window.navigator.languages")>]
+    let languages (): string array = jsNative
+
     let locationFullPath () =
         locationOrign + virtualPath
+
+    let getPreferableLangugage () =
+        let tryLang (lang:string) =
+            let lang = lang.ToLowerInvariant()
+            if lang.StartsWith("en") then Some L10n.English
+            else if lang.StartsWith("ru") then Some L10n.Russian
+            else if lang.StartsWith("uk") then Some L10n.Ukrainian
+            else None
+
+        let rec check (langs:string list) =
+            match langs with
+            | head :: tail ->
+                match tryLang head with
+                | Some lang -> lang
+                | None -> check tail
+            | [] -> L10n.English
+
+        languages ()
+        |> List.ofArray
+        |> check
 
     let urlWithNewHash hash =
         if System.String.IsNullOrEmpty window.location.hash then

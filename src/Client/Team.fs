@@ -215,29 +215,29 @@ let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) : Model * Cmd
     | Err txt -> cm |> error txt |> noCmd
     | _ -> cm |> noCmd
 
-let view (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) (model : Model) =
+let view (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) (model : Model) (l10n:L10n.TeamL10n) =
     match model.IsActive with
     | true ->
         match model.Quiz with
-        | Some quiz -> activeView dispatch user settings quiz model
+        | Some quiz -> activeView dispatch user settings quiz model l10n
         | None -> str model.Error
-    | false -> notActiveView dispatch user model.Error
+    | false -> notActiveView dispatch user model.Error l10n
 
-let notActiveView (dispatch : Msg -> unit) (user:TeamUser) error =
+let notActiveView (dispatch : Msg -> unit) (user:TeamUser) error l10n =
     section [Class "hero is-danger is-medium is-fullheight"][
         div [Class "hero-body"][
             div [Class "container has-text-centered is-fluid"][
-                p [Class "title"] [ str "NOT ACTIVE" ]
+                p [Class "title"] [ str l10n.NotActive ]
                 p [ Class "title" ] [ str user.QuizName ]
                 p [ Class "subtitle" ] [ str user.TeamName ]
-                p [ Class "subtitle" ] [ str "Team's session is running from another device. Only one device is allowed per team." ]
-                a [Class "button is-large"; OnClick (fun _ -> dispatch (Reactivate)) ] [ str "Use this device" ]
+                p [ Class "subtitle" ] [ str l10n.AnotherSession ]
+                a [Class "button is-large"; OnClick (fun _ -> dispatch (Reactivate)) ] [ str l10n.UseThisDevice ]
                 p [Class "help is-white"][ str error ]
             ]
         ]
     ]
 
-let activeView (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) quiz model =
+let activeView (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) quiz model l10n =
     let serverTime = serverTime model.TimeDiff
     let secondsLeft, isCountdownActive, isCountdownFinished =
         match quiz.TC with
@@ -254,35 +254,35 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) quiz
                 h4 [Class "subtitle is-4" ] [ str user.TeamName ]
 
                 match quiz.TS with
-                | New -> div [Class "notification is-white"][str "Waiting for confirmation of the registration..."]
+                | New -> div [Class "notification is-white"][str l10n.WaitingForConfirmation]
                 | Admitted ->
                     div[][
                         match model.ActiveTab with
-                        | History -> yield historyView dispatch model
+                        | History -> yield historyView dispatch model l10n
                         | Question ->
                             match quiz.QS, model.Answers with
-                            | Live, Some answers -> yield quiestionView dispatch settings quiz answers isCountdownActive isCountdownFinished
-                            | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg
-                        | Results -> yield resultsView dispatch user model
+                            | Live, Some answers -> yield quiestionView dispatch settings quiz answers isCountdownActive isCountdownFinished l10n
+                            | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg l10n.Common
+                        | Results -> yield resultsView dispatch user model l10n
                     ]
-                | Rejected -> div [Class "notification is-white"][span[Class "has-text-danger has-text-weight-bold"][str "Registration has been rejected ("]]
+                | Rejected -> div [Class "notification is-white"][span[Class "has-text-danger has-text-weight-bold"][str l10n.RegistrationHasBeenRejected]]
             ]
             p [Class "help is-danger"][ str model.Error ]
             div [ Style [Height "66px"]] []
 
             if quiz.TS = Admitted then
-                MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
+                MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft l10n.Common
                 MainTemplates.playSounds settings.MediaHost secondsLeft
         ]
     ]
 
-let quiestionView (dispatch : Msg -> unit) (settings:Settings) quiz answers isCountdownActive isCountdownFinished =
+let quiestionView (dispatch : Msg -> unit) (settings:Settings) quiz answers isCountdownActive isCountdownFinished l10n=
     div [] [
         match quiz.TC with
         | Some tour ->
             match tour.Slip with
-            | SS slip -> yield singleQwView dispatch settings tour slip answers isCountdownActive isCountdownFinished
-            | MS (name,slips) -> yield multipleQwView dispatch settings tour name slips answers isCountdownFinished
+            | SS slip -> yield singleQwView dispatch settings tour slip answers isCountdownActive isCountdownFinished l10n
+            | MS (name,slips) -> yield multipleQwView dispatch settings tour name slips answers isCountdownFinished l10n
         | None -> ()
     ]
 
@@ -297,15 +297,15 @@ let answerStatusIcon status txt =
         ]
     ]
 
-let jeopardyControl dispatch jpd readOnly =
+let jeopardyControl dispatch jpd readOnly (l10n:L10n.TeamL10n)=
     p [Class "control"][
         a [classList ["button", true; "has-text-grey-light", not jpd; "has-text-danger", jpd];
-         Title "Jeopardy!"; ReadOnly readOnly; OnClick (fun _ -> dispatch <| ToggleJeopardy 0)][Fa.i [ Fa.Solid.Paw] [str " Jeopardy!" ]]
+         Title l10n.Jeopardy; ReadOnly readOnly; OnClick (fun _ -> dispatch <| ToggleJeopardy 0)][Fa.i [ Fa.Solid.Paw] [str <| " " + l10n.Jeopardy ]]
     ]
 
-let awArea dispatch aw jpd status withChoice readOnly =
+let awArea dispatch aw jpd status withChoice readOnly l10n =
     div [Class "control has-icons-right"][
-        if withChoice then jeopardyControl dispatch jpd readOnly
+        if withChoice then jeopardyControl dispatch jpd readOnly l10n
 
         textarea [ Class "textarea"; MaxLength 64.0;
             ReadOnly readOnly; valueOrDefault aw;
@@ -313,9 +313,9 @@ let awArea dispatch aw jpd status withChoice readOnly =
         answerStatusIcon status aw
     ]
 
-let singleQwView dispatch (settings:Settings) tour slip answers isCountdownActive isCountdownFinished =
+let singleQwView dispatch (settings:Settings) tour slip answers isCountdownActive isCountdownFinished (l10n:L10n.TeamL10n) =
     div[][
-        MainTemplates.singleTourInfo settings.MediaHost tour.Name slip
+        MainTemplates.singleTourInfo settings.MediaHost tour.Name slip l10n.Common
 
         let (txt,jpd) = answers.Get 0
 
@@ -323,12 +323,12 @@ let singleQwView dispatch (settings:Settings) tour slip answers isCountdownActiv
         | X3 -> ()
         | QW slip ->
             if isCountdownActive || isCountdownFinished then
-                label [Class "label"][str "Your answer"]
+                label [Class "label"][str l10n.YourAnswer]
                 match slip.Choices with
                 | None ->
-                    awArea dispatch txt jpd answers.Status slip.Ch isCountdownFinished
+                    awArea dispatch txt jpd answers.Status slip.Ch isCountdownFinished l10n
                 | Some list ->
-                    if slip.Ch then jeopardyControl dispatch jpd isCountdownFinished
+                    if slip.Ch then jeopardyControl dispatch jpd isCountdownFinished l10n
                     br[]
                     div [Class "columns is-centered"][
                         div [Class "column is-half mx-3"][
@@ -350,10 +350,10 @@ let singleQwView dispatch (settings:Settings) tour slip answers isCountdownActiv
         | AW slip ->
             match slip.Aw with
             | OpenAnswer _ ->
-                label [Class "label"][str "Your answer"]
-                awArea dispatch txt jpd answers.Status slip.Ch true
+                label [Class "label"][str l10n.YourAnswer]
+                awArea dispatch txt jpd answers.Status slip.Ch true l10n
             | ChoiceAnswer list ->
-                if slip.Ch then jeopardyControl dispatch jpd true
+                if slip.Ch then jeopardyControl dispatch jpd true l10n
                 br[]
                 div [Class "columns is-centered"][
                     div [Class "column is-half mx-3"][
@@ -381,16 +381,16 @@ let singleQwView dispatch (settings:Settings) tour slip answers isCountdownActiv
                 ]
     ]
 
-let awInput dispatch idx aw jpd status withChoice readOnly =
+let awInput dispatch idx aw jpd status withChoice readOnly (l10n:L10n.TeamL10n) =
     div [Style [MaxWidth "320px"; Display DisplayOptions.InlineBlock]][
         div [Class "field has-addons"][
             if (withChoice) then
                 p [Class "control"][
                     a [classList ["button", true; "has-text-grey-light", not jpd; "has-text-danger", jpd];
-                     Title "Jeopardy!"; ReadOnly readOnly; OnClick (fun _ -> dispatch <| ToggleJeopardy idx)][Fa.i [ Fa.Solid.Paw] [ ]]
+                     Title l10n.Jeopardy; ReadOnly readOnly; OnClick (fun _ -> dispatch <| ToggleJeopardy idx)][Fa.i [ Fa.Solid.Paw] [ ]]
                 ]
             p [Class "control has-icons-right"][
-                input [Class "input"; Type "text"; MaxLength 64.0; Placeholder "Your Answer";
+                input [Class "input"; Type "text"; MaxLength 64.0; Placeholder l10n.YourAnswer;
                     ReadOnly readOnly; valueOrDefault aw; OnChange (fun ev -> dispatch <| UpdateAnswer (idx,ev.Value) )]
 
                 answerStatusIcon status aw
@@ -398,25 +398,25 @@ let awInput dispatch idx aw jpd status withChoice readOnly =
         ]
     ]
 
-let multipleQwView dispatch settings tour name slips answers isCountdownFinished =
+let multipleQwView dispatch settings tour name slips answers isCountdownFinished l10n =
     div [][
         h5 [Class "subtitle is-5"] [str name]
         for (idx,slip) in slips |> List.indexed do
             let (aw, jpd) = answers.Get idx
             match slip with
             | QW slip ->
-                p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
+                p [Class "has-text-weight-semibold"] [str <| sprintf "%s %s.%i" l10n.Question tour.Name (idx + 1)]
                 yield! MainTemplates.mediaEl settings.MediaHost slip.Media true
                 p [] (splitByLines slip.Txt)
-                awInput dispatch idx aw jpd answers.Status slip.Ch isCountdownFinished
+                awInput dispatch idx aw jpd answers.Status slip.Ch isCountdownFinished l10n
                 br[]
                 br[]
 
             | AW slip ->
-                p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
-                awInput dispatch idx aw jpd answers.Status slip.Ch isCountdownFinished
+                p [Class "has-text-weight-semibold"] [str <| sprintf "%s %s.%i" l10n.Question tour.Name (idx + 1)]
+                awInput dispatch idx aw jpd answers.Status slip.Ch isCountdownFinished l10n
                 p [Class "has-text-weight-light is-family-secondary is-size-6"][
-                    str "correct answer: "
+                    str <| l10n.CorrectAnswer + ": "
                     str (slip.Aw.ToRawString().Split('\n').[0])
                 ]
                 yield! MainTemplates.mediaEl settings.MediaHost slip.Media true
@@ -426,13 +426,13 @@ let multipleQwView dispatch settings tour name slips answers isCountdownFinished
             | X3 -> str "x3"
     ]
 
-let historyView dispatch model =
+let historyView dispatch model l10n =
     table [Class "table is-hoverable is-fullwidth"][
         thead [ ] [
             tr [ ] [
                 th [Style [Width "30px"] ] [ str "#" ]
-                th [Style [TextAlign TextAlignOptions.Left]] [ str "Answer" ]
-                th [ ] [ str "Points" ]
+                th [Style [TextAlign TextAlignOptions.Left]] [ str l10n.Answer ]
+                th [ ] [ str l10n.Points ]
             ]
         ]
 
@@ -465,7 +465,7 @@ let historyView dispatch model =
                         td [] []
                         td [ColSpan 2; Style [TextAlign TextAlignOptions.Left]] [
                             span [Class "is-italic has-text-weight-light is-family-secondary is-size-7"][
-                                str "correct answer: "
+                                str <| l10n.CorrectAnswer + ": "
                                 str (aw.QwAw.Split('\n').[0])
                             ]
                         ]
@@ -473,9 +473,9 @@ let historyView dispatch model =
         ]
     ]
 
-let resultsView dispatch (user:TeamUser) model =
+let resultsView dispatch (user:TeamUser) model l10n =
     let currentRes =
         model.TeamResults
         |> List.tryFind (fun r -> r.TeamId = user.TeamId)
 
-    MainTemplates.resultsView currentRes model.TeamResults
+    MainTemplates.resultsView currentRes model.TeamResults l10n.Common

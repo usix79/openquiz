@@ -144,13 +144,13 @@ let footerFixed =
         footer
     ]
 
-let playFooter dispatch history questions results current isCountdownActive secondsLeft =
+let playFooter dispatch history questions results current isCountdownActive secondsLeft (l10n:L10n.CommonL10n) =
         let isLastCall = isCountdownActive && secondsLeft <= 10
         div [Style [Position PositionOptions.Fixed; Bottom "0"; Height "62px"; Width "100%"; BackgroundColor "#FFFFFF"; OverflowX OverflowOptions.Hidden]]  [
             div [Class "tabs is-white is-large is-toggle is-fullwidth"] [
                 ul[][
                     li [classList ["has-text-weight-bold", current = history] ] [
-                        a [OnClick (fun _ -> dispatch history)] [ str "History" ]
+                        a [OnClick (fun _ -> dispatch history)] [ str l10n.MenuHistory ]
                     ]
                     li [classList ["has-text-weight-bold", current = questions]; Style [Height "100%"; Width "33%"]] [
                         a [Style [Height "100%"; JustifyContent (if isLastCall then "left" else "center"); Padding "0"]; OnClick (fun _ -> dispatch questions)] [
@@ -159,14 +159,14 @@ let playFooter dispatch history questions results current isCountdownActive seco
                                 if secondsLeft > 10 then str <| (secondsLeft - 10).ToString()
                                 else
                                     div [Class "has-background-danger"; Style[Height "100%"; Width (sprintf "%i%%" ((10 - secondsLeft + 1) * 10))]][
-                                        span [Class "is-overlay has-text-weight-bold"; Style [Padding "12px"]][str "Last Call"]
+                                        span [Class "is-overlay has-text-weight-bold"; Style [Padding "12px"]][str l10n.MenuLastCall]
                                     ]
                             else
-                                str "Question"
+                                str l10n.MenuQuestion
                         ]
                     ]
                     li [classList ["has-text-weight-bold", current = results ] ] [
-                        a [OnClick (fun _ -> dispatch results)] [ str "Results" ]
+                        a [OnClick (fun _ -> dispatch results)] [ str l10n.MenuResults ]
                     ]
                 ]
             ]
@@ -191,37 +191,37 @@ let playTitle mediaHost quizImg mixlr url =
                 br []
     ]
 
-let playQuiz status msg =
+let playQuiz status msg (l10n:L10n.CommonL10n) =
     div [Class "notification is-white"][
         p [Class "subtitle is-5"][
             match status with
-            | Shared.Setup -> str "Quiz is not started"
-            | Shared.Finished -> str "Quiz is finished"
+            | Shared.Setup -> str l10n.QuizIsNotStarted
+            | Shared.Finished -> str l10n.QuizIsNotFinished
             | _ -> ()
         ]
         p [] (splitByLines msg)
      ]
 
-let singleTourInfo mediaHost tourName (slip:Shared.SingleSlipCard) =
+let singleTourInfo mediaHost tourName (slip:Shared.SingleSlipCard) (l10n:L10n.CommonL10n) =
     div [] [
-        h5 [Class "title is-5"] [ str <| "Question " + tourName]
+        h5 [Class "title is-5"] [ str <| l10n.Question +  " " + tourName]
 
         match slip with
         | Shared.X3 -> ()
         | Shared.QW slip ->
             if slip.Points <> 1m then
-                p[][span [Class "tag"][str (sprintf "%s points" (slip.Points.ToString()))]]
+                p[][span [Class "tag"][str (sprintf "%s %s" (slip.Points.ToString()) l10n.PointsSmall)]]
             yield! mediaEl mediaHost slip.Media true
             p [ Class "has-text-weight-semibold" ] (splitByLines slip.Txt)
         | Shared.AW slip ->
             yield! mediaEl mediaHost slip.Media true
             match slip.Aw with
             | Shared.OpenAnswer txt ->
-                p [ Class "has-text-weight-bold" ] [ str "Answer" ]
+                p [ Class "has-text-weight-bold" ] [ str l10n.Answer ]
                 p [ Class "has-text-weight-semibold" ] (splitByLines txt)
             | Shared.ChoiceAnswer _ -> ()
             if (slip.Com <> "") then
-                p [ Class "has-text-weight-bold" ] [ str "Comment" ]
+                p [ Class "has-text-weight-bold" ] [ str l10n.Comment ]
                 p [ ] (splitByLines slip.Com)
         br[]
     ]
@@ -239,14 +239,14 @@ let resultsRow (res:Shared.TeamResult) style =
         ]
     ]
 
-let resultsView (currentRes:Shared.TeamResult option) (teamResults:Shared.TeamResult list) =
+let resultsView (currentRes:Shared.TeamResult option) (teamResults:Shared.TeamResult list) (l10n:L10n.CommonL10n)=
     table [Class "table is-hoverable is-fullwidth"] [
         thead [ ] [
             yield tr [ ] [
                 th [ ] [ str "#" ]
-                th [ ] [ str "Team" ]
-                th [ ] [ str "Points" ]
-                th [ ] [ str "Place" ]
+                th [ ] [ str l10n.Team ]
+                th [ ] [ str l10n.Points ]
+                th [ ] [ str l10n.Place ]
             ]
 
             match currentRes with

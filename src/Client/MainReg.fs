@@ -89,16 +89,16 @@ let update (api:IMainApi)(user:MainUser) (msg : Msg) (cm : Model) : Model * Cmd<
     | Exn ex -> {cm with Error = ex.Message} |> noCmd
     | _ -> cm |> noCmd
 
-let levelWithRegisterBtn dispatch = [
-    a [Class "button is-primary is-fullwidth"; OnClick (fun _ -> OpenRegForm |> dispatch) ][str "Register"]
+let levelWithRegisterBtn dispatch (l10n : L10n.RegL10n) = [
+    a [Class "button is-primary is-fullwidth"; OnClick (fun _ -> OpenRegForm |> dispatch) ][str l10n.Register]
 ]
 
-let levelWithRegistrationInfo dispatch (quiz : QuizRegRecord) (comp:ExpertCompetition) = [
+let levelWithRegistrationInfo dispatch (quiz : QuizRegRecord) (comp:ExpertCompetition) (l10n : L10n.RegL10n) = [
     table [Class "table"][
         thead[][
             tr[][
-                th[] [str "registered as"]
-                th[] [str "status"]
+                th[] [str l10n.RegisteredAs]
+                th[] [str l10n.Status]
                 th[] []
             ]
         ]
@@ -109,25 +109,25 @@ let levelWithRegistrationInfo dispatch (quiz : QuizRegRecord) (comp:ExpertCompet
                 ]
                 td[] [
                     match comp.TeamStatus with
-                    | New -> span [Class "tag is-warning is-light"][str "pending"]
-                    | Admitted -> span [Class "tag is-success is-light"][str "confirmed"]
-                    | Rejected -> span [Class "tag is-danger is-light"][str "rejected"]
+                    | New -> span [Class "tag is-warning is-light"][str l10n.Pending]
+                    | Admitted -> span [Class "tag is-success is-light"][str l10n.Confirmed]
+                    | Rejected -> span [Class "tag is-danger is-light"][str l10n.Rejected]
                 ]
                 td[][
                     if (quiz.Status = Setup) then
-                        a [Class "button is-small"; Title "Edit"; OnClick (fun _ -> OpenRegForm |> dispatch) ][Fa.i [Fa.Regular.Edit][]]
+                        a [Class "button is-small"; Title l10n.Edit; OnClick (fun _ -> OpenRegForm |> dispatch) ][Fa.i [Fa.Regular.Edit][]]
                 ]
             ]
         ]
     ]
     if comp.TeamStatus = Admitted then
-        a [Class "button is-success is-light is-fullwidth"; Href (urlForTeam quiz.QuizId comp.TeamId comp.EntryToken)][str ("Enter " + quiz.Name)]
+        a [Class "button is-success is-light is-fullwidth"; Href (urlForTeam quiz.QuizId comp.TeamId comp.EntryToken)][str (l10n.Enter + " " + quiz.Name)]
 ]
 
-let levelWithEditForm dispatch settings (quiz : QuizRegRecord) (regForm : RegForm ) = [
+let levelWithEditForm dispatch settings (quiz : QuizRegRecord) (regForm : RegForm ) (l10n : L10n.RegL10n) = [
     div [Class "field has-addons is-light"; Style [Width "100%"]][
         p [classList ["control", true; "is-expanded", true; "is-loading", regForm.IsSending]][
-            input [classList ["input", true; "is-small", true; "is-danger", regForm.Error <> ""]; Type "text"; Placeholder "Team Name"; MaxLength 64.0;
+            input [classList ["input", true; "is-small", true; "is-danger", regForm.Error <> ""]; Type "text"; Placeholder l10n.TeamName; MaxLength 64.0;
                     valueOrDefault regForm.TeamName; Disabled regForm.IsSending; OnChange (fun ev -> RegFromTeamName ev.Value |> dispatch)]
         ]
         let isDisabled = regForm.IsSending || not <| validateForm regForm
@@ -141,7 +141,7 @@ let levelWithEditForm dispatch settings (quiz : QuizRegRecord) (regForm : RegFor
     p [Class "help is-danger"][str regForm.Error]
 ]
 
-let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : Model) =
+let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : Model) (l10n : L10n.RegL10n) =
     section [Class "hero is-shadowless is-fullheight"] [
         div [Class "hero-head"] [
             div [Class "container has-text-centered"][
@@ -162,7 +162,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : M
                 ]
 
                 match model.Quiz with
-                | Some quiz -> yield! quizView dispatch settings quiz model.RegForm
+                | Some quiz -> yield! quizView dispatch settings quiz model.RegForm l10n
                 | None when model.Error <> "" -> span [Class "has-text-danger"][ str model.Error]
                 | None  -> str "Loading ..."
             ]
@@ -171,12 +171,12 @@ let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : M
         MainTemplates.footerHero
     ]
 
-let quizView (dispatch : Msg -> unit) (settings:Settings) (quiz : QuizRegRecord) (regForm : RegForm option) = [
+let quizView (dispatch : Msg -> unit) (settings:Settings) (quiz : QuizRegRecord) (regForm : RegForm option)  (l10n : L10n.RegL10n) = [
     br []
     figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Infra.urlForMediaImgSafe settings.MediaHost quiz.ImgKey ] ]
     br []
     h3 [Class "title is-3"] [str quiz.Name]
-    h4 [Class "subtitle is-4" ] [Fa.i [Fa.Solid.DoorOpen] [ str " registration"] ]
+    h4 [Class "subtitle is-4" ] [Fa.i [Fa.Solid.DoorOpen] [ str <| " " + l10n.Registration] ]
 
     div [Class "notification is-white"][
         p [Class "subtitle is-5"][
@@ -192,7 +192,7 @@ let quizView (dispatch : Msg -> unit) (settings:Settings) (quiz : QuizRegRecord)
 
         p [] (splitByLines quiz.Description)
         if quiz.EventPage <> "" then
-            a[Href quiz.EventPage][str "details"]
+            a[Href quiz.EventPage][str l10n.Details]
         if quiz.Information <> "" then
             br[]
             div [Class "notification is-info"][
@@ -202,11 +202,11 @@ let quizView (dispatch : Msg -> unit) (settings:Settings) (quiz : QuizRegRecord)
 
     div [Style [Width "320px"; Display DisplayOptions.InlineBlock]] [
         match regForm with
-        | Some form ->  yield! levelWithEditForm dispatch settings quiz form
+        | Some form ->  yield! levelWithEditForm dispatch settings quiz form l10n
         | None ->
             match quiz.Comp with
-            | Some comp -> yield! levelWithRegistrationInfo dispatch quiz comp
-            | None when quiz.Status <> Finished -> yield! levelWithRegisterBtn dispatch
+            | Some comp -> yield! levelWithRegistrationInfo dispatch quiz comp l10n
+            | None when quiz.Status <> Finished -> yield! levelWithRegisterBtn dispatch l10n
             | None -> ()
     ]
 ]

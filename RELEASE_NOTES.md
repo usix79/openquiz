@@ -1,8 +1,8 @@
 # Release Notes
 
-## 1.11.0 - 2020-07-16
+## 1.11.0 - 2020-07-17
 
-* Support for mediacontent in the answers (images/audio/video) (up to 2MB per question)
+* Support for mediacontent in the answers (images/audio/video) (up to 2MB)
 * Localized UI for participants (captains, audience, registration) (English, Russian, Ukrainian)
 
 ## 1.10.0 - 2020-07-08

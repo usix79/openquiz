@@ -94,13 +94,13 @@ let update (api:IAudApi) (user:AudUser) (msg : Msg) (cm : Model) : Model * Cmd<M
     | Exn ex -> cm |> error ex.Message |> noCmd
     | _ -> cm |> noCmd
 
-let view (dispatch : Msg -> unit) settings (model : Model) =
+let view (dispatch : Msg -> unit) settings (model : Model) (l10n:L10n.AudienceL10n)=
     match model.Quiz with
-    | Some quiz -> quizView dispatch settings model quiz
+    | Some quiz -> quizView dispatch settings model quiz l10n
     | None when model.Error = "" -> str "Initializing..."
     | None -> str model.Error
 
-let quizView (dispatch : Msg -> unit) settings (model:Model) (quiz:QuizCard) =
+let quizView (dispatch : Msg -> unit) settings (model:Model) (quiz:QuizCard) l10n =
     let serverTime = serverTime model.TimeDiff
     let secondsLeft, isCountdownActive =
         match quiz.TC with
@@ -114,33 +114,33 @@ let quizView (dispatch : Msg -> unit) settings (model:Model) (quiz:QuizCard) =
                 yield MainTemplates.playTitle settings.MediaHost quiz.Img quiz.Mxlr quiz.Url
 
                 yield h3 [Class "title is-3"] [ str quiz.QN ]
-                yield h4 [Class "subtitle is-4" ] [Fa.i [Fa.Solid.Users] [ str " audience"] ]
+                yield h4 [Class "subtitle is-4" ] [Fa.i [Fa.Solid.Users] [ str <| " " + l10n.Audience] ]
 
                 match model.ActiveTab with
-                | History -> yield historyView dispatch model
+                | History -> yield historyView dispatch model l10n
                 | Question ->
                     match quiz.QS with
                     | Live ->
                         match quiz.TC with
                         | Some tour ->
                             match tour.Slip with
-                            | SS slip ->  yield singleQwView settings tour slip
-                            | MS (name,slips) -> yield multipleQwView settings tour name slips
+                            | SS slip ->  yield singleQwView settings tour slip l10n
+                            | MS (name,slips) -> yield multipleQwView settings tour name slips l10n
                         | None -> ()
-                    | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg
-                | Results -> yield MainTemplates.resultsView None model.TeamResults
+                    | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg l10n.Common
+                | Results -> yield MainTemplates.resultsView None model.TeamResults l10n.Common
 
             ]
             p [Class "help is-danger"][ str model.Error ]
             div [ Style [Height "66px"]] []
         ]
 
-        MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft
+        MainTemplates.playFooter (ChangeTab >> dispatch) History Question Results model.ActiveTab isCountdownActive secondsLeft l10n.Common
     ]
 
-let singleQwView (settings:Settings) tour (slip:Shared.SingleSlipCard) =
+let singleQwView (settings:Settings) tour (slip:Shared.SingleSlipCard) l10n =
     div[][
-        MainTemplates.singleTourInfo settings.MediaHost tour.Name slip
+        MainTemplates.singleTourInfo settings.MediaHost tour.Name slip l10n.Common
 
         match slip with
         | X3 -> ()
@@ -188,22 +188,22 @@ let singleQwView (settings:Settings) tour (slip:Shared.SingleSlipCard) =
                 ]
     ]
 
-let multipleQwView (settings:Settings) tour name slips =
+let multipleQwView (settings:Settings) tour name slips l10n =
     div [][
         h5 [Class "subtitle is-5"] [str name]
         for (idx,slip) in slips |> List.indexed do
             match slip with
             | QW slip ->
-                p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
+                p [Class "has-text-weight-semibold"] [str <| sprintf "%s %s.%i" l10n.Question tour.Name (idx + 1)]
                 yield! MainTemplates.mediaEl settings.MediaHost slip.Media true
                 p [] (splitByLines slip.Txt)
                 br[]
                 br[]
 
             | AW slip ->
-                p [Class "has-text-weight-semibold"] [str <| sprintf "Question %s.%i" tour.Name (idx + 1)]
+                p [Class "has-text-weight-semibold"] [str <| sprintf "%s %s.%i" l10n.Question tour.Name (idx + 1)]
                 p [Class "has-text-weight-light is-family-secondary is-size-6"][
-                    str "correct answer: "
+                    str <| l10n.CorrectAnswer + ": "
                     str (slip.Aw.ToRawString().Split('\n').[0])
                 ]
                 yield! MainTemplates.mediaEl settings.MediaHost slip.Media true
@@ -213,12 +213,12 @@ let multipleQwView (settings:Settings) tour name slips =
             | X3 -> str "x3"
     ]
 
-let historyView dispatch model =
+let historyView dispatch model l10n =
     table [Class "table is-hoverable is-fullwidth"][
         thead [ ] [
             tr [ ] [
                 th [Style [Width "30px"] ] [ str "#" ]
-                th [ ] [ str "Correct Answers" ]
+                th [ ] [ str l10n.CorrectAnswers ]
                 th [ ] [ str "" ]
             ]
         ]

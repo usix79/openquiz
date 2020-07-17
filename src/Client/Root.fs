@@ -140,9 +140,15 @@ let view (model : Model) (dispatch : Msg -> unit) =
         | EmptyPage txt, None, None -> str txt
         | MainPage subModel, Some (MainUser user), Some settings -> Main.view (MainMsg >> dispatch) user settings subModel
         | AdminPage subModel, Some (AdminUser user), Some settings -> Admin.view (AdminMsg >> dispatch) user settings subModel
-        | TeamPage subModel, Some (TeamUser user), Some settings -> Team.view (TeamMsg >> dispatch) user settings subModel
-        | RegPage subModel, Some (RegUser user), Some settings -> Reg.view (RegMsg >> dispatch) settings subModel
-        | AudPage subModel, Some (AudUser user), Some settings -> Aud.view (AudMsg >> dispatch) settings subModel
+        | TeamPage subModel, Some (TeamUser user), Some settings ->
+            let l10n = L10n.teamL10n (Infra.getPreferableLangugage())
+            Team.view (TeamMsg >> dispatch) user settings subModel l10n
+        | RegPage subModel, Some (RegUser user), Some settings ->
+            let l10n = L10n.regL10n (Infra.getPreferableLangugage())
+            Reg.view (RegMsg >> dispatch) settings subModel l10n
+        | AudPage subModel, Some (AudUser user), Some settings ->
+            let l10n = L10n.audienceL10n (Infra.getPreferableLangugage())
+            Aud.view (AudMsg >> dispatch) settings subModel l10n
         | _ -> str "Oops"
 
     div [] [pageHtml]

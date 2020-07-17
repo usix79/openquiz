@@ -59,7 +59,9 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
 
 let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : Model) =
     match model.Area with
-    | Public subModel -> MainReg.view (Msg.Reg >> dispatch) user settings subModel
+    | Public subModel ->
+        let l10n = L10n.regL10n (Infra.getPreferableLangugage())
+        MainReg.view (Msg.Reg >> dispatch) user settings subModel l10n
     | Prod subModel -> MainProd.view (Msg.Prod >> dispatch) user settings subModel
     | TermOfUse txt ->
         div[][

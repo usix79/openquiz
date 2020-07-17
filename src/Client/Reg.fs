@@ -38,7 +38,7 @@ let update (api:IRegApi) (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | Exn ex -> cm |> addError ex.Message |> noCmd
     | _ -> cm |> noCmd
 
-let view (dispatch : Msg -> unit) (settings:Settings) (model : Model) =
+let view (dispatch : Msg -> unit) (settings:Settings) (model : Model) (l10n : L10n.RegL10n)=
     section [Class "hero is-shadowless is-fullheight"] [
         div [Class "hero-head"] [
             div [Class "container has-text-centered"][
@@ -49,12 +49,12 @@ let view (dispatch : Msg -> unit) (settings:Settings) (model : Model) =
 
                 div[][
                     match model.Quiz with
-                    | Some quiz -> yield! quizView dispatch settings quiz
+                    | Some quiz -> yield! quizView dispatch settings quiz l10n
                     | None -> ()
                 ]
 
                 a [Href "/login"; Class "button thickbox"; Style [Margin "5px"]; Target "_self"] [
-                    str "Please login to succeed registration"
+                    str l10n.Procceed
                 ]
             ]
         ]
@@ -70,7 +70,7 @@ let view (dispatch : Msg -> unit) (settings:Settings) (model : Model) =
         MainTemplates.footerHero
     ]
 
-let quizView (dispatch : Msg -> unit) (settings:Settings) (quiz:QuizRecord) = [
+let quizView (dispatch : Msg -> unit) (settings:Settings) (quiz:QuizRecord) l10n = [
     br []
     figure [ Class "image is-128x128"; Style [Display DisplayOptions.InlineBlock] ] [ img [ Src <| Infra.urlForMediaImgSafe settings.MediaHost quiz.ImgKey ] ]
     br []
@@ -91,6 +91,6 @@ let quizView (dispatch : Msg -> unit) (settings:Settings) (quiz:QuizRecord) = [
         p [] (splitByLines quiz.Description)
 
         if quiz.EventPage <> "" then
-            a[Href quiz.EventPage][str "details"]
+            a[Href quiz.EventPage][str l10n.Details]
      ]
 ]
