@@ -148,7 +148,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
             Reg.view (RegMsg >> dispatch) settings subModel l10n
         | AudPage subModel, Some (AudUser user), Some settings ->
             let l10n = L10n.audienceL10n (Infra.getPreferableLangugage())
-            Aud.view (AudMsg >> dispatch) settings subModel l10n
+            Aud.view (AudMsg >> dispatch) settings subModel user l10n
         | _ -> str "Oops"
 
     div [] [pageHtml]

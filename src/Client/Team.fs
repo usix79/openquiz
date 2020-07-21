@@ -37,7 +37,6 @@ type Msg =
     | QuizChanged of QuizChangedEvent
     | AnswerResponse of RESP<unit>
     | GetHistoryResp of RESP<TeamHistoryRecord list>
-    | GetResultsResp of RESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
     | ConnectionErrors of string array
 
 
@@ -49,8 +48,6 @@ type Model = {
     Error : string
     TimeDiff: TimeSpan
     History : TeamHistoryRecord list
-    TeamResults : TeamResult list
-    QuestionResults : QuestionResult list
 } with
     member x.CurrentTour =
         match x.Quiz with
@@ -191,7 +188,7 @@ let init (api:ITeamApi)  (user:TeamUser) : Model*Cmd<Msg> =
     AppSync.configure user.AppSyncCfg.Endpoint user.AppSyncCfg.Region user.AppSyncCfg.ApiKey
     {IsActive = true; Quiz = None; Answers = None; ActiveTab = Question;
         Error = ""; TimeDiff = TimeSpan.Zero;
-        History = []; TeamResults = []; QuestionResults = []} |> apiCmd api.getState () QuizCardResp Exn
+        History = []} |> apiCmd api.getState () QuizCardResp Exn
 
 let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
@@ -204,9 +201,8 @@ let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) : Model * Cmd
     | ToggleJeopardy qwIdx -> cm |> toggleJpd qwIdx |> saveAnswer user |> noCmd
     | ChangeTab Question -> {cm with ActiveTab = Question} |> noCmd
     | ChangeTab History -> {cm with ActiveTab = History} |> apiCmd api.getHistory () GetHistoryResp Exn
-    | ChangeTab Results -> {cm with ActiveTab = Results} |> apiCmd api.getResults () GetResultsResp Exn
+    | ChangeTab Results -> {cm with ActiveTab = Results} |> noCmd
     | GetHistoryResp {Value = Ok res} -> {cm with History = res} |> noCmd
-    | GetResultsResp {Value = Ok res} -> {cm with TeamResults = res.Teams; QuestionResults = res.Questions} |> noCmd
     | ConnectionErrors errors -> cm |> error (String.Join("/", errors)) |> noCmd
     | Exn ex when ex.Message = Errors.SessionIsNotActive ->
         unsubscribe cm
@@ -263,7 +259,7 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) quiz
                             match quiz.QS, model.Answers with
                             | Live, Some answers -> yield quiestionView dispatch settings quiz answers isCountdownActive isCountdownFinished l10n
                             | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg l10n.Common
-                        | Results -> yield resultsView dispatch user model l10n
+                        | Results -> yield MainTemplates.resultsViewEmb user.QuizId quiz.LT (Some user.TeamId)
                     ]
                 | Rejected -> div [Class "notification is-white"][span[Class "has-text-danger has-text-weight-bold"][str l10n.RegistrationHasBeenRejected]]
             ]
@@ -473,9 +469,3 @@ let historyView dispatch model l10n =
         ]
     ]
 
-let resultsView dispatch (user:TeamUser) model l10n =
-    let currentRes =
-        model.TeamResults
-        |> List.tryFind (fun r -> r.TeamId = user.TeamId)
-
-    MainTemplates.resultsView currentRes model.TeamResults l10n.Common

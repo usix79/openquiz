@@ -13,6 +13,7 @@
     <Compile Include="DataLibrary.fs" />
     <Compile Include="Data2.fs" />
     <Compile Include="Presenter.fs" />
+    <Compile Include="Agents.fs" />
     <Compile Include="SecurityService.fs" />
     <Compile Include="MainService.fs" />
     <Compile Include="AdminService.fs" />

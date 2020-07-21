@@ -52,8 +52,7 @@ let api (context:HttpContext) : IAdminApi =
         nextQuestion = ex "nextQuestion" nextQuestion
         nextQuestionPart = ex "nextQuestionPart" nextQuestionPart
         getAnswers = ex "getAnswers" getAnswers
-        updateResults = ex "updateResults" updateResults
-        getResults = ex "getResults" getResults
+        updateResults = ex "updateResults" (updateResults (Config.getMediaBucketName cfg))
         getListenToken = ex "getListenToken" getListenToken
         changeStreamUrl = ex  "changeStreamUrl" changeStreamUrl
     }
@@ -258,7 +257,7 @@ let getAnswers quiz _ =
         Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
         |> AR.map (fun teams -> Admin.AnswersBundle quiz teams))
 
-let updateResults quiz req =
+let updateResults bucketName quiz req  =
     let logic qwKey res team =
         team
         |> Domain.Teams.updateResult qwKey res DateTime.UtcNow
@@ -268,12 +267,7 @@ let updateResults quiz req =
     |> List.map (fun r -> Data2.Teams.update {QuizId = quiz.QuizId; TeamId = r.TeamId} (logic (qwKeyToDomain r.QwKey) r.Res))
     |> Async.Sequential
     |> Async.map (fun _ -> Ok ())
-
-let getResults quiz _ =
-    Data2.Quizzes.get quiz.QuizId
-    |> AR.bind (fun quiz ->
-        Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
-        |> AR.map (fun teams -> {|Teams = teams |> teamResults true; Questions = questionResults quiz|}))
+    |> AR.side (fun _ -> Agents.PublishResults (quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
 
 let getListenToken quiz _ =
     quiz.ListenToken |> AR.retn

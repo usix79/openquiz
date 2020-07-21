@@ -192,31 +192,6 @@ let slipCard status qwIdx qwPartIdx (slip:Slip) : SlipCard =
         // TODO: add next slip if qwPartIdx > 0
         (name,cards) |> MS
 
-let teamResults withHistory (teams: Team list) : TeamResult list =
-    let mutable currentPlace = 1
-    [for (points,teams) in
-        teams
-        |> List.filter (fun t -> t.Dsc.Status = Admitted)
-        |> List.groupBy (fun t -> t.Points)
-        |> List.sortByDescending (fun (points, _) -> points) do
-            let len = teams.Length
-
-            for team in teams do
-                {TeamId = team.Dsc.TeamId; TeamName = team.Dsc.Name; Points = points;
-                    PlaceFrom = currentPlace; PlaceTo = currentPlace + len - 1;
-                        History = if withHistory then history team else Map.empty}
-
-            currentPlace <- currentPlace + len
-    ]
-
-let questionResults (quiz:Quiz) : QuestionResult list =
-    quiz.Tours
-    |> List.rev
-    |> List.mapi (fun tourIdx tour ->
-        match tour.Slip with
-        | Single _ -> [{Key = {TourIdx = tourIdx; QwIdx = 0}; Name = qwName tour 0}]
-        | Multiple (_, slips) -> slips |> List.mapi (fun idx slip -> {Key = {TourIdx = tourIdx; QwIdx = idx}; Name = qwName tour idx})
-    )|> List.concat
 
 let history (team : Team) =
     team.Answers
@@ -352,7 +327,7 @@ module Admin =
                 )|> Map.ofList
         }
 
-    let qwRecord tourIdx tour qwIdx slip : AdminModels.QuestionRecord =
+    let qwRecord tourIdx tour qwIdx (slip:SingleSlip) : AdminModels.QuestionRecord =
         {
             Key = {TourIdx = tourIdx; QwIdx = qwIdx}
             Nm = qwName tour qwIdx

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="Free service for producing online quizzes.">
+        <meta name="keywords"
+            content="quiz, quizzes, www, online quizzes, free quizzes, quizzes service, quizzes platform, квиз, чгк, что где когда, программа для чгк, онлайн-чгк, вопросы чгк, платформа для квизов, обработка ответов чгк">
+        <meta name="author" content="Serhii Sabirov">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="Open Quiz">
+        <meta property="og:description" content="Free service for producing online quizzes.">
+        <meta property="og:url" content="https://www.open-quiz.com">
+        <meta property="og:site_name" content="Open Quiz">
+        <meta property="fb:app_id" content="538011207113822" />
+        <title>Open Quiz - Results</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.8.0/css/bulma.min.css">
+        <link rel="icon" href="favicon.png" sizes="32x32" type="image/png">
+        <link rel="stylesheet" type="text/css" href="/jquery-stickytable.css">
+    </head>
+<body>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="/jquery-stickytable.min.js"></script>
+    <div id="fb-root"></div>
+    <script async defer crossorigin="anonymous"
+        src="https://connect.facebook.net/en_GB/sdk.js#xfbml=1&autoLogAppEvents=1&version=v6.0&appId=538011207113822"></script>
+    <section class="hero is-shadowless is-fullheight">
+        <div class="hero-head" style="display: none;">
+            <div class="container">
+                <nav class="navbar is-transparent is-spaced">
+                    <div class="navbar-brand">
+                            <div class="navbar-item navbar-logo" style="margin-right: auto;">
+                                <figure class="image is-128x128"><img id="quizLogo" src="/logo.png" alt="logo" style="height: 128px; width: 128px; max-height: 128px"></figure>
+                            </div>
+                            <div id="quizName" class="navbar-item is-uppercase" style="margin: 20px; flex-shrink: initial;">
+                                Quiz Name
+                            </div>
+                    </div>
+                    <div class="navbar-menu">
+                    </div>
+                    <div class="navber-item" style="display: flex; align-items: center; margin-left: 5px;">
+                        <div class="fb-like" data-href="https://www.open-quiz.com" data-width=""
+                            data-layout="button_count" data-action="like" data-size="large" data-share="true"
+                            data-colorscheme="light"></div>
+                    </div>
+                </nav>
+            </div>
+        </div>
+        <div class="hero-body">
+            <div id="mainContent" class="container" style="margin-bottom: auto">
+                <h1 class="title">Welcome to the Open Quiz!</h1>
+            </div>
+        </div>
+        <div class="hero-foot has-background-dark has-text-grey-light" style="display: none;">
+            <div class="container" style="text-align: center">&#169;<span class="is-hidden-touch"> Serhii Sabirov</span>
+                2020 - <a href="/terms.html" class="has-text-grey-light">Terms</a> - <a href="/disclaimer.html"
+                    class="has-text-grey-light">Disclaimer</a> - <a href="/privacy-policy-en.html"
+                    class="has-text-grey-light">Privacy</a> - <a href="https://t.me/open_quiz"
+                    class="has-text-grey-light">Contact</a></div>
+        </div>
+    </section>
+<script src="results.js"></script>
+</body>
+</html>

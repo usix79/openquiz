@@ -310,6 +310,7 @@ let card (dispatch : Msg -> unit) (appSettings:Settings) (card : MainModels.Quiz
                             urlForAdmin card.QuizId card.AdminToken |> link "Admin"
                             urlForReg card.QuizId card.RegToken |> link "Registration"
                             urlForAud card.QuizId card.ListenToken |> link "Audience"
+                            urlForResults card.QuizId card.Name card.ImgKey card.ListenToken |> link "Results Page"
                         ]
                     ]
                 ]

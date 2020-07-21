@@ -1,7 +1,9 @@
 module Bucket
 
+open System.IO
 open Amazon.S3;
 open Amazon.S3.Model;
+open Serilog
 
 open Shared
 open Common
@@ -16,3 +18,26 @@ let getSignedUrl bucketName (cat:MediaCategory) =
             Key = Infra.s3KeyForMedia key,
             Verb = HttpVerb.PUT,
             Expires = System.DateTime.UtcNow.AddDays(1.0)))
+
+let uploadFile bucketName (key:string) (fileType:string) (fileBody : byte[]) : Async<Result<unit, string>> =
+
+    use client = new AmazonS3Client()
+
+    let req =
+        PutObjectRequest (
+            BucketName = bucketName,
+            Key = key,
+            InputStream = new MemoryStream(fileBody),
+            ContentType = fileType)
+
+    client.PutObjectAsync(req)
+    |> Async.AwaitTask
+    |> Async.Catch
+    |> Async.map (
+        function
+        | Choice1Of2 resp ->
+            if resp.HttpStatusCode = System.Net.HttpStatusCode.OK then Ok ()
+            else Error <| resp.HttpStatusCode.ToString()
+        | Choice2Of2 ex ->
+            Log.Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
+            Error ex.Message)

@@ -51,7 +51,6 @@ let loginHandler _next (ctx: HttpContext)  =
         return! redirectTo false url _next ctx
     }
 
-
 let appRouter =
     choose [
         route "/ping" >=> text ("pong")
@@ -105,14 +104,7 @@ let configureServices (services : IServiceCollection) =
 [<EntryPoint>]
 let main _ =
     printfn "Working directory - %s" (Directory.GetCurrentDirectory())
-
     printfn "ulimit -a \n%s" (Diag.run "ulimit -a")
-
-    // async{
-    //     while true do
-    //         Diag.status()
-    //         do! Async.Sleep(1000)
-    // } |> Async.Start
 
     let host =
         WebHost

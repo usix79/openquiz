@@ -226,44 +226,10 @@ let singleTourInfo mediaHost tourName (slip:Shared.SingleSlipCard) (l10n:L10n.Co
         br[]
     ]
 
-let resultsRow (res:Shared.TeamResult) style =
-    tr [Style style] [
-        td [ ][ str <| res.TeamId.ToString()]
-        td [ ][ str res.TeamName]
-        td [ ][ str <| res.Points.ToString()]
-        td [] [
-            if res.PlaceFrom = res.PlaceTo
-            then res.PlaceFrom.ToString()
-            else sprintf "%i-%i" res.PlaceFrom res.PlaceTo
-            |> str
-        ]
-    ]
 
-let resultsView (currentRes:Shared.TeamResult option) (teamResults:Shared.TeamResult list) (l10n:L10n.CommonL10n)=
-    table [Class "table is-hoverable is-fullwidth"] [
-        thead [ ] [
-            yield tr [ ] [
-                th [ ] [ str "#" ]
-                th [ ] [ str l10n.Team ]
-                th [ ] [ str l10n.Points ]
-                th [ ] [ str l10n.Place ]
-            ]
-
-            match currentRes with
-            | Some res ->
-                 yield resultsRow res [FontWeight "bold"]
-                 yield tr[][td[][];td[][];td[][];td[][]]
-            | None -> ()
-        ]
-        tbody [] [
-            for res in teamResults |> List.sortByDescending (fun r -> r.Points, -r.TeamId) do
-                let style =
-                    match currentRes with
-                    | Some r when r.TeamId = res.TeamId -> [FontWeight "bold"]
-                    | _ -> []
-
-                yield resultsRow res style
-        ]
+let resultsViewEmb quizId listenToken teamId =
+    div [Class "content"; Style []][
+        iframe [Src (Common.urlForResultsIframe quizId listenToken teamId); Style [Width "100%"; Height "5000px"; OverflowX OverflowOptions.Hidden; OverflowY OverflowOptions.Hidden]][]
     ]
 
 let deleteForm dispatch placeholder validText inputText isSending error toggleMsg updateMsg deleteMsg =

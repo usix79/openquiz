@@ -281,7 +281,7 @@ let loginAdminUser secret quizId token =
     |> AR.bind (fun quiz ->
         if quiz.AdminToken = System.Web.HttpUtility.UrlDecode token then
             let claims = [Claim(CustomClaims.Role, CustomRoles.Admin); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
-            let user = AdminUser {QuizId = quiz.QuizId; QuizName = quiz.Name; QuizImg = quiz.ImgKey}
+            let user = AdminUser {QuizId = quiz.QuizId; QuizName = quiz.Name; QuizImg = quiz.ImgKey; ListenToken = quiz.ListenToken}
             loginResp secret claims user
         else Error "Wrong entry token" |> AR.fromResult)
 

@@ -32,7 +32,6 @@ let api (context:HttpContext) : ITeamApi =
         getState = ex "getState" getState
         answers = ex "answers" answers
         getHistory = ex "getHistory" getHistory
-        getResults = ex "getResults" getResults
     }
 
     api
@@ -72,9 +71,3 @@ let getHistory team _ =
     |> AsyncResult.bind (fun quiz ->
         Data2.Teams.get team.Key
         |> AsyncResult.map (fun team -> Teams.quizHistory quiz team))
-
-let getResults team _ =
-    Data2.Quizzes.get team.QuizId
-    |> AsyncResult.bind (fun quiz ->
-        Data2.Teams.getAllInQuiz team.QuizId
-        |> AsyncResult.map (fun teams -> {|Teams = teams |> teamResults false; Questions = questionResults quiz|}))

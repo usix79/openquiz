@@ -33,7 +33,6 @@ let api (context:HttpContext) : IAudApi =
     let api : IAudApi = {
         getQuiz = ex "getState" getQuiz
         getHistory = ex "getHistory" getHistory
-        getResults = ex "getResults" getResults
     }
 
     api
@@ -45,9 +44,3 @@ let getQuiz quiz _ =
 let getHistory quiz _ =
     Data2.Quizzes.get quiz.QuizId
     |> AsyncResult.map Audience.quizHistory
-
-let getResults quiz _ =
-    Data2.Quizzes.get quiz.QuizId
-    |> AsyncResult.bind (fun quiz ->
-        Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
-        |> AsyncResult.map (fun teams -> {|Teams = teams |> teamResults false; Questions = questionResults quiz|}))

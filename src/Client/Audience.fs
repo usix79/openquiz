@@ -20,7 +20,6 @@ type Msg =
     | QuizChanged of QuizChangedEvent
     | CountdownTick of {|QwIndex: int|}
     | GetHistoryResp of RESP<HistoryRecord list>
-    | GetResultsResp of RESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
     | ConnectionErrors of string array
     | Exn of exn
 
@@ -30,8 +29,6 @@ type Model = {
     Error : string
     TimeDiff: TimeSpan
     History : HistoryRecord list
-    TeamResults : TeamResult list
-    QuestionResults : QuestionResult list
 } with
     member x.CurrentQuestion =
         match x.Quiz with
@@ -78,7 +75,7 @@ let updateQuiz (f : QuizCard -> QuizCard) model  =
 let init (api:IAudApi) (user:AudUser): Model * Cmd<Msg> =
     AppSync.configure user.AppSyncCfg.Endpoint user.AppSyncCfg.Region user.AppSyncCfg.ApiKey
     {Quiz = None; ActiveTab = Question; Error = ""; TimeDiff = TimeSpan.Zero;
-        History = []; TeamResults = []; QuestionResults = []} |> apiCmd api.getQuiz () GetQuizRsp Exn
+        History = []} |> apiCmd api.getQuiz () GetQuizRsp Exn
 
 let update (api:IAudApi) (user:AudUser) (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
@@ -87,20 +84,19 @@ let update (api:IAudApi) (user:AudUser) (msg : Msg) (cm : Model) : Model * Cmd<M
     | QuizChanged evt -> cm |> updateQuiz (fun quiz -> {quiz with QS = evt.QS; TC = evt.T; Url = evt.Url}) |> noCmd |> setupCountdown
     | ChangeTab Question -> {cm with ActiveTab = Question} |> ok |> noCmd
     | ChangeTab History -> {cm with ActiveTab = History} |> ok |> apiCmd api.getHistory () GetHistoryResp Exn
-    | ChangeTab Results -> {cm with ActiveTab = Results} |> ok |> apiCmd api.getResults () GetResultsResp Exn
+    | ChangeTab Results -> {cm with ActiveTab = Results} |> ok |> noCmd
     | GetHistoryResp {Value = Ok res} -> {cm with History = res} |> noCmd
-    | GetResultsResp {Value = Ok res} -> {cm with TeamResults = res.Teams; QuestionResults = res.Questions} |> noCmd
     | Err txt -> cm |> error txt |> noCmd
     | Exn ex -> cm |> error ex.Message |> noCmd
     | _ -> cm |> noCmd
 
-let view (dispatch : Msg -> unit) settings (model : Model) (l10n:L10n.AudienceL10n)=
+let view (dispatch : Msg -> unit) settings (model : Model) (user:AudUser) (l10n:L10n.AudienceL10n)=
     match model.Quiz with
-    | Some quiz -> quizView dispatch settings model quiz l10n
+    | Some quiz -> quizView dispatch settings model user.QuizId quiz l10n
     | None when model.Error = "" -> str "Initializing..."
     | None -> str model.Error
 
-let quizView (dispatch : Msg -> unit) settings (model:Model) (quiz:QuizCard) l10n =
+let quizView (dispatch : Msg -> unit) settings (model:Model) (quizId:int) (quiz:QuizCard) l10n =
     let serverTime = serverTime model.TimeDiff
     let secondsLeft, isCountdownActive =
         match quiz.TC with
@@ -128,7 +124,7 @@ let quizView (dispatch : Msg -> unit) settings (model:Model) (quiz:QuizCard) l10
                             | MS (name,slips) -> yield multipleQwView settings tour name slips l10n
                         | None -> ()
                     | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg l10n.Common
-                | Results -> yield MainTemplates.resultsView None model.TeamResults l10n.Common
+                | Results -> yield MainTemplates.resultsViewEmb  quizId quiz.LT None
 
             ]
             p [Class "help is-danger"][ str model.Error ]

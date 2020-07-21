@@ -67,6 +67,7 @@ type AdminUser = {
     QuizId : int
     QuizName : string
     QuizImg : string
+    ListenToken : string
 }
 
 type AudUser = {
@@ -330,20 +331,6 @@ type PackageCard = {
  with
     member x.GetSlip idx = x.Slips |> List.tryItem idx
 
-type TeamResult = {
-    TeamId : int
-    TeamName : string
-    Points : decimal
-    PlaceFrom : int
-    PlaceTo : int
-    History : Map<QwKey, decimal>
-}
-
-type QuestionResult = {
-    Key : QwKey
-    Name : string
-}
-
 module RegModels =
     type QuizRecord = {
         QuizId : int
@@ -606,9 +593,6 @@ module Infra =
     let routeBuilder clientPath (typeName: string) (methodName: string) =
         sprintf "%s/app/api/%s/%s" clientPath typeName methodName
 
-    let sseUrl quizId lastQuizVersion listenToken =
-        sprintf "/sse?quiz=%i&start=%i&token=%s" quizId lastQuizVersion listenToken
-
     let s3KeyForMedia key =
         sprintf "%s/%s" prefix key
 
@@ -623,6 +607,8 @@ module Infra =
 
     let defaultMediaImg256 = "logo256.png"
     let defaultMediaImg = "logo.png"
+
+
 
 type ISecurityApi = {
     login : REQ<LoginReq> -> ARESP<{|Token: string; RefreshToken: string; User: User; Settings: Settings|}>
@@ -674,7 +660,6 @@ type IAdminApi = {
     nextQuestionPart : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     getAnswers : REQ<unit> -> ARESP<AdminModels.AnswersBundle>
     updateResults : REQ<{|TeamId: int; QwKey: QwKey; Res: decimal option |} list> -> ARESP<unit>
-    getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
     getListenToken : REQ<unit> -> ARESP<string>
 }
 
@@ -683,7 +668,6 @@ type ITeamApi = {
     takeActiveSession : REQ<unit> -> ARESP<TeamModels.QuizCard>
     answers : REQ<Map<QwKey,(string*bool)>> -> ARESP<unit>
     getHistory : REQ<unit> -> ARESP<TeamModels.TeamHistoryRecord list>
-    getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
 }
 
 type IRegApi = {
@@ -693,5 +677,4 @@ type IRegApi = {
 type IAudApi = {
     getQuiz : REQ<unit> -> ARESP<AudModels.QuizCard>
     getHistory : REQ<unit> -> ARESP<AudModels.HistoryRecord list>
-    getResults : REQ<unit> -> ARESP<{|Teams: TeamResult list; Questions : QuestionResult list|}>
 }

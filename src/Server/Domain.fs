@@ -535,3 +535,73 @@ module Teams =
         team |> updateAnswer qwIdx (fun aw ->
             {aw with Result = res; IsAutoResult = false; UpdateTime = Some now}, true
         )
+
+type TeamResult = {
+    TeamId : int
+    TeamName : string
+    Points : decimal
+    PlaceFrom : int
+    PlaceTo : int
+    Details : Map<QwKey, decimal>
+}
+
+type QuestionResult = {
+    Key : QwKey
+    Name : string
+}
+
+type Results = {
+    Teams : TeamResult list
+    Questions : QuestionResult list
+}
+
+module Results =
+    let private questionName tour qwIdx =
+        match tour.Slip with
+        | Single _ -> tour.Name
+        | _ -> sprintf "%s.%i" tour.Name (qwIdx + 1)
+
+    let questionResults quiz =
+        quiz.Tours
+        |> List.rev
+        |> List.mapi (fun tourIdx tour ->
+            match tour.Slip with
+            | Single _ ->
+                let key = {TourIdx = tourIdx; QwIdx = 0}
+                [{Key = key; Name = questionName tour 0}]
+            | Multiple (_, slips) -> slips |> List.mapi (fun idx slip ->
+                let key = {TourIdx = tourIdx; QwIdx = idx}
+                {Key = key; Name = questionName tour idx})
+        )|> List.concat
+
+    let teamDetails (team : Team) =
+        team.Answers
+        |> Map.toList
+        |> List.choose (fun (key,aw) -> aw.Result |> Option.bind (fun res -> Some (key,res)))
+        |> Map.ofList
+
+    let teamResults teams =
+        let mutable currentPlace = 1
+        [for (points,teams) in
+            teams
+            |> List.filter (fun t -> t.Dsc.Status = Admitted)
+            |> List.groupBy (fun t -> t.Points)
+            |> List.sortByDescending (fun (points, _) -> points) do
+                let len = teams.Length
+
+                for team in teams do
+                    {TeamId = team.Dsc.TeamId;
+                        TeamName = team.Dsc.Name;
+                        Points = points;
+                        PlaceFrom = currentPlace;
+                        PlaceTo = currentPlace + len - 1;
+                        Details = teamDetails team }
+
+                currentPlace <- currentPlace + len
+        ]
+
+    let results (quiz:Quiz) (teams:Team list) : Results =
+        {
+            Questions = questionResults quiz
+            Teams = teamResults teams
+        }

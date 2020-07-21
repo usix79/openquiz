@@ -1,0 +1,41 @@
+/**
+ * jQuery Sticky Table Headers - v3.0.0
+ * https://github.com/jpchip/stickytable
+ */
+.sticky-wrap {
+	overflow-x: auto;
+	overflow-y: hidden;
+	position: relative;
+	width: 100%;
+}
+.sticky-wrap .sticky-thead,
+.sticky-wrap .sticky-col,
+.sticky-wrap .sticky-intersect {
+	opacity: 0;
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 50;
+	width: auto; /* Prevent table from stretching to full size */
+}
+	.sticky-wrap .sticky-thead {
+		/*box-shadow: 0 0.25em 0.1em -0.1em rgba(0,0,0,.125);*/
+		z-index: 100;
+		width: 100%; /* Force stretch */
+	}
+	.sticky-wrap .sticky-intersect {
+		opacity: 1;
+		z-index: 150;
+
+    }
+
+    .sticky-wrap td,
+.sticky-wrap th {
+	box-sizing: border-box;
+}
+
+/* assumes container element has set height... */
+.sticky-wrap.overflow-y {
+	overflow-y: auto;
+	max-height:100%;
+}

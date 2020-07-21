@@ -80,6 +80,15 @@ let urlForReg quizId token =
 let urlForAud quizId token =
      sprintf "%s?who=aud&quiz=%d&token=%s" (Infra.locationFullPath ()) quizId token
 
+let urlForResults quizId quizName quizImgKey token =
+     sprintf "/results.html?who=res&quiz=%d&quizName=%s&quizImg=%s&token=%s" quizId quizName quizImgKey token
+
+let urlForResultsIframe quizId token teamId =
+     let url = sprintf "/results.html?who=emb&quiz=%d&token=%s" quizId token
+     match teamId with
+     | Some id -> url + (sprintf "&teamId=%d" id)
+     | None -> url
+
 let splitByLines (txt:string) =
     [for l in txt.Split ([|'\n'|]) do
         str l
@@ -459,7 +468,6 @@ module Infra =
                 nextQuestionPart = x.Wrap adminApi.nextQuestionPart
                 getAnswers = x.Wrap adminApi.getAnswers
                 updateResults = x.Wrap adminApi.updateResults
-                getResults = x.Wrap adminApi.getResults
                 getListenToken = x.Wrap adminApi.getListenToken
             }
 
@@ -469,7 +477,6 @@ module Infra =
                 takeActiveSession = x.Wrap teamApi.takeActiveSession
                 answers = x.Wrap teamApi.answers
                 getHistory = x.Wrap teamApi.getHistory
-                getResults = x.Wrap teamApi.getResults
             }
 
         member x.CreateRegApi () =
@@ -481,5 +488,4 @@ module Infra =
             {
                 getQuiz = x.Wrap audApi.getQuiz
                 getHistory = x.Wrap audApi.getHistory
-                getResults = x.Wrap audApi.getResults
             }
