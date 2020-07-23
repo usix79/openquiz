@@ -32,6 +32,7 @@ type Msg =
     | UpdateQwPoints of key:QwKey * txt:string
     | UpdateQwJpdPoints of key:QwKey * txt:string
     | UpdateQwWithChoice of key:QwKey * bool
+    | UpdateQwEOT of key:QwKey * bool
     | NextQw
     | NextQwPart
     | Start
@@ -88,7 +89,7 @@ let setSlipIdx txt model =
             |> updateCard (fun q -> {q with PackageSlipIdx = if id <> -1 then Some id else None})
             |> (fun model ->
                     match pkg.GetSlip id with
-                    | Some slip -> model |> updateTour (fun q -> {q with Slip = slip; QwIdx = 0; QwPartIdx = 0})
+                    | Some slip -> model |> updateTour (fun q -> {q with Slip = slip; QwIdx = 0; QwPartIdx = 0; Name = if slip.Caption <> "" then slip.Caption else q.Name})
                     | None -> model
             )
         | None -> model
@@ -156,6 +157,7 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | UpdateQwPoints (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Points = System.Decimal.Parse(txt)}) |> noCmd
     | UpdateQwJpdPoints (key,txt) -> cm |> updateSlip key (fun slip -> {slip with JeopardyPoints = ofDecimal (Some txt) }) |> noCmd
     | UpdateQwWithChoice (key,v) -> cm |> updateSlip key (fun slip -> {slip with WithChoice = v}) |> noCmd
+    | UpdateQwEOT (key,v) -> cm |> updateSlip key (fun slip -> {slip with EndOfTour = v}) |> noCmd
     | NextQw -> cm |> loading |> apiCmd api.nextQuestion cm.Quiz.Value QuizCardResp Exn
     | NextQwPart -> cm |> loading |> apiCmd api.nextQuestionPart cm.Quiz.Value QuizCardResp Exn
     | Start -> cm |> loading |> apiCmd api.startCountDown cm.Quiz.Value QuizCardResp Exn
@@ -311,7 +313,7 @@ let cmtTextArea dispatch key txt isReadOnly =
         ]
     ]
 
-let singleSlipEl dispatch settings status (qwIdx:int) (slip:SingleSlip) nextQwPartIdx isReadOnly =
+let singleSlipEl dispatch settings status (qwIdx:int) (slip:SingleSlip) nextQwPartIdx isReadOnly isFromMultislip =
     let key = {TourIdx = -1; QwIdx = qwIdx}
     div [][
 
@@ -329,6 +331,12 @@ let singleSlipEl dispatch settings status (qwIdx:int) (slip:SingleSlip) nextQwPa
                     Checked slip.WithChoice; Disabled isReadOnly; OnChange (fun ev -> UpdateQwWithChoice (key, (ev.Checked)) |> dispatch)]
                 str " with choice"
             ]
+            if not isFromMultislip then
+                label [Class "checkbox"][
+                    input [Type "checkbox";
+                        Checked slip.EndOfTour; Disabled isReadOnly; OnChange (fun ev -> UpdateQwEOT (key, (ev.Checked)) |> dispatch)]
+                    str " end of tour"
+                ]
         ]
 
         match slip.Question with
@@ -383,7 +391,7 @@ let multipleSlipEl dispatch settings status (name:string) (slips:SingleSlip list
                     tr[][
                         for (idx,slip) in slips |> List.indexed do
                             td [classList ["has-background-success", idx = nextQwIdx ]][
-                                singleSlipEl dispatch settings status idx slip 0 (isReadOnly || (idx < nextQwIdx))
+                                singleSlipEl dispatch settings status idx slip 0 (isReadOnly || (idx < nextQwIdx)) true
                             ]
                     ]
                 ]
@@ -433,6 +441,6 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (settings:Settings) (tour :
         hr[Class "has-background-grey"]
 
         match tour.Slip with
-        | Single slip -> singleSlipEl dispatch settings tour.Status 0 slip tour.QwPartIdx isReadOnly
+        | Single slip -> singleSlipEl dispatch settings tour.Status 0 slip tour.QwPartIdx isReadOnly false
         | Multiple (name,slips) -> multipleSlipEl dispatch settings tour.Status name slips tour.QwIdx tour.QwPartIdx isReadOnly
     ]

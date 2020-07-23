@@ -234,6 +234,10 @@ type Slip =
     | Single of SingleSlip
     | Multiple of string * SingleSlip list
 with
+    member x.Caption =
+        match x with
+        | Single slip -> slip.Caption
+        | Multiple (name,_) -> ""
     member x.Annotation =
         match x with
         | Single slip -> slip.GetQwText 0
@@ -277,6 +281,7 @@ type MediaDsc = {
 }
 
 type SingleSlip = {
+    Caption : string
     Question : Question
     QuestionMedia : MediaDsc option
     Answer : SlipAnswer
@@ -285,6 +290,7 @@ type SingleSlip = {
     Points : decimal
     JeopardyPoints : decimal option
     WithChoice : bool
+    EndOfTour : bool
 } with
     member x.SetQwText idx txt =
         {x with
@@ -301,8 +307,9 @@ type SingleSlip = {
         match x.Question with
         | Solid _ -> 0
         | Split list -> list.Length - 1
-    static member InitEmpty qwCount =
+    static member InitEmpty caption qwCount =
         {
+            Caption = caption
             Question =
                 match qwCount with
                 | 1 -> Solid ""
@@ -314,6 +321,7 @@ type SingleSlip = {
             Points = 1m
             JeopardyPoints = None
             WithChoice = false
+            EndOfTour = false
         }
 
 
@@ -418,6 +426,15 @@ module MainModels =
         member x.AppendSlip slip = {x with Slips = x.Slips @ [slip]}
         member x.UpdateSlip idx slip = {x with Slips = x.Slips |> List.mapi (fun i q -> if idx = i then slip else q)}
         member x.DelSlip idx = {x with Slips = x.Slips |> List.indexed |> List.choose (fun (i, s) -> if idx = i then None else Some s) }
+        member x.GetNextSlipCaption () =
+            match x.Slips |> List.rev with
+            | [] -> "1"
+            | head::_ ->
+                let m = System.Text.RegularExpressions.Regex.Match (head.Caption, "([^\\d]*)(\\d+)")
+                if m.Success then ((m.Groups.Item 1).Value) + (System.Int32.Parse((m.Groups.Item 2).Value) + 1).ToString()
+                else head.Caption  + "1"
+
+
 
 module AdminModels =
 

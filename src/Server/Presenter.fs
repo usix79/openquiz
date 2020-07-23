@@ -104,6 +104,7 @@ let mediaDscToDomain (mediaDsc : Shared.MediaDsc) : MediaDsc =
 
 let singleSlip (slip:SingleSlip) : Shared.SingleSlip =
     {
+        Caption = slip.Caption
         Question = question slip.Question
         QuestionMedia = slip.QuestionMedia |> Option.map mediaDsc
         Answer = slipAnswer slip.Answer
@@ -112,6 +113,7 @@ let singleSlip (slip:SingleSlip) : Shared.SingleSlip =
         Points = slip.Points
         JeopardyPoints = slip.JeopardyPoints
         WithChoice = slip.WithChoice
+        EndOfTour = slip.EndOfTour
     }
 
 let slip (domainSlip : Slip) : Shared.Slip =
@@ -121,6 +123,7 @@ let slip (domainSlip : Slip) : Shared.Slip =
 
 let singleSlipToDomain (slip:Shared.SingleSlip) =
     {
+        Caption = slip.Caption
         Question = questionToDomain slip.Question
         QuestionMedia = slip.QuestionMedia |> Option.map mediaDscToDomain
         Answer = slipAnswerToDomain slip.Answer
@@ -129,6 +132,7 @@ let singleSlipToDomain (slip:Shared.SingleSlip) =
         Points = slip.Points
         JeopardyPoints = slip.JeopardyPoints
         WithChoice = slip.WithChoice
+        EndOfTour = slip.EndOfTour
     } : Domain.SingleSlip
 let slipToDomain (slip : Shared.Slip) : Slip =
     match slip with

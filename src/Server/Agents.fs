@@ -57,4 +57,5 @@ let private publisherAgent = MailboxProcessor<PublisherCommand>.Start(fun inbox 
 )
 
 let publish cmd =
+    printfn "PUBLISH: %A" cmd
     publisherAgent.Post cmd

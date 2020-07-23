@@ -148,6 +148,7 @@ type MediaDsc = {
 }
 
 type SingleSlip = {
+    Caption : string
     Question : Question
     QuestionMedia : MediaDsc option
     Answer : Answer
@@ -156,6 +157,7 @@ type SingleSlip = {
     Points : decimal
     JeopardyPoints : decimal option
     WithChoice : bool
+    EndOfTour : bool
 } with
     member x.QuestionsCount =
         match x.Question with
@@ -168,6 +170,7 @@ type SingleSlip = {
 
     static member InitEmpty qwCount =
         {
+            Caption = ""
             Question =
                 match qwCount with
                 | 1 -> Solid ""
@@ -179,6 +182,7 @@ type SingleSlip = {
             Points = 1m
             JeopardyPoints = None
             WithChoice = false
+            EndOfTour = false
         }
 
 module Packages =
@@ -327,15 +331,19 @@ module Quizzes =
     let addEmptySlip (quiz:Quiz) =
         quiz|> addSlip (SingleSlip.InitEmpty 1 |> Single)
 
-    let getNextTourName (quiz:Quiz) =
-        match quiz.CurrentTour with
-        | Some tour ->
-            let newName =
-                let m = Regex.Match (tour.Name, "([^\\d]*)(\\d+)")
-                if m.Success then ((m.Groups.Item 1).Value) + (System.Int32.Parse((m.Groups.Item 2).Value) + 1).ToString()
-                else tour.Name  + "1"
-            newName
-        | None -> "1"
+    let getNextTourName (slip:Slip) (quiz:Quiz) =
+        let genNextName () =
+            match quiz.CurrentTour with
+            | Some tour ->
+                let newName =
+                    let m = Regex.Match (tour.Name, "([^\\d]*)(\\d+)")
+                    if m.Success then ((m.Groups.Item 1).Value) + (System.Int32.Parse((m.Groups.Item 2).Value) + 1).ToString()
+                    else tour.Name  + "1"
+                newName
+            | None -> "1"
+        match slip with
+        | Single slip -> if slip.Caption <> "" then slip.Caption else genNextName()
+        | Multiple _ -> genNextName()
 
     let getNextTourSeconds (quiz:Quiz) =
         match quiz.CurrentTour with
@@ -348,7 +356,7 @@ module Quizzes =
     let addSlip (slip:Slip) (quiz:Quiz) =
         {quiz with
             Tours = {
-                Name = quiz |> getNextTourName
+                Name =  getNextTourName slip quiz
                 Seconds = (quiz |> getNextTourSeconds) / (slip.SecondsDevider)
                 Status = Announcing
                 Slip = slip
@@ -536,18 +544,26 @@ module Teams =
             {aw with Result = res; IsAutoResult = false; UpdateTime = Some now}, true
         )
 
+type TourResult = {
+    Points : decimal
+}
+
 type TeamResult = {
     TeamId : int
     TeamName : string
     Points : decimal
+    Rating : int
     PlaceFrom : int
     PlaceTo : int
+    Tours : TourResult list
     Details : Map<QwKey, decimal>
 }
 
 type QuestionResult = {
     Key : QwKey
     Name : string
+    EOT : bool
+    Rating : int
 }
 
 type Results = {
@@ -561,17 +577,36 @@ module Results =
         | Single _ -> tour.Name
         | _ -> sprintf "%s.%i" tour.Name (qwIdx + 1)
 
-    let questionResults quiz =
+    let private activeTeamsCount (teams:Team list) =
+        teams |> List.sumBy (fun team -> if team.Answers.Count > 0 then 1 else 0)
+
+    let private correctAnswersCount qwKey (teams:Team list) =
+        teams |> List.sumBy (fun team ->
+            match team.Answers.TryGetValue qwKey with
+            | true, aw ->
+                match aw.Result with
+                | Some result when result > 0m -> 1
+                | _ -> 0
+            | _ -> 0)
+
+    let questionResults (quiz:Quiz) teams =
+        let teamsCount = activeTeamsCount teams
+
         quiz.Tours
         |> List.rev
         |> List.mapi (fun tourIdx tour ->
             match tour.Slip with
-            | Single _ ->
+            | Single slip ->
                 let key = {TourIdx = tourIdx; QwIdx = 0}
-                [{Key = key; Name = questionName tour 0}]
-            | Multiple (_, slips) -> slips |> List.mapi (fun idx slip ->
-                let key = {TourIdx = tourIdx; QwIdx = idx}
-                {Key = key; Name = questionName tour idx})
+                let rating = teamsCount - (correctAnswersCount key teams)
+                [{Key = key; Name = questionName tour 0; EOT = slip.EndOfTour;  Rating = rating}]
+            | Multiple (_, slips) ->
+                let lastIdx = slips.Length - 1
+                slips
+                |> List.mapi (fun idx slip ->
+                    let key = {TourIdx = tourIdx; QwIdx = idx}
+                    let rating = teamsCount - (correctAnswersCount key teams)
+                    {Key = key; Name = questionName tour idx; EOT = idx = lastIdx; Rating = rating})
         )|> List.concat
 
     let teamDetails (team : Team) =
@@ -580,28 +615,72 @@ module Results =
         |> List.choose (fun (key,aw) -> aw.Result |> Option.bind (fun res -> Some (key,res)))
         |> Map.ofList
 
-    let teamResults teams =
+    let teamToursResults (quiz:Quiz) (team : Team) =
+        let mutable tourQuestions = 0
+        let mutable tourPoints = 0m
+        [   for (idx,tour) in quiz.Tours |> List.rev |> List.mapi (fun idx t -> idx,t) do
+                tourQuestions <- tourQuestions + 1
+                match tour.Slip with
+                | Single slip ->
+                    match team.GetAnswer {TourIdx = idx; QwIdx = 0} with
+                    | Some aw ->
+                        tourPoints <- tourPoints + (aw.Result |> Option.defaultValue 0.0m)
+                    | None -> ()
+                    if slip.EndOfTour then
+                        yield {Points = tourPoints}
+                        tourPoints <- 0m
+                        tourQuestions <- 0
+                | Multiple _ ->
+                    if tourQuestions > 0 then
+                        yield {Points = tourPoints}
+                        tourPoints <- 0m
+                        tourQuestions <- 0
+                    yield {
+                        Points =
+                            team.Answers
+                            |> Map.filter (fun key _ -> key.TourIdx = idx)
+                            |> Map.fold (fun s key aw -> s + (aw.Result |> Option.defaultValue 0m)) 0m }
+
+            if tourQuestions > 0 then yield {Points = tourPoints}
+        ]
+
+
+    let teamRating (questionResults:QuestionResult list) (team : Team) =
+        questionResults
+        |> List.sumBy (fun qw ->
+            team.GetAnswer qw.Key
+            |> Option.map (fun aw ->
+                aw.Result
+                |> Option.map (fun res -> if res > 0m then qw.Rating else 0)
+                |> Option.defaultValue 0)
+            |> Option.defaultValue 0)
+
+    let teamResults quiz (teams:Team list) (questionResults:QuestionResult list) =
         let mutable currentPlace = 1
-        [for (points,teams) in
+        [for ((points,rating),teams) in
             teams
-            |> List.filter (fun t -> t.Dsc.Status = Admitted)
-            |> List.groupBy (fun t -> t.Points)
-            |> List.sortByDescending (fun (points, _) -> points) do
+            |> List.groupBy (fun t ->
+                t.Points, (teamRating questionResults t))
+            |> List.sortByDescending (fun (k, _) -> k) do
                 let len = teams.Length
 
                 for team in teams do
                     {TeamId = team.Dsc.TeamId;
                         TeamName = team.Dsc.Name;
                         Points = points;
+                        Rating = rating;
                         PlaceFrom = currentPlace;
                         PlaceTo = currentPlace + len - 1;
+                        Tours = teamToursResults quiz team;
                         Details = teamDetails team }
 
                 currentPlace <- currentPlace + len
         ]
 
     let results (quiz:Quiz) (teams:Team list) : Results =
+        let qwResults = questionResults quiz teams
+        let teams = teams |> List.filter (fun t -> t.Dsc.Status = Admitted)
         {
-            Questions = questionResults quiz
-            Teams = teamResults teams
+            Questions = qwResults
+            Teams = teamResults quiz teams qwResults
         }

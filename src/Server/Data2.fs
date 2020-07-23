@@ -369,6 +369,8 @@ module private Slips =
         let Choiсe = "Choiсe"
         let Name = "Name"
         let Items = "Items"
+        let Caption = "Caption"
+        let EndOfTour = "EOT"
         let [<Literal>] KindMultiple = "Multiple"
         let [<Literal>] KindWWW = "WWW"
         let [<Literal>] KindSingle = "Single"
@@ -418,13 +420,14 @@ module private Slips =
             AttrReader.run (optDef Fields.Answer "" A.string)
             >> Result.map Domain.OpenAnswer
 
-    let private singleSlipBuilder question questionMedia answer answerMedia comment points jeopardyPoints withChoice : Domain.SingleSlip =
-        {Question = question; QuestionMedia = questionMedia; Answer = answer; AnswerMedia = answerMedia;
-            Comment = comment; Points = points; JeopardyPoints = jeopardyPoints; WithChoice = withChoice}
+    let private singleSlipBuilder cap question questionMedia answer answerMedia comment points jeopardyPoints withChoice eot: Domain.SingleSlip =
+        {Caption = cap; Question = question; QuestionMedia = questionMedia; Answer = answer; AnswerMedia = answerMedia;
+            Comment = comment; Points = points; JeopardyPoints = jeopardyPoints; WithChoice = withChoice; EndOfTour = eot}
 
     let singleSlipReader =
         singleSlipBuilder
-        <!> (choice Fields.Questions A.docList questionsInSlipReader)
+        <!> (optDef Fields.Caption "" A.string)
+        <*> (choice Fields.Questions A.docList questionsInSlipReader)
         <*> (readMediaDsc Fields.MediaKey Fields.MediaType)
         <*> (choice Fields.Answers A.docList answersInSlipReader)
         <*> (readMediaDsc Fields.AnswerMediaKey Fields.AnswerMediaType)
@@ -432,6 +435,7 @@ module private Slips =
         <*> (optDef Fields.Points "1" A.number >-> P.decimal)
         <*> (opt Fields.JpdPoints (A.nullOr A.number) ??>-> P.decimal)
         <*> (optDef Fields.Choiсe false A.bool)
+        <*> (optDef Fields.EndOfTour false A.bool)
 
     let private multipleSlipBuilder name slips =
         Domain.Multiple (name, slips)
@@ -450,6 +454,7 @@ module private Slips =
 
     let fieldsOfSingleSlip (slip : Domain.SingleSlip) =
         [
+            if slip.Caption <> "" then yield! BuildAttr.string Fields.Caption slip.Caption
             Attr (Fields.Kind, ScalarString Fields.KindSingle)
             match slip.Question with
             | Domain.Solid qw -> yield! BuildAttr.string Fields.Text qw
@@ -477,6 +482,7 @@ module private Slips =
             Attr (Fields.Points, ScalarDecimal slip.Points)
             yield! BuildAttr.optional Fields.JpdPoints ScalarDecimal slip.JeopardyPoints
             if slip.WithChoice then Attr (Fields.Choiсe, ScalarBool slip.WithChoice)
+            if slip.EndOfTour then Attr (Fields.EndOfTour, ScalarBool slip.EndOfTour)
         ]
 
     let fieldsOfMultipleSlip (name:string) (slips : Domain.SingleSlip list) =

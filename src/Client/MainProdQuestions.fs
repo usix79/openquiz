@@ -40,6 +40,8 @@ type Msg =
     | QwPointsChanged of key:QwKey * txt:string
     | QwJpdPointsChanged of key:QwKey * txt:string
     | QwWithChoiceChanged of key:QwKey * bool
+    | QwEOTChanged of key:QwKey * bool
+    | QwCaptionChanged of key:QwKey * txt:string
     | QwMediaChanged of {|File:Browser.Types.File; Tag:PkgQwKey|}
     | QwMediaClear of key:QwKey
     | QwMediaUploaded of key:QwKey*bucketKey:string*mediType:string
@@ -195,11 +197,11 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | CancelCard -> {cm with Card = None; ShareForm = None} |> noCmd
     | SubmitCard -> cm |> submitCard api
     | SubmitCardResp {Value = Ok res } -> {cm with Card = None; ShareForm = None} |> editing |> replaceRecord res |> noCmd
-    | AppendSingleSlip qwCount -> cm |> updateCard (fun c -> c.AppendSlip (SingleSlip.InitEmpty qwCount |> Single)) |> noCmd
+    | AppendSingleSlip qwCount -> cm |> updateCard (fun c -> c.AppendSlip (SingleSlip.InitEmpty (c.GetNextSlipCaption()) qwCount |> Single)) |> noCmd
     | AppendMultipleSlip -> cm |> updateCard (fun c -> c.AppendSlip (("",[]) |> Multiple)) |> noCmd
     | DelSlip tourIdx -> cm |> updateCard (fun c -> c.DelSlip tourIdx) |> noCmd
     | UpdateTourName (tourIdx,txt) -> cm |> updateCard (fun c -> c.GetSlip tourIdx |> Option.bind (fun slip -> slip.SetMultipleName txt |>  c.UpdateSlip tourIdx |> Some) |> Option.defaultValue c) |> noCmd
-    | AppendQwToMultiple tourIdx -> cm |> updateCard (fun c -> c.GetSlip tourIdx |> Option.bind (fun slip -> SingleSlip.InitEmpty 1 |> slip.AppendToMultiple |>  c.UpdateSlip tourIdx |> Some) |> Option.defaultValue c) |> noCmd
+    | AppendQwToMultiple tourIdx -> cm |> updateCard (fun c -> c.GetSlip tourIdx |> Option.bind (fun slip -> SingleSlip.InitEmpty (sprintf "%i.%i" (tourIdx + 1) (slip.LastQwIdx + 2)) 1 |> slip.AppendToMultiple |>  c.UpdateSlip tourIdx |> Some) |> Option.defaultValue c) |> noCmd
     | DelQwInMultiple key -> cm |> updateCard (fun c -> c.GetSlip key.TourIdx |> Option.bind (fun slip -> slip.RemoveFromMultiple key.QwIdx |>  c.UpdateSlip key.TourIdx |> Some) |> Option.defaultValue c) |> noCmd
     | QwTextChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Question = Solid txt}) |> noCmd
     | QwTextSplitChanged (key,part,txt) -> cm |> updateSlip key (fun slip -> slip.SetQwText part txt) |> noCmd
@@ -214,6 +216,8 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | QwPointsChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with Points = System.Decimal.Parse(txt)}) |> noCmd
     | QwJpdPointsChanged (key,txt) -> cm |> updateSlip key (fun slip -> {slip with JeopardyPoints = ofDecimal (Some txt)}) |> noCmd
     | QwWithChoiceChanged (key,v) -> cm |> updateSlip key (fun slip -> {slip with WithChoice = v}) |> noCmd
+    | QwEOTChanged (key,v) -> cm |> updateSlip key (fun slip -> {slip with EndOfTour = v}) |> noCmd
+    | QwCaptionChanged (key,v) -> cm |> updateSlip key (fun slip -> {slip with Caption = v}) |> noCmd
     | QwMediaChanged res -> cm |> uploadFile api res.Tag res.File (fun key -> QwMediaUploaded (res.Tag.Key,key,res.File.``type``))
     | QwMediaClear key -> cm |> updateSlip key (fun slip -> {slip with QuestionMedia = None}) |> noCmd
     | QwMediaUploaded (qwKey,bucketKey,mediaType) -> cm |> editing |> updateSlip qwKey (fun slip -> {slip with QuestionMedia = Some {Key = bucketKey; Type = mediaTypeFromMiME mediaType}}) |> noCmd
@@ -417,7 +421,7 @@ let card (dispatch : Msg -> unit) user settings (card : MainModels.PackageCard) 
         table [Class "table is-fullwidth"][
             thead [][
                 tr [][
-                    th [Style [Width "30px"]] [str "#"]
+                    th [Style [Width "90px"]] [str "#"]
                     th [] [str "Question"]
                     th [] [str "Answer"]
                     th [] [str "Comment"]
@@ -444,6 +448,18 @@ let idxCell tourIdx qwIdx =
         match qwIdx with
         | Some idx -> str <| sprintf ".%i" (idx + 1)
         | None -> ()
+    ]
+
+let idxCellInSlip dispatch qwKey slip isLoading =
+    td[] [
+        div [Class "control"][
+            input [Class "input";
+                valueOrDefault slip.Caption; MaxLength 4.; ReadOnly isLoading; OnChange (fun ev -> QwCaptionChanged (qwKey,ev.Value) |> dispatch)]
+        ]
+        label [Class "checkbox"; Title "End Of Tour"][
+            input [Type "checkbox"; Checked slip.EndOfTour; ReadOnly isLoading; OnChange (fun ev -> QwEOTChanged (qwKey, (ev.Checked)) |> dispatch)]
+            str " EOT"
+        ]
     ]
 
 let delTourCell dispatch tourIdx =
@@ -522,7 +538,9 @@ let singleSlipRow dispatch settings isOwned isLoading pkgId tourIdx qwIdx (slip:
     let packageKey = {PackageId = pkgId; TourIdx=tourIdx; QwIdx = qwIdx |> Option.defaultValue 0}
 
     tr[][
-        idxCell tourIdx qwIdx
+        match qwIdx with
+        | Some _ -> idxCell tourIdx qwIdx
+        | None -> idxCellInSlip dispatch packageKey.Key slip isLoading
         match slip.Question with
         | Solid qw -> qwCell dispatch settings packageKey qw slip.QuestionMedia isLoading
         | Split list ->

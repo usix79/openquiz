@@ -1,5 +1,13 @@
 # Release Notes
 
+## 1.12.0 - 2020-07-24
+
+* Extended appearance of the results
+* Static results page (link could be found in the Quiz Editor)
+* Introduced question's rating (it is used as secondary parameter when place of the team is calculated)
+* Added ability to mark end of tour (for displaying results by tours)
+* Added ability to set number of a question in the Package Editor (useful for 'zero' and 'warm-up' questions)
+
 ## 1.11.0 - 2020-07-17
 
 * Support for mediacontent in the answers (images/audio/video) (up to 2MB)

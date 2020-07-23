@@ -47,7 +47,7 @@ let api (context:HttpContext) : IAdminApi =
         getPackageCard = ex "getPackageCard" getPackageCard
         startCountDown = ex "startCountDown" startCountDown
         pauseCountDown = ex "pauseCountDown" pauseCountDown
-        settleTour = ex "settleTour" settleTour
+        settleTour = ex "settleTour" (settleTour (Config.getMediaBucketName cfg))
         nextTour = ex "nextTour" nextTour
         nextQuestion = ex "nextQuestion" nextQuestion
         nextQuestionPart = ex "nextQuestionPart" nextQuestionPart
@@ -189,10 +189,11 @@ let pauseCountDown quiz _ =
     Data2.Quizzes.update quiz.QuizId Domain.Quizzes.pauseCountdown
     |> AR.map Admin.quizCard
 
-let settleTour quiz _ =
+let settleTour bucketName quiz _ =
     Data2.Quizzes.update quiz.QuizId Domain.Quizzes.settle
     |> AR.side settleAnswers
     |> AR.map Admin.quizCard
+    |> AR.side (fun _ -> Agents.PublishResults (quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
 
 type SettleItem = {
     Idx : Domain.QwKey
