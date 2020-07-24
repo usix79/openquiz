@@ -77,8 +77,10 @@ function shortTable(data, l10n)
 
     $('<th>', {'text': '#'}).appendTo($hRow)
     $('<th>', {'text': l10n.team}).appendTo($hRow)
-    for (var i = 0; i < toursCount; i++){
-        $('<th>', {'text': l10n.tour + " " + (i + 1), 'style': 'white-space: nowrap; text-align: center'}).appendTo($hRow)
+    if (toursCount > 1){
+        for (var i = 0; i < toursCount; i++){
+            $('<th>', {'text': l10n.tour + " " + (i + 1), 'style': 'white-space: nowrap; text-align: center'}).appendTo($hRow)
+        }
     }
     $('<th>', {'text': l10n.points, 'style': 'text-align: center'}).appendTo($hRow)
     $('<th>', {'text': l10n.rating, 'style': 'text-align: center'}).appendTo($hRow)
@@ -94,9 +96,11 @@ function shortTable(data, l10n)
             .append('<td>'+team.TeamId+'</td>')
             .append('<td>'+team.TeamName+'</td>');
 
-        for (var j = 0; j < toursCount; j++){
-            var tour = team.Tours[j]
-            $('<td>', {'text': tour.Points, 'style': 'text-align: center'}).appendTo($row)
+        if (toursCount > 1){
+            for (var j = 0; j < toursCount; j++){
+                var tour = team.Tours[j]
+                $('<td>', {'text': tour.Points, 'style': 'text-align: center'}).appendTo($row)
+            }
         }
 
         $('<td>', {'text': team.Points, 'style': 'text-align: center'}).appendTo($row)

@@ -10,8 +10,6 @@ type CommonL10n = {
     Answer : string
     Comment : string
     PointsSmall : string
-    Points : string
-    Place : string
     Team : string
     QuizIsNotStarted : string
     QuizIsNotFinished : string
@@ -70,8 +68,6 @@ let commonL10n lang = {
     Answer = l10n lang "Answer" "Ответ" "Відповідь"
     Comment = l10n lang "Comment" "Комментарий" "Коментар"
     PointsSmall = l10n lang "points" "очка" "очки"
-    Points = l10n lang "Points" "Очки" "Очки"
-    Place = l10n lang "Place" "Место" "Місце"
     Team = l10n lang "Team" "Команда" "Команда"
     QuizIsNotStarted = l10n lang "Quiz is not started" "Квиз еще не начался" "Квіз ще не почався"
     QuizIsNotFinished = l10n lang "Quiz is finished" "Квиз завершен" "Квіз завершено"
