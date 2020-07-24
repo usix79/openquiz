@@ -12,7 +12,7 @@ type PublisherCommand =
     | PublishResults of quizId : int * bucketName : string
 
 let private uploadFile bucket (quiz:Domain.Quiz) results =
-    let key = sprintf "static/%d-%s/results.json" quiz.Dsc.QuizId quiz.Dsc.ListenToken
+    let key = Bucket.getResultsKey quiz.Dsc.QuizId quiz.Dsc.ListenToken
     let body =
         DynamicRecord.serialize results
         |> Text.UTF8Encoding.UTF8.GetBytes
@@ -21,10 +21,12 @@ let private uploadFile bucket (quiz:Domain.Quiz) results =
 let private publishResuts bucket quizId =
     Data2.Quizzes.get quizId
     |> AR.bind (fun quiz ->
-        Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
-        |> AR.bind (fun teams ->
-            Domain.Results.results quiz teams
-            |> uploadFile bucket quiz))
+        if not quiz.Tours.IsEmpty then
+            Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
+            |> AR.bind (fun teams ->
+                Domain.Results.results quiz teams
+                |> uploadFile bucket quiz)
+        else AR.retn ())
     |> Async.map ignore
 
 let private publisherAgent = MailboxProcessor<PublisherCommand>.Start(fun inbox ->

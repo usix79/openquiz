@@ -8,6 +8,9 @@ open Serilog
 open Shared
 open Common
 
+let getResultsKey quizId token =
+    sprintf "static/%d-%s/results.json" quizId token
+
 let getSignedUrl bucketName (cat:MediaCategory) =
     use client = new AmazonS3Client(AmazonS3Config(UseAccelerateEndpoint = true))
     let key = sprintf "%s/%.0f-%s" cat.Prefix (toEpoch System.DateTime.UtcNow) (Common.generateRandomToken())
@@ -31,6 +34,24 @@ let uploadFile bucketName (key:string) (fileType:string) (fileBody : byte[]) : A
             ContentType = fileType)
 
     client.PutObjectAsync(req)
+    |> Async.AwaitTask
+    |> Async.Catch
+    |> Async.map (
+        function
+        | Choice1Of2 resp ->
+            if resp.HttpStatusCode = System.Net.HttpStatusCode.OK then Ok ()
+            else Error <| resp.HttpStatusCode.ToString()
+        | Choice2Of2 ex ->
+            Log.Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
+            Error ex.Message)
+
+let deleteFile bucketName (key:string) : Async<Result<unit, string>> =
+
+    use client = new AmazonS3Client()
+
+    let req = DeleteObjectRequest (BucketName = bucketName, Key = key)
+
+    client.DeleteObjectAsync(req)
     |> Async.AwaitTask
     |> Async.Catch
     |> Async.map (

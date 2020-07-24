@@ -144,7 +144,6 @@ function fullTable(data, l10n)
 
     $tbody.append($row)
 
-
     for (var i = 0; i < data.Teams.length; i++){
         var team = data.Teams[i]
 
@@ -228,4 +227,3 @@ $(document).ready(function() {
     var url = "https://www.open-quiz.com/static/" + settings.quiz + "-" + settings.token + "/results.json?nocache=" + (new Date()).getTime()
     $.getJSON(url, function(data) {displayResults(data, settings.teamId, l10n)});
 });
-

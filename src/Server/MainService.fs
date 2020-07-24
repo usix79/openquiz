@@ -51,7 +51,7 @@ let api (context:HttpContext) : IMainApi =
         createPackage = exPublisher  "createPackage" createPackage
         updateProdPackageCard = exPublisher  "updateProdPackageCard" updateProdPackageCard
         aquirePackage = exPublisher "aquirePackage" aquirePackage
-        deleteQuiz = exPublisher "deleteQuiz" deleteQuiz
+        deleteQuiz = exPublisher "deleteQuiz" <| deleteQuiz (Config.getMediaBucketName cfg)
         deletePackage = exPublisher "deletePackage" deletePackage
         getSettings = exPublisher "getSettings" getSettings
         updateSettings = exPublisher "updateSettings" updateSettings
@@ -105,7 +105,7 @@ let updateProdQuizCard expert card =
     Data2.Quizzes.update card.QuizId logic
     |> AR.map (fun quiz -> quiz.Dsc |> Main.quizProdRecord)
 
-let deleteQuiz expert req =
+let deleteQuiz bucket expert req =
     Data2.Quizzes.getDescriptor req.QuizId
     |> AR.sideRes (Domain.Quizzes.authorize expert.Id)
     |> AR.side ( fun _ ->
@@ -115,6 +115,9 @@ let deleteQuiz expert req =
             |> List.map (Data2.Teams.delete req.QuizId)
             |> Async.Sequential
             |> Async.map (fun _ -> Ok ())))
+    |> AR.side ( fun quiz ->
+        Bucket.deleteFile bucket (Bucket.getResultsKey quiz.QuizId quiz.ListenToken)
+        |> Async.map (fun _ -> Ok ()))
     |> AR.next (Data2.Quizzes.delete req.QuizId)
     |> AR.next (Data2.Experts.update expert.Id (Domain.Experts.removeQuiz req.QuizId))
     |> AR.map ignore
