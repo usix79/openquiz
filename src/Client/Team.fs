@@ -38,6 +38,8 @@ type Msg =
     | AnswerResponse of RESP<unit>
     | GetHistoryResp of RESP<TeamHistoryRecord list>
     | ConnectionErrors of string array
+    | Vote of qwKey : QwKey * bool option
+    | VoteResponse of RESP<unit>
 
 
 type Model = {
@@ -184,6 +186,10 @@ let deleteAnswer (user:TeamUser) (model: Model) =
     Infra.removeFromLocalStorage (awStorageKey user)
     model
 
+let updateVote api qwKey vote (model : Model) =
+    {model with History = model.History |> List.map (fun r -> if r.QwKey = qwKey then {r with Vote = vote} else r)}
+
+
 let init (api:ITeamApi)  (user:TeamUser) : Model*Cmd<Msg> =
     AppSync.configure user.AppSyncCfg.Endpoint user.AppSyncCfg.Region user.AppSyncCfg.ApiKey
     {IsActive = true; Quiz = None; Answers = None; ActiveTab = Question;
@@ -203,6 +209,8 @@ let update (api:ITeamApi) (user:TeamUser) (msg : Msg) (cm : Model) : Model * Cmd
     | ChangeTab History -> {cm with ActiveTab = History} |> apiCmd api.getHistory () GetHistoryResp Exn
     | ChangeTab Results -> {cm with ActiveTab = Results} |> noCmd
     | GetHistoryResp {Value = Ok res} -> {cm with History = res} |> noCmd
+    | Vote (qwKey,vote) -> cm |> updateVote api qwKey vote |> apiCmd api.vote {|Key = qwKey; Vote = vote|} VoteResponse Exn
+    | VoteResponse {Value = Ok _} -> cm |> noCmd
     | ConnectionErrors errors -> cm |> error (String.Join("/", errors)) |> noCmd
     | Exn ex when ex.Message = Errors.SessionIsNotActive ->
         unsubscribe cm
@@ -367,8 +375,6 @@ let singleQwView dispatch (settings:Settings) tour slip answers isCountdownActiv
 
                                         if txt = ch.Text then
                                             answerStatusIcon answers.Status txt
-
-
                                     ]
                                     br[]
                                 ]
@@ -429,11 +435,12 @@ let historyView dispatch model l10n =
                 th [Style [Width "30px"] ] [ str "#" ]
                 th [Style [TextAlign TextAlignOptions.Left]] [ str l10n.Answer ]
                 th [ ] [ str l10n.Points ]
+                th [Title l10n.Vote; Style [Width "84px"] ] [ str "@" ]
             ]
         ]
 
         tbody [ ] [
-            for aw in model.History |> List.sortByDescending (fun aw -> aw.QwIdx)  do
+            for aw in model.History |> List.sortByDescending (fun aw -> aw.QwKey)  do
                 let modifiers =
                     match aw.Result with
                     | Some v when v > 0m -> ["has-text-success", true]
@@ -454,12 +461,27 @@ let historyView dispatch model l10n =
                             | None -> ""
                         p [classList modifiers][str txt]
                     ]
+                    td [] [
+                        if aw.AnswerReceived then
+                            let isUpSelected = aw.Vote |> Option.defaultValue false
+                            let isDownSelected = aw.Vote |> Option.defaultValue true |> not
+                            button [
+                                    Class "button is-small is-white"
+                                    OnClick (fun _ -> Vote (aw.QwKey, if isUpSelected then None else Some true) |> dispatch)][
+                                span [Class <| "icon " + if isUpSelected then "has-text-success" else "has-text-grey"][Fa.i [Fa.Regular.ThumbsUp][]]
+                            ]
+                            button [
+                                    Class "button is-small is-white";
+                                    OnClick (fun _ -> Vote (aw.QwKey, if isDownSelected then None else Some false) |> dispatch)][
+                                span [Class <| "icon " + if isDownSelected then "has-text-danger" else "has-text-grey"][Fa.i [Fa.Regular.ThumbsDown][]]
+                            ]
+                    ]
                 ]
 
                 if aw.QwAw <> "" then
                     tr [ ][
                         td [] []
-                        td [ColSpan 2; Style [TextAlign TextAlignOptions.Left]] [
+                        td [ColSpan 3; Style [TextAlign TextAlignOptions.Left]] [
                             span [Class "is-italic has-text-weight-light is-family-secondary is-size-7"][
                                 str <| l10n.CorrectAnswer + ": "
                                 str (aw.QwAw.Split('\n').[0])

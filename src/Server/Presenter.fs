@@ -394,7 +394,7 @@ module Teams =
                 let key = {TourIdx = idx; QwIdx = awIdx}
                 let r =
                     {
-                        QwIdx = idx
+                        QwKey = qwKey key
                         QwName = qwName tour awIdx
                         QwAw =
                             if idx = quiz.CurrentTourIndex then
@@ -406,10 +406,11 @@ module Teams =
                         AwTxt = None
                         AwJpd = false
                         Result = None
+                        Vote = None
                     } :  TeamModels.TeamHistoryRecord
 
                 match team.GetAnswer key with
-                | Some aw -> {r with AwTxt = Some aw.Text; AwJpd = aw.Jeopardy; Result = aw.Result}
+                | Some aw -> {r with AwTxt = Some aw.Text; AwJpd = aw.Jeopardy; Result = aw.Result; Vote = aw.Vote}
                 | None -> r
             )
         ) |> List.concat

@@ -477,6 +477,7 @@ module Infra =
                 takeActiveSession = x.Wrap teamApi.takeActiveSession
                 answers = x.Wrap teamApi.answers
                 getHistory = x.Wrap teamApi.getHistory
+                vote = x.Wrap teamApi.vote
             }
 
         member x.CreateRegApi () =

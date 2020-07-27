@@ -21,12 +21,10 @@ let private uploadFile bucket (quiz:Domain.Quiz) results =
 let private publishResuts bucket quizId =
     Data2.Quizzes.get quizId
     |> AR.bind (fun quiz ->
-        if not quiz.Tours.IsEmpty then
-            Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
-            |> AR.bind (fun teams ->
-                Domain.Results.results quiz teams
-                |> uploadFile bucket quiz)
-        else AR.retn ())
+        Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
+        |> AR.bind (fun teams ->
+            Domain.Results.results quiz teams
+            |> uploadFile bucket quiz))
     |> Async.map ignore
 
 let private publisherAgent = MailboxProcessor<PublisherCommand>.Start(fun inbox ->

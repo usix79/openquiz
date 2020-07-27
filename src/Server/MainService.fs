@@ -41,7 +41,7 @@ let api (context:HttpContext) : IMainApi =
     let api : IMainApi = {
         becomeProducer = ex "becomeProducer" becomeProducer
         getRegModel = ex "getRegModel" getRegModel
-        registerTeam = ex "registerTeam" registerTeam
+        registerTeam = ex "registerTeam" (registerTeam (Config.getMediaBucketName cfg))
         createQuiz = exPublisher  "createQuiz" createQuiz
         getProdQuizzes = exPublisher "getProdQuizzes" getProdQuizzes
         getProdQuizCard = exPublisher "getProdQuizCard" getProdQuizCard
@@ -139,7 +139,7 @@ let getRegModel expId username name quizId _ =
             Data2.Quizzes.getDescriptor quizId
             |> AR.map (fun quiz -> Main.quizRegRecord quiz team)))
 
-let registerTeam expId username name quizId req =
+let registerTeam bucketName expId username name quizId req =
     let expCreator () = Domain.Experts.createNew expId username name
 
     quizId |> Result.fromOption "Quiz not defined"
@@ -161,6 +161,7 @@ let registerTeam expId username name quizId req =
                 )
             | None -> createTeam exp quiz teamName
             |> AR.map (fun (team:Domain.Team) -> Main.quizRegRecord quiz (Some team.Dsc))))
+    |> AR.side (fun qr -> Agents.PublishResults (qr.QuizId, bucketName) |> Agents.publish |> AR.retn)
 
 let private createTeam exp quiz teamName  =
 

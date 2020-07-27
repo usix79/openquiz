@@ -426,7 +426,9 @@ type TeamAnswer = {
     IsAutoResult : bool
     UpdateTime : DateTime option
     Jeopardy : bool
-}
+    Vote : bool option
+} with
+    member x.VotePoints = (match x.Vote with Some true -> 1 | Some false -> -1 | _ -> 0)
 
 type TeamKey = {
     QuizId : int
@@ -536,13 +538,27 @@ module Teams =
 
             match team.Answers.TryFind qwIndex with
             | None ->
-                Ok {team with Answers = team.Answers.Add (qwIndex, {Text = awText; Jeopardy = jeopardy; RecieveTime = now; Result = None; IsAutoResult = false; UpdateTime = Some now})}
+                Ok {team with
+                        Answers = team.Answers.Add (
+                                    qwIndex,
+                                    {Text = awText;
+                                    Jeopardy = jeopardy;
+                                    RecieveTime = now;
+                                    Result = None;
+                                    IsAutoResult = false;
+                                    UpdateTime = Some now;
+                                    Vote = None})}
             | Some aw -> Error <| "Answer is alredy registered: " + aw.Text
 
     let updateResult qwIdx res now (team:Team) =
         team |> updateAnswer qwIdx (fun aw ->
             {aw with Result = res; IsAutoResult = false; UpdateTime = Some now}, true
         )
+
+type TeamDetail = {
+    Result : decimal option
+    Vote : int
+}
 
 type TourResult = {
     Points : decimal
@@ -556,14 +572,16 @@ type TeamResult = {
     PlaceFrom : int
     PlaceTo : int
     Tours : TourResult list
-    Details : Map<QwKey, decimal>
+    Details : Map<QwKey, TeamDetail>
 }
 
 type QuestionResult = {
     Key : QwKey
     Name : string
     EOT : bool
-    Rating : int
+    Score : int
+    Votes : int
+    Rating : decimal
 }
 
 type Results = {
@@ -580,17 +598,16 @@ module Results =
     let private activeTeamsCount (teams:Team list) =
         teams |> List.sumBy (fun team -> if team.Answers.Count > 0 then 1 else 0)
 
-    let private correctAnswersCount qwKey (teams:Team list) =
-        teams |> List.sumBy (fun team ->
+    let private correctAnswersAndVotes qwKey (teams:Team list) =
+        teams
+        |> List.fold (fun (score,votes) team ->
             match team.Answers.TryGetValue qwKey with
             | true, aw ->
-                match aw.Result with
-                | Some result when result > 0m -> 1
-                | _ -> 0
-            | _ -> 0)
+                score + (aw.Result |> Option.map (fun r -> if r > 0m then 1 else 0) |> Option.defaultValue 0),
+                votes + aw.VotePoints
+            | _ -> (score,votes)) (0,0)
 
-    let questionResults (quiz:Quiz) teams =
-        let teamsCount = activeTeamsCount teams
+    let questionResults (quiz:Quiz) teamsCount teams =
 
         quiz.Tours
         |> List.rev
@@ -598,22 +615,19 @@ module Results =
             match tour.Slip with
             | Single slip ->
                 let key = {TourIdx = tourIdx; QwIdx = 0}
-                let rating = teamsCount - (correctAnswersCount key teams)
-                [{Key = key; Name = questionName tour 0; EOT = slip.EndOfTour;  Rating = rating}]
+                let (score,votes) = correctAnswersAndVotes key teams
+                [{Key = key; Name = questionName tour 0; EOT = slip.EndOfTour;  Score = teamsCount - score; Votes = votes; Rating = 0m}]
             | Multiple (_, slips) ->
                 let lastIdx = slips.Length - 1
                 slips
                 |> List.mapi (fun idx slip ->
                     let key = {TourIdx = tourIdx; QwIdx = idx}
-                    let rating = teamsCount - (correctAnswersCount key teams)
-                    {Key = key; Name = questionName tour idx; EOT = idx = lastIdx; Rating = rating})
+                    let (score,votes) = correctAnswersAndVotes key teams
+                    {Key = key; Name = questionName tour idx; EOT = idx = lastIdx;  Score = teamsCount - score; Votes = votes; Rating = 0m})
         )|> List.concat
 
     let teamDetails (team : Team) =
-        team.Answers
-        |> Map.toList
-        |> List.choose (fun (key,aw) -> aw.Result |> Option.bind (fun res -> Some (key,res)))
-        |> Map.ofList
+        team.Answers |> Map.map (fun _ aw -> {Result = aw.Result; Vote = aw.VotePoints})
 
     let teamToursResults (quiz:Quiz) (team : Team) =
         let mutable tourQuestions = 0
@@ -651,7 +665,7 @@ module Results =
             team.GetAnswer qw.Key
             |> Option.map (fun aw ->
                 aw.Result
-                |> Option.map (fun res -> if res > 0m then qw.Rating else 0)
+                |> Option.map (fun res -> if res > 0m then qw.Score else 0)
                 |> Option.defaultValue 0)
             |> Option.defaultValue 0)
 
@@ -677,10 +691,28 @@ module Results =
                 currentPlace <- currentPlace + len
         ]
 
+    let questionRating teamsCount (teamResults:TeamResult list) qwKey =
+        if teamsCount > 0 then
+            let teamsCount = decimal teamsCount
+            teamResults
+            |> List.fold (fun state tr ->
+                match tr.Details.TryGetValue qwKey with
+                | true, details ->
+                    let s = decimal details.Vote * (teamsCount - decimal (tr.PlaceFrom + tr.PlaceTo) / 2m + 1m)
+                    s + state
+                | _ -> state
+                ) 0m
+            |> (*) (100m / ((1m + teamsCount) / 2m * teamsCount))
+        else 0m
+
     let results (quiz:Quiz) (teams:Team list) : Results =
-        let qwResults = questionResults quiz teams
         let teams = teams |> List.filter (fun t -> t.Dsc.Status = Admitted)
+        let teamsCount = activeTeamsCount teams
+
+        let qwResults = questionResults quiz teamsCount teams
+        let teamResults = teamResults quiz teams qwResults
+
         {
-            Questions = qwResults
-            Teams = teamResults quiz teams qwResults
+            Questions = qwResults |> List.map (fun qr -> {qr with Rating = questionRating teamsCount teamResults qr.Key})
+            Teams = teamResults
         }

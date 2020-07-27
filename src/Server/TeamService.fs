@@ -32,6 +32,7 @@ let api (context:HttpContext) : ITeamApi =
         getState = ex "getState" getState
         answers = ex "answers" answers
         getHistory = ex "getHistory" getHistory
+        vote = ex "vote" <| vote (Config.getMediaBucketName cfg)
     }
 
     api
@@ -71,3 +72,17 @@ let getHistory team _ =
     |> AsyncResult.bind (fun quiz ->
         Data2.Teams.get team.Key
         |> AsyncResult.map (fun team -> Teams.quizHistory quiz team))
+
+
+let vote bucketName team req =
+    let logic (team:Domain.Team) =
+        team
+        |> Domain.Teams.updateAnswer (qwKeyToDomain req.Key) (fun aw ->
+            {aw with Vote = req.Vote}, (aw.Vote <> req.Vote))
+        |> function
+        | team, true -> Ok team
+        | _ -> Error "vote not applied"
+
+    Data2.Teams.update team.Key logic
+    |> AsyncResult.side (fun _ -> Agents.PublishResults (team.QuizId, bucketName) |> Agents.publish |> AsyncResult.retn)
+    |> AsyncResult.map ignore

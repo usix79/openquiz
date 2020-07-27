@@ -739,6 +739,7 @@ module Teams =
         let AnswerJeopardy = "Jpd"
         let AnswerRecieveTime = "RecieveTime"
         let AnswerResult = "Result"
+        let AnswerVote = "Vote"
         let AnswerIsAutoResult = "IsAutoResult"
         let AnswerUpdateTime = "UpdateTime"
         let Version = "Version"
@@ -785,8 +786,8 @@ module Teams =
         let kce = queryKeyConditions quizId
         query' tableName dscFields dscReader kce
 
-    let private teamAnswerBuilder text jpd recieveTime result isAutoResult updateTime : Domain.TeamAnswer =
-        {Text = text; Jeopardy = jpd; RecieveTime = recieveTime;
+    let private teamAnswerBuilder text jpd recieveTime result vote isAutoResult updateTime : Domain.TeamAnswer =
+        {Text = text; Jeopardy = jpd; RecieveTime = recieveTime; Vote = vote;
             Result = result; IsAutoResult = isAutoResult; UpdateTime = updateTime}
 
     let private teamAnswerReader =
@@ -795,6 +796,7 @@ module Teams =
         <*> (optDef Fields.AnswerJeopardy false A.bool)
         <*> (req Fields.AnswerRecieveTime A.string >-> P.dateTime)
         <*> (opt Fields.AnswerResult  (A.nullOr A.number) ??>-> P.decimal)
+        <*> (opt Fields.AnswerVote A.bool)
         <*> (optDef Fields.AnswerIsAutoResult false A.bool)
         <*> (opt Fields.AnswerUpdateTime  (A.nullOr A.string) ??>-> P.dateTime)
 
@@ -850,6 +852,9 @@ module Teams =
                         match pair.Value.Result with
                         | Some res -> Attr (Fields.AnswerResult, ScalarDecimal res)
                         | None -> Attr (Fields.AnswerResult, ScalarNull)
+                        match pair.Value.Vote with
+                        | Some v -> Attr (Fields.AnswerVote, ScalarBool v)
+                        | None -> ()
                         Attr (Fields.AnswerIsAutoResult, ScalarBool pair.Value.IsAutoResult)
                         match pair.Value.UpdateTime with
                         | Some v -> Attr (Fields.AnswerUpdateTime, ScalarDate v)

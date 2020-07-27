@@ -229,7 +229,7 @@ let singleTourInfo mediaHost tourName (slip:Shared.SingleSlipCard) (l10n:L10n.Co
 
 let resultsViewEmb quizId listenToken teamId =
     div [Class "content"; Style []][
-        iframe [Src (Common.urlForResultsIframe quizId listenToken teamId); Style [Width "100%"; Height "5000px"; OverflowX OverflowOptions.Hidden; OverflowY OverflowOptions.Hidden]][]
+        iframe [Src (Common.urlForResultsIframe quizId listenToken teamId); Style [Width "100%"; Height "100vh"; OverflowX OverflowOptions.Hidden; OverflowY OverflowOptions.Hidden]][]
     ]
 
 let deleteForm dispatch placeholder validText inputText isSending error toggleMsg updateMsg deleteMsg =

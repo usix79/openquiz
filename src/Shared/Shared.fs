@@ -572,13 +572,15 @@ module TeamModels =
             | Finished -> x.Fwl
 
     type TeamHistoryRecord = {
-        QwIdx : int
+        QwKey : QwKey
         QwName : string
         QwAw : string
         AwTxt : string option
         AwJpd : bool
         Result : decimal option
-    }
+        Vote: bool option
+    } with
+        member x.AnswerReceived = x.AwTxt.IsSome
 
 module AudModels =
     type QuizCard = {
@@ -685,6 +687,7 @@ type ITeamApi = {
     takeActiveSession : REQ<unit> -> ARESP<TeamModels.QuizCard>
     answers : REQ<Map<QwKey,(string*bool)>> -> ARESP<unit>
     getHistory : REQ<unit> -> ARESP<TeamModels.TeamHistoryRecord list>
+    vote : REQ<{|Key:QwKey; Vote:bool option|}> -> ARESP<unit>
 }
 
 type IRegApi = {

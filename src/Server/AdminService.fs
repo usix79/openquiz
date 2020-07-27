@@ -35,10 +35,10 @@ let api (context:HttpContext) : IAdminApi =
 
     let api : IAdminApi = {
         getTeams = ex  "getTeams" getTeams
-        createTeam = ex  "createTeam" createTeam
+        createTeam = ex  "createTeam" (createTeam (Config.getMediaBucketName cfg))
         createTeamBatch = ex  "createTeamBatch" createTeamBatch
         getTeamCard = ex  "getTeamCard" getTeamCard
-        updateTeamCard = ex  "updateTeamCard" updateTeamCard
+        updateTeamCard = ex  "updateTeamCard" (updateTeamCard (Config.getMediaBucketName cfg))
         changeTeamStatus = ex  "changeTeamStatus" changeTeamStatus
         getQuizCard = ex  "getQuizCard" getQuizCard
         changeQuizStatus = ex  "changeQuizStatus" changeQuizStatus
@@ -63,7 +63,7 @@ let getTeams quiz req =
     Data2.Teams.getDescriptors quiz.QuizId
     |> AR.map (List.map Admin.teamRecord)
 
-let createTeam quiz req =
+let createTeam bucketName quiz req =
     let teamName = req.TeamName.Trim()
 
     let creator teamsInQuiz teamId =
@@ -75,6 +75,7 @@ let createTeam quiz req =
     |> AR.bind (fun teamsInQuiz ->
         Data2.Teams.create quiz.QuizId (creator teamsInQuiz)
         |> AR.map (fun team -> {|Record = Admin.teamRecord team.Dsc|}))
+    |> AR.side (fun _ -> Agents.PublishResults (quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
 
 let createTeamBatch quiz req =
 
@@ -91,7 +92,7 @@ let getTeamCard quiz req =
     Data2.Teams.getDescriptor quiz.QuizId req.TeamId
     |> AR.map Admin.teamCard
 
-let updateTeamCard quiz req =
+let updateTeamCard bucketName quiz req =
     let logic (team : Domain.Team) =
         { team with
             Dsc = {
@@ -104,6 +105,7 @@ let updateTeamCard quiz req =
 
     Data2.Teams.update {QuizId = quiz.QuizId; TeamId = req.TeamId} logic
     |> AR.map (fun team -> Admin.teamRecord team.Dsc)
+    |> AR.side (fun _ -> Agents.PublishResults (quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
 
 let changeTeamStatus quiz req =
     let logic (team : Domain.Team) =
