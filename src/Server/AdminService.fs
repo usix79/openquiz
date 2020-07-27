@@ -51,6 +51,7 @@ let api (context:HttpContext) : IAdminApi =
         nextTour = ex "nextTour" nextTour
         nextQuestion = ex "nextQuestion" nextQuestion
         nextQuestionPart = ex "nextQuestionPart" nextQuestionPart
+        showQuestionMedia = ex "showQuestionMedia" showQuestionMedia
         getAnswers = ex "getAnswers" getAnswers
         updateResults = ex "updateResults" (updateResults (Config.getMediaBucketName cfg))
         getListenToken = ex "getListenToken" getListenToken
@@ -170,6 +171,18 @@ let nextQuestionPart quiz req =
             quiz
             |> Domain.Quizzes.update tour.Name tour.Seconds req.PackageSlipIdx tour.QwIdx tour.QwPartIdx (slipToDomain tour.Slip)
             |> Domain.Quizzes.nextQuestionPart
+        | None -> Error "Question is empty"
+
+    Data2.Quizzes.update quiz.QuizId logic
+    |> AR.map Admin.quizCard
+
+let showQuestionMedia quiz req =
+    let logic quiz =
+        match req.CurrentTour with
+        | Some tour ->
+            quiz
+            |> Domain.Quizzes.update tour.Name tour.Seconds req.PackageSlipIdx tour.QwIdx tour.QwPartIdx (slipToDomain tour.Slip)
+            |> Domain.Quizzes.showQuestionMedia
         | None -> Error "Question is empty"
 
     Data2.Quizzes.update quiz.QuizId logic

@@ -2,7 +2,7 @@
 
 ## 1.13.0 - 2020-07-27
 
-* Questions karma and rating are calculated according to teams likes and dislikes
+* Questions karma and rating are calculated according to the teams likes and dislikes
 * Added Azerbaijanian language
 
 ## 1.12.0 - 2020-07-24

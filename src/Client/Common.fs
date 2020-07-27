@@ -246,6 +246,7 @@ module Infra =
             if lang.StartsWith("en") then Some L10n.English
             else if lang.StartsWith("ru") then Some L10n.Russian
             else if lang.StartsWith("uk") then Some L10n.Ukrainian
+            else if lang.StartsWith("az") then Some L10n.Azerbaijanian
             else None
 
         let rec check (langs:string list) =
@@ -466,6 +467,7 @@ module Infra =
                 nextTour = x.Wrap adminApi.nextTour
                 nextQuestion = x.Wrap adminApi.nextQuestion
                 nextQuestionPart = x.Wrap adminApi.nextQuestionPart
+                showQuestionMedia = x.Wrap adminApi.showQuestionMedia
                 getAnswers = x.Wrap adminApi.getAnswers
                 updateResults = x.Wrap adminApi.updateResults
                 getListenToken = x.Wrap adminApi.getListenToken

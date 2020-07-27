@@ -20,4 +20,4 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     cm |> noCmd
 
 let view (dispatch : Msg -> unit) (user:AdminUser) (model : Model) =
-    MainTemplates.resultsViewEmb user.QuizId user.ListenToken None
+    MainTemplates.resultsViewEmb' true user.QuizId user.ListenToken None
