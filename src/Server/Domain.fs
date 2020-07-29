@@ -638,9 +638,9 @@ module Results =
         let mutable tourQuestions = 0
         let mutable tourPoints = 0m
         [   for (idx,tour) in quiz.Tours |> List.rev |> List.mapi (fun idx t -> idx,t) do
-                tourQuestions <- tourQuestions + 1
                 match tour.Slip with
                 | Single slip ->
+                    tourQuestions <- tourQuestions + 1
                     match team.GetAnswer {TourIdx = idx; QwIdx = 0} with
                     | Some aw ->
                         tourPoints <- tourPoints + (aw.Result |> Option.defaultValue 0.0m)

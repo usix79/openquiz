@@ -132,6 +132,7 @@ let main _ =
                 quiz.Version evt
          )
 
+    Agents.publish (Agents.PublishResults (834,"open-quiz-media"))
     host.Run()
 
     0 // return an integer exit code
