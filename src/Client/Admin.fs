@@ -36,7 +36,9 @@ let replaceHashCmd (msg:Msg) =
     | _ -> Cmd.none
 
 let switchByHashMsg () =
-    match Infra.locationHash with
+    let (hashTag, _) = Infra.getUrlHashParts()
+
+    match hashTag with
     | "#teams" -> SwitchToTeams
     | "#cp" -> SwitchToCP
     | "#answers" -> SwitchToAnswers

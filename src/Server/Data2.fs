@@ -755,6 +755,13 @@ module Teams =
     let private queryKeyConditions quizId =
         Query.KeyConditionExpression (Query.NumberEquals (Fields.QuizId, decimal quizId), [])
 
+    let private queryRangeConditions from to' quizId =
+        Query.KeyConditionExpression (
+            Query.NumberEquals (Fields.QuizId, decimal quizId), [
+                (Query.And, Query.KeyConditionExpression (Query.NumberBetwixt (Fields.TeamId, from, to'), []))
+            ]
+        )
+
     let private dscFields =
         [Fields.QuizId; Fields.TeamId; Fields.Name; Fields.Status; Fields.EntryToken; Fields.RegistrationDate; Fields.ActiveSessionId]
 
@@ -836,6 +843,10 @@ module Teams =
 
     let getAllInQuiz (quizId: int)  =
         let kce = queryKeyConditions quizId
+        query' tableName [] reader kce
+
+    let getRangeInQuiz (from:int) (to':int) (quizId: int)  =
+        let kce = queryRangeConditions (decimal from) (decimal to') quizId
         query' tableName [] reader kce
 
     let private put (item : Domain.Team) =

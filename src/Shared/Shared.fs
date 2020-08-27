@@ -535,6 +535,11 @@ module AdminModels =
         member x.UpdateAwr idx aw =
             { x with Awrs = x.Awrs.Add(idx, aw)}
 
+    type Range = {
+        From : int
+        To : int
+    }
+
     type AnswersBundle = {
         Questions : QuestionRecord list
         Teams : TeamAnswersRecord list
@@ -685,7 +690,7 @@ type IAdminApi = {
     nextQuestion : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     nextQuestionPart : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     showQuestionMedia : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
-    getAnswers : REQ<unit> -> ARESP<AdminModels.AnswersBundle>
+    getAnswers : REQ<AdminModels.Range option> -> ARESP<AdminModels.AnswersBundle>
     updateResults : REQ<{|TeamId: int; QwKey: QwKey; Res: decimal option |} list> -> ARESP<unit>
     getListenToken : REQ<unit> -> ARESP<string>
 }

@@ -267,10 +267,12 @@ let nextTour quiz _ =
     Data2.Quizzes.update quiz.QuizId logic
     |> AR.map Admin.quizCard
 
-let getAnswers quiz _ =
+let getAnswers quiz range =
     Data2.Quizzes.get quiz.QuizId
     |> AR.bind (fun quiz ->
-        Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
+        match range with
+        | Some range -> Data2.Teams.getRangeInQuiz range.From range.To quiz.Dsc.QuizId
+        | None -> Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
         |> AR.map (fun teams -> Admin.AnswersBundle quiz teams))
 
 let updateResults bucketName quiz req  =

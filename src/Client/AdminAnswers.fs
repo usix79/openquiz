@@ -11,11 +11,14 @@ open Shared
 open Shared.AdminModels
 open Common
 
+let TEAMsOnPAGE = 250
+
 type Msg =
     | GetAnswersResp of RESP<AnswersBundle>
     | DeleteError of string
     | Exn of exn
     | SelectQuestion of QwKey
+    | SelectRange of Range option
     | ResultChanged of teamId:int*key:QwKey*res:string
     | ResultsUpdated of RESP<unit>
 
@@ -28,6 +31,7 @@ type Model = {
     TimeDiff: TimeSpan
     LastReviews : Map<QwKey, DateTime>
     SessionStart : DateTime
+    Range : Range option
 }
 
 let getActualPoints (jpd:bool) (qw:QuestionRecord) =
@@ -112,6 +116,22 @@ let setResults (api:IAdminApi) (teamId:int) (key:QwKey) (v :string) (model:Model
         | None -> model |> noCmd
     | None -> model |> noCmd
 
+let rangeFromHashQuery () =
+    let (_, hashQuery) = Infra.getUrlHashParts()
+    let m = System.Text.RegularExpressions.Regex.Match (hashQuery, ":(\\d+)-(\\d+)")
+    if m.Success then
+        Some {From = Int32.Parse((m.Groups.Item 1).Value); To = Int32.Parse((m.Groups.Item 2).Value)}
+    else None
+
+let setRange api range (model:Model) =
+    let hashQuery =
+        match range with
+        | Some range -> sprintf ":%i-%i" range.From range.To
+        | None -> ""
+    {model with Range = range; IsLoading = true}, Cmd.batch[
+        apiCmd' api.getAnswers range GetAnswersResp Exn
+        Infra.urlWithNewHashQuery hashQuery |> Navigation.Navigation.modifyUrl]
+
 let init (api:IAdminApi) user : Model*Cmd<Msg> =
     let lastReviews =
         match loadFromSessionStorage<Map<QwKey, DateTime>> "AnswersLR" with
@@ -126,6 +146,8 @@ let init (api:IAdminApi) user : Model*Cmd<Msg> =
             saveToSessionStorage "AnswersSS" sst
             sst
 
+    let range = rangeFromHashQuery()
+
     {
         Bundle = None;
         Errors = Map.empty;
@@ -134,12 +156,15 @@ let init (api:IAdminApi) user : Model*Cmd<Msg> =
         LastReviews = lastReviews
         CurrentQuestion = None
         SessionStart = sessionStart
-    } |> apiCmd api.getAnswers () GetAnswersResp Exn
+        Range = range
+
+    } |> apiCmd api.getAnswers range GetAnswersResp Exn
 
 let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
     | GetAnswersResp {Value = Ok res; ST = st } -> {cm with Bundle = Some res; TimeDiff = timeDiff st} |> editing |> noCmd
     | SelectQuestion key -> cm |> selectQuestion key |> noCmd
+    | SelectRange range -> cm |> setRange api range
     | ResultChanged (teamId, key, v) -> cm |> setResults api teamId key v
     | ResultsUpdated {Value = Ok _} -> cm |> editing |> noCmd
     | DeleteError id -> cm |> delError id |> noCmd
@@ -157,13 +182,16 @@ let view (dispatch : Msg -> unit) (user:AdminUser) (model : Model) =
             ]
         ]
         div [Class "column is-8"][
-            match model.Bundle, model.CurrentQuestion with
-            | Some bundle, Some cq ->
-                match bundle.GetQw cq.Key with
-                | Some qw ->  yield! answersTable dispatch bundle qw cq
-                | None -> ()
+            match model.Bundle, model.IsLoading with
+            | Some bundle, false ->
+                yield paginator dispatch bundle model.Range
+                match model.CurrentQuestion with
+                | Some cq ->
+                    match bundle.GetQw cq.Key with
+                    | Some qw ->  yield! answersTable dispatch bundle qw cq
+                    | None -> ()
+                | _ -> ()
             | _ -> ()
-
         ]
         div [Class "column is-2"][
             if model.IsLoading then
@@ -281,3 +309,24 @@ let answersRow dispatch team (qw:QuestionRecord) (aw:Answer) (lastReview:DateTim
         | Some seconds -> td [] [ span [classList ["has-text-danger", ((int)seconds > (qw.Sec + 20))]][str (int(seconds).ToString())]]
         | None -> td[][]
    ]
+
+let paginator dispatch (bundle:AnswersBundle) (range: Range option) =
+
+    nav[Class "pagination"; Role "navigation"; AriaLabel "pagination"][
+        ul [Class "pagination-list"][
+            match range with
+            | Some range ->
+                li [Class "pagination-link"; Style[Cursor "pointer"]; OnClick (fun _ -> dispatch <| SelectRange None)][str "All teams"]
+                li [Class "pagination-ellipsis"][str " "]
+                li [Class "pagination-link is-current"][str <| sprintf "%i-%i" range.From range.To]
+            | None ->
+                let totalIndexes = bundle.Teams.Length / TEAMsOnPAGE
+                if totalIndexes > 0 then
+                    li [Class "pagination-link is-current"][str "All teams"]
+                    li [Class "pagination-ellipsis"][str " "]
+                    for idx in 0 .. totalIndexes do
+                        let range = {From=idx * TEAMsOnPAGE + 1; To=(idx + 1) * TEAMsOnPAGE}
+                        li [Class "pagination-link"; Style[Cursor "pointer"]; OnClick (fun _ -> Some range |> SelectRange |> dispatch)][
+                            str <| sprintf "%i-%i" range.From range.To]
+        ]
+    ]

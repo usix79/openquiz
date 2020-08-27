@@ -262,12 +262,26 @@ module Infra =
         |> List.ofArray
         |> check
 
-    let urlWithNewHash hash =
-        if System.String.IsNullOrEmpty window.location.hash then
-            printfn "HREF = %s" (window.location.href + hash)
-            window.location.href + hash
+    let getUrlHashParts () =
+        let hash = window.location.hash
+        if System.String.IsNullOrEmpty hash then
+            ("","")
         else
-            (window.location.href).Replace(window.location.hash, hash)
+            let idxOfCol = hash.IndexOf(':')
+            if idxOfCol = -1 then (hash,"")
+            else (hash.Substring(0, idxOfCol), hash.Substring(idxOfCol))
+
+    let urlWithNewHash hash =
+        let (hashTag, _) = getUrlHashParts()
+
+        if hashTag <> hash then (window.location.href).Replace(window.location.hash, hash)
+        else window.location.href
+
+    let urlWithNewHashQuery query =
+        let (hashTag, _) = getUrlHashParts()
+
+        if hashTag <> "" then (window.location.href).Replace(window.location.hash, (hashTag + query))
+        else window.location.href
 
     let redirect url =
         window.location.replace(url)
