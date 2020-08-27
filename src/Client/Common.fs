@@ -247,6 +247,7 @@ module Infra =
             else if lang.StartsWith("ru") then Some L10n.Russian
             else if lang.StartsWith("uk") then Some L10n.Ukrainian
             else if lang.StartsWith("az") then Some L10n.Azerbaijanian
+            else if lang.StartsWith("uz") then Some L10n.Uzbek
             else None
 
         let rec check (langs:string list) =

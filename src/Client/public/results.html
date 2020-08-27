@@ -102,31 +102,33 @@ function getL10n() {
             if (lang.startsWith("ru")) {return "ru"}
             if (lang.startsWith("uk")) {return "uk"}
             if (lang.startsWith("az")) {return "az"}
+            if (lang.startsWith("uz")) {return "uz"}
         }
         return "en"
     }
 
     var lang = getLang()
 
-    function l (en, ru, uk, az){
+    function l (en, ru, uk, az, uz){
         if (lang == "ru") { return ru }
         if (lang == "uk") { return uk }
         if (lang == "az") { return az }
+        if (lang == "uz") { return uz }
         return en
     }
 
     var l10n = {
-        results: l ("Results", "Результаты", "Результати", "Nəticələr"),
-        team: l ("Team", "Команда", "Команда", "Komanda"),
-        points: l ("Points", "Очки", "Очки", "Xallar"),
-        ratingOfDifficulty: l ("Rating", "Рейтинг", "Рейтинг", "Reytinq"),
-        place: l ("Place", "Место", "Місце", "Yer"),
-        questionDifficulty: l ("Question difficulty", "Сложность вопроса", "Складність питання", "Sualın mürəkkəbliyi"),
-        questionVotes: l ("Question karma", "Карма вопроса", "Карма питання", "Sualın karma"),
-        questionRating: l ("Question rating", "Рейтинг вопроса", "Рейтинг питання", "Sualın reytinqi"),
-        toShortView: l ('less details', "скрыть детали", "сховати подробицi", "daha çox"),
-        toFullView: l ('more details', "показать детали", "показати подробицi", "daha az"),
-        tour: l ('Tour', "Тур", "Тур", "Tur")
+        results: l ("Results", "Результаты", "Результати", "Nəticələr", "Натижалар"),
+        team: l ("Team", "Команда", "Команда", "Komanda", "Жамоа"),
+        points: l ("Points", "Очки", "Очки", "Xallar", "Очколар"),
+        ratingOfDifficulty: l ("Rating", "Рейтинг", "Рейтинг", "Reytinq", "Рейтинг"),
+        place: l ("Place", "Место", "Місце", "Yer", "Ўрин"),
+        questionDifficulty: l ("Question difficulty", "Сложность вопроса", "Складність питання", "Sualın mürəkkəbliyi", "Савол қийинлиги"),
+        questionVotes: l ("Question karma", "Карма вопроса", "Карма питання", "Sualın karma", "Савол кармаси"),
+        questionRating: l ("Question rating", "Рейтинг вопроса", "Рейтинг питання", "Sualın reytinqi", "Савол рейтинги"),
+        toShortView: l ('less details', "скрыть детали", "сховати подробицi", "daha çox", "деталларни беркитиш"),
+        toFullView: l ('more details', "показать детали", "показати подробицi", "daha az", "батафсил"),
+        tour: l ('Tour', "Тур", "Тур", "Tur", "Босқич")
     }
 
     return l10n
