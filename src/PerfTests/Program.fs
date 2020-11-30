@@ -43,7 +43,7 @@ let parseArgs argv =
 [<EntryPoint>]
 let main argv =
     if argv.Length = 0 then
-        printfn """The Game Performanse Tests Utility
+        printfn """Open Quiz Performanse Tests Utility
         USAGE:
             perftests.dll -srv <url> -quiz <quizId> -token <admin token> MODE
             Possible MODEs:
