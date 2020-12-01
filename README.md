@@ -9,9 +9,9 @@ The service is completely free for commercial and noncommercial use.
 Five steps to produce your quiz:
 
 * [Login](https://www.open-quiz.com/login)
-* [Setup Quiz](https://www.open-quiz.com/manual.html#p2)
-* [Prepare Questions Package](https://www.open-quiz.com/manual.html#p3)
-* [Publish Registration Link](https://www.open-quiz.com/manual.html#p5.1)
-* [Go Live!](https://www.open-quiz.com/manual.html#p5.2)
+* [Setup Quiz](https://github.com/usix79/openquiz/blob/master/src/Client/public/manual.html#p2)
+* [Prepare Questions Package](https://github.com/usix79/openquiz/blob/master/src/Client/public/manual.html#p3)
+* [Publish Registration Link](https://github.com/usix79/openquiz/blob/master/src/Client/public/manual.html#p5.1)
+* [Go Live!](https://github.com/usix79/openquiz/blob/master/src/Client/public/manual.html#p5.2)
 
-See [Release Notes](https://www.open-quiz.com/RELEASE_NOTES.html) for information of latest updates.
+See [Release Notes](https://github.com/usix79/openquiz/blob/master/RELEASE_NOTES.md) for information of latest updates.
