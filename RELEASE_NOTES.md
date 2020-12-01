@@ -3,7 +3,7 @@
 ## 1.14.0 - 2020-12-01
 * Single quiz question is diplayed before countdown
 * Mixlr player starts automatically (on desktop)
-*
+* Added donate button
 
 ## 1.13.0 - 2020-07-27
 

@@ -89,6 +89,18 @@ let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : M
                             ]
                         ]
 
+                        let donateHtml = """
+<form action="https://www.paypal.com/donate" method="post" target="_top">
+<input type="hidden" name="hosted_button_id" value="MD3QKYNY98KHU" />
+<input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" border="0" name="submit" title="Donate if you want to appreciate work open-quiz author did" alt="Donate" />
+<img alt="" border="0" src="https://www.paypal.com/en_UA/i/scr/pixel.gif" width="1" height="1" />
+</form>
+"""
+                        div [Class "navbar-item"][
+                            div [Style[MarginTop "5px"]; DangerouslySetInnerHTML {__html = donateHtml}] []
+                            div [] [str "if you want to appreciate work open-quiz author did"]
+                        ]
+
                         a [Class "navbar-item is-paddingleft is-hidden-desktop"][str user.Name]
 
                         a [Role "button"; Class "navbar-burger has-text-light"; Style [MarginLeft "0"]; AriaLabel "menu"; AriaExpanded false; OnClick (fun _ -> dispatch ToggleBurger)][
