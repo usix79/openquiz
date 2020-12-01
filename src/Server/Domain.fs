@@ -232,7 +232,7 @@ type QuizTour = {
     StartTime : DateTime option
     QwIdx : int
     QwPartIdx : int
-    IsMediaDisplayed : bool
+    IsQuestionDisplayed : bool
     Slip : Slip
 } with
     member x.NextQw () =
@@ -363,10 +363,9 @@ module Quizzes =
                 Slip = slip
                 QwIdx = 0
                 QwPartIdx = 0
-                IsMediaDisplayed = false
+                IsQuestionDisplayed = false
                 StartTime = None }
-                :: quiz.Tours
-        }
+                :: quiz.Tours}
 
     let addNextSlip qwIdx (pkgProvider : Provider<int,Package>) (quiz:Quiz) =
         quiz.Dsc.PkgId
@@ -403,8 +402,8 @@ module Quizzes =
     let nextQuestionPart (quiz:Quiz) =
         quiz |> updateCurrentTour (fun tour -> tour.NextQwPart ()) |> Ok
 
-    let showQuestionMedia (quiz:Quiz) =
-        quiz |> updateCurrentTour (fun tour -> {tour with IsMediaDisplayed = true}) |> Ok
+    let showQuestion (quiz:Quiz) =
+        quiz |> updateCurrentTour (fun tour -> {tour with IsQuestionDisplayed = true}) |> Ok
 
     let startCountdown now (quiz:Quiz) =
         quiz |> updateCurrentTour (fun tour -> {tour with Status = Countdown; StartTime = Some now }) |> Ok

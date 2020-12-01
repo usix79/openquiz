@@ -156,7 +156,7 @@ let tourCard idx (tour:QuizTour) : TourCard =
         Name = tour.Name
         Sec = tour.Seconds
         TS = tourStatus tour.Status
-        Slip = slipCard tour.Status tour.QwIdx tour.QwPartIdx tour.IsMediaDisplayed tour.Slip
+        Slip = slipCard tour.Status tour.QwIdx tour.QwPartIdx tour.IsQuestionDisplayed tour.Slip
         ST = tour.StartTime
     }
 
@@ -168,11 +168,11 @@ let extractChoices = function
     | OpenAnswer _ -> None
     | ChoiceAnswer list -> list |> List.map (fun ach -> ach.Text) |> Some
 
-let slipSingleCard status qwPartIdx showMedia (slip:SingleSlip) : SingleSlipCard =
+let slipSingleCard status qwPartIdx showQuestion (slip:SingleSlip) : SingleSlipCard =
     match status with
-    | Announcing when qwPartIdx = 0 && not showMedia -> X3
-    | Announcing when qwPartIdx = 0 && showMedia ->
-        {   Txt=""
+    | Announcing when qwPartIdx = 0 && not showQuestion -> X3
+    | Announcing when qwPartIdx = 0 && showQuestion ->
+        {   Txt=slip.Question |> qwText qwPartIdx
             Choices = None
             Media = slip.QuestionMedia |> Option.map mediaDsc
             Ch = slip.WithChoice
@@ -192,11 +192,11 @@ let slipSingleCard status qwPartIdx showMedia (slip:SingleSlip) : SingleSlipCard
             Points = slip.Points} |> QW
     | Settled -> {Aw= slipAnswer slip.Answer; Com = slip.Comment;  Media = slip.AnswerMedia |> Option.map mediaDsc; Ch = slip.WithChoice} |> AW
 
-let slipCard status qwIdx qwPartIdx showMedia (slip:Slip) : SlipCard =
+let slipCard status qwIdx qwPartIdx showQuestion (slip:Slip) : SlipCard =
     match slip with
     | Single slip ->
         let qwPartIdx = if status = Announcing then qwPartIdx else slip.QuestionsCount - 1
-        slipSingleCard status qwPartIdx showMedia slip |> SS
+        slipSingleCard status qwPartIdx showQuestion slip |> SS
     | Multiple (name,slips) ->
         let cards =
             if status = Announcing then slips |> List.take qwIdx else slips
@@ -317,7 +317,7 @@ module Admin =
             Slip = slip tour.Slip
             QwIdx = tour.QwIdx
             QwPartIdx = tour.QwPartIdx
-            IsMediaDisplayed = tour.IsMediaDisplayed
+            IsQuestionDisplayed = tour.IsQuestionDisplayed
         }
 
     let teamAnswersRecord (team:Team) : AdminModels.TeamAnswersRecord =

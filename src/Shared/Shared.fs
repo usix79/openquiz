@@ -459,7 +459,7 @@ module AdminModels =
         Status : TourStatus
         QwIdx : int
         QwPartIdx : int
-        IsMediaDisplayed : bool
+        IsQuestionDisplayed : bool
         Slip : Slip
         StartTime : System.DateTime option
     }
@@ -486,9 +486,9 @@ module AdminModels =
             | Single slip -> x.QwPartIdx >= slip.LastPartIdx
             | Multiple _ -> x.QwIdx > x.Slip.LastQwIdx
 
-        member x.NeedToDisplayMedia =
+        member x.NeedToDisplayQuestion =
             match x.Slip with
-            | Single slip -> not x.IsMediaDisplayed && slip.QuestionMedia.IsSome
+            | Single slip -> not x.IsQuestionDisplayed
             | Multiple _ -> false
 
 
@@ -689,7 +689,7 @@ type IAdminApi = {
     nextTour : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
     nextQuestion : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     nextQuestionPart : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
-    showQuestionMedia : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
+    showQuestion : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     getAnswers : REQ<AdminModels.Range option> -> ARESP<AdminModels.AnswersBundle>
     updateResults : REQ<{|TeamId: int; QwKey: QwKey; Res: decimal option |} list> -> ARESP<unit>
     getListenToken : REQ<unit> -> ARESP<string>

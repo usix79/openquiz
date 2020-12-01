@@ -1,7 +1,7 @@
 # Release Notes
 
 ## 1.14.0 - 2020-12-01
-* Mediainformation (pictures, audio, video) in a question is diplayed before countdown
+* Single quiz question is diplayed before countdown
 * Mixlr player starts automatically (on desktop)
 *
 
