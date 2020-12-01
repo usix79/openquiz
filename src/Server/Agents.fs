@@ -1,7 +1,7 @@
 module Agents
 
 open System
-open Fable.Remoting.Server
+open Newtonsoft.Json
 open Serilog
 
 open Common
@@ -14,7 +14,7 @@ type PublisherCommand =
 let private uploadFile bucket (quiz:Domain.Quiz) results =
     let key = Bucket.getResultsKey quiz.Dsc.QuizId quiz.Dsc.ListenToken
     let body =
-        DynamicRecord.serialize results
+        JsonConvert.SerializeObject(results, Common.fableConverter)
         |> Text.UTF8Encoding.UTF8.GetBytes
     Bucket.uploadFile bucket key "application/json" body
 

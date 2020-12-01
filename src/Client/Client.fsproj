@@ -7,7 +7,6 @@
     <None Include="paket.references" />
     <None Include="style.scss" />
     <Compile Include="../Shared/Shared.fs" />
-    <Compile Include="Version.fs" />
     <Compile Include="L10n.fs" />
     <Compile Include="AppSync.fs" />
     <Compile Include="Common.fs" />

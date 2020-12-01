@@ -138,8 +138,8 @@ let taggedMsg msg tag =
     fun rsp ->
         msg {Tag = tag; Rsp = rsp}
 
-let saveToSessionStorage key value =
-    sessionStorage.setItem (key, Json.stringify value)
+let inline saveToSessionStorage<'t> key (value:'t) =
+    sessionStorage.setItem (key, Json.serialize<'t> value)
 
 let inline loadFromSessionStorage<'t>  key : 't option =
     let str = sessionStorage.getItem key
@@ -290,8 +290,8 @@ module Infra =
 
         history.pushState(null, "", (window.location.href.Split([|'?'|]).[0]));
 
-    let saveToSessionStorage key value =
-        sessionStorage.setItem (key, Json.stringify value)
+    let inline saveToSessionStorage<'t> key (value:'t) =
+        sessionStorage.setItem (key, Json.serialize<'t> value)
 
     let inline loadFromSessionStorage<'t>  key : 't option =
         let str = sessionStorage.getItem key
@@ -300,8 +300,8 @@ module Infra =
         | Ok data -> Some data
         | Error _ -> None
 
-    let saveToLocalStorage key value =
-        localStorage.setItem (key, Json.stringify value)
+    let inline saveToLocalStorage<'t> key (value:'t) =
+        localStorage.setItem (key, Json.serialize<'t> value)
 
     let inline loadFromLocalStorage<'t>  key : 't option =
         let str = localStorage.getItem key

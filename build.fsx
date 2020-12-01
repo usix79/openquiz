@@ -57,58 +57,32 @@ let runTool cmd args workingDir =
     |> Proc.run
     |> ignore
 
-let openBrowser url =
-    //https://github.com/dotnet/corefx/issues/10361
-    Command.ShellCommand url
-    |> CreateProcess.fromCommand
-    |> CreateProcess.ensureExitCodeWithMessage "opening browser failed"
-    |> Proc.run
-    |> ignore
-
 Target.create "Clean" (fun _ ->
     [deployDir; clientDeployPath]
-    |> Shell.cleanDirs
-)
+    |> Shell.cleanDirs)
 
 Target.create "InstallClient" (fun _ -> npm "install" ".")
 
 Target.create "Build" (fun _ ->
     dotnet "build" serverPath
-
-    Shell.regexReplaceInFileWithEncoding
-        "let app = \".+\""
-       ("let app = \"" + release.NugetVersion + "\"")
-        Text.Encoding.UTF8
-        (Path.combine clientPath "Version.fs")
-    npm "run build" "."
-)
+    dotnet "fable --run webpack --mode production" clientPath)
 
 Target.create "Run" (fun _ ->
     let server = async { dotnet "watch run" serverPath }
-    let client = async { npm "run start" "." }
-    let browser = async {
-        do! Async.Sleep 5000
-        openBrowser "http://localhost:8080"
-    }
+    let client = async { dotnet "fable watch --run webpack-dev-server" clientPath }
 
-    let vsCodeSession = Environment.hasEnvironVar "vsCodeSession"
     let safeClientOnly = Environment.hasEnvironVar "safeClientOnly"
 
-    let tasks =
-        [ if not safeClientOnly then yield server
-          yield client
-          if not vsCodeSession then yield browser ]
-
-    tasks
+    [ if not safeClientOnly then yield server
+      yield client
+    ]
     |> Async.Parallel
     |> Async.RunSynchronously
-    |> ignore
-)
+    |> ignore)
 
 Target.create "PTests" (fun p ->
     dotnet "build" ptestsPath
-    dotnetWithArgs p.Context.Arguments "run -c Release" ptestsPath
-)
+    dotnetWithArgs p.Context.Arguments "run -c Release" ptestsPath)
 
 Target.create "Docker" (fun _ ->
     let publicDir = Path.combine deployDir "public"
@@ -123,8 +97,7 @@ Target.create "Docker" (fun _ ->
     let tag = sprintf "%s/%s" dockerUser dockerImageName
 
     let args = sprintf "build -t %s ." tag
-    runTool "docker" args __SOURCE_DIRECTORY__
-)
+    runTool "docker" args __SOURCE_DIRECTORY__)
 
 open Fake.Core.TargetOperators
 

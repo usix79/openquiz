@@ -16,7 +16,7 @@ var CONFIG = {
     // The tags to include the generated JS and CSS will be automatically injected in the HTML template
     // See https://github.com/jantimon/html-webpack-plugin
     indexHtmlTemplate: './src/Client/index.html',
-    fsharpEntry: './src/Client/Client.fsproj',
+    fsharpEntry: './src/Client/App.fs.js',
     cssEntry: './src/Client/style.scss',
     outputDir: './src/Client/deploy/app',
     assetsDir: './src/Client/public',
@@ -128,15 +128,6 @@ module.exports = {
     // - file-loader: Moves files referenced in the code (fonts, images) into output folder
     module: {
         rules: [
-            {
-                test: /\.fs(x|proj)?$/,
-                use: {
-                    loader: 'fable-loader',
-                    options: {
-                        babel: CONFIG.babel
-                    }
-                }
-            },
             {
                 test: /\.js$/,
                 exclude: /node_modules/,

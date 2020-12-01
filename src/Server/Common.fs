@@ -5,8 +5,9 @@ open System.Collections.Generic
 open System.Security.Cryptography
 open System.Net.Http
 
-open Microsoft.AspNetCore.Http
 open Fable.Remoting.Server
+open Fable.Remoting.Json
+open Newtonsoft.Json
 open Newtonsoft.Json.Linq
 
 open Shared
@@ -56,6 +57,8 @@ let trimMiddle n suffix (str:string) =
     if str.Length < n then str
     else
        str.Substring(0, n / 2) + suffix + str.Substring(str.Length - (n / 2), n / 2)
+
+let fableConverter = FableJsonConverter()
 
 module Result =
     let toOption = function
@@ -253,7 +256,7 @@ module Aws =
                 let signer = new Aws4RequestSigner.AWS4RequestSigner(creds.AccessKey, creds.SecretKey)
 
                 let body =
-                    DynamicRecord.serialize evt
+                    JsonConvert.SerializeObject(evt,fableConverter)
                     |> Text.UTF8Encoding.UTF8.GetBytes
                     |> Convert.ToBase64String
 

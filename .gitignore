@@ -16,3 +16,4 @@ deploy
 bundle
 .ionide/
 src/Server/aws-logger-errors.txt
+*.fs.js

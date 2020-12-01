@@ -5,28 +5,28 @@ group Server
     framework: netcoreapp3.1
     storage: none
 
-nuget Amazon.Extensions.Configuration.SystemsManager
-nuget AWS.Logger.SeriLog
-nuget Aws4RequestSigner 1.0.1
-nuget AWSSDK.DynamoDBv2
-nuget AWSSDK.S3
+    nuget Amazon.Extensions.Configuration.SystemsManager
+    nuget AWS.Logger.SeriLog
+    nuget Aws4RequestSigner 1.0.1
+    nuget AWSSDK.DynamoDBv2
+    nuget AWSSDK.S3
     nuget FSharp.Core
     nuget Giraffe
-    nuget Fable.Remoting.Giraffe ~> 3
-nuget Giraffe.SerilogExtensions
-nuget Json.Net
-nuget Serilog.Formatting.Compact
-nuget Serilog.Sinks.Console
-nuget String.Similarity 3.0.0
-nuget System.IdentityModel.Tokens.Jwt
+    nuget Fable.Remoting.Giraffe
+    nuget Giraffe.SerilogExtensions
+    nuget Json.Net
+    nuget Serilog.Formatting.Compact
+    nuget Serilog.Sinks.Console
+    nuget String.Similarity 3.0.0
+    nuget System.IdentityModel.Tokens.Jwt
 
 group PTests
     source https://api.nuget.org/v3/index.json
     framework: netcoreapp3.1
     storage: none
-nuget DotNetCSharp.AWS.AppSync.Client 1.1.1
-nuget Fable.Remoting.DotnetClient
-nuget FSharp.Control.Reactive
+    nuget DotNetCSharp.AWS.AppSync.Client 1.1.1
+    nuget Fable.Remoting.DotnetClient
+    nuget FSharp.Control.Reactive
 
 group Client
     source https://api.nuget.org/v3/index.json
@@ -38,12 +38,12 @@ group Client
     nuget Fable.Elmish.Debugger ~> 3
     nuget Fable.Elmish.HMR ~> 4
     nuget Fable.Elmish.React ~> 3
-nuget Fable.FontAwesome
-nuget Fable.FontAwesome.Free
+    nuget Fable.FontAwesome
+    nuget Fable.FontAwesome.Free
     nuget Fable.React ~> 5
-nuget Fable.React.Flatpickr
-    nuget Fable.Remoting.Client ~> 5
-nuget Fulma
+    nuget Fable.React.Flatpickr
+    nuget Fable.Remoting.Client
+    nuget Fulma
 
 group Build
     source https://api.nuget.org/v3/index.json

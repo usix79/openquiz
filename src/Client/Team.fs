@@ -490,4 +490,3 @@ let historyView dispatch model l10n =
                     ]
         ]
     ]
-
