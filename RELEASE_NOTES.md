@@ -1,5 +1,10 @@
 # Release Notes
 
+## 1.14.0 - 2020-12-01
+* Mediainformation (pictures, audio, video) in a question is diplayed before countdown
+* Mixlr player starts automatically (on desktop)
+*
+
 ## 1.13.0 - 2020-07-27
 
 * Questions karma and rating are calculated according to the teams likes and dislikes
