@@ -17,3 +17,4 @@ bundle
 .ionide/
 src/Server/aws-logger-errors.txt
 *.fs.js
+.DS_Store
