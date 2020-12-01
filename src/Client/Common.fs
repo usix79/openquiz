@@ -313,13 +313,13 @@ module Infra =
     let removeFromLocalStorage key =
         localStorage.removeItem key
 
-    let saveUser user =
+    let saveUser (user:User) =
         saveToSessionStorage "USER" user
 
     let loadUser () =
         Infra.loadFromSessionStorage<User> "USER"
 
-    let saveSettings settings =
+    let saveSettings (settings:Settings) =
         saveToSessionStorage "SETTINGS" settings
 
     let loadSettings () =
