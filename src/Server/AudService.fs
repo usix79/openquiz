@@ -10,7 +10,7 @@ open Shared
 open Common
 open Presenter
 
-let api (context:HttpContext) : IAudApi =
+let api env (context:HttpContext) : IAudApi =
     let logger : ILogger = context.Logger()
     let cfg = context.GetService<IConfiguration>()
     let secret = Config.getJwtSecret cfg
@@ -20,7 +20,7 @@ let api (context:HttpContext) : IAudApi =
         let ff f = (fun (quizIdStr:string) req ->
             match tryParseInt32 quizIdStr with
             | Some quizId ->
-                Data2.Quizzes.getDescriptor quizId
+                Data2.Quizzes.getDescriptor env quizId
                 |> AsyncResult.bind (fun quiz -> f quiz req)
             | None ->
                 Log.Error ("{Api} {Error} {Quiz}", "aud", "Wrong quiz Id", quizIdStr)
@@ -31,16 +31,16 @@ let api (context:HttpContext) : IAudApi =
         SecurityService.exec logger proc <| SecurityService.authorizeAudience secret (ff f)
 
     let api : IAudApi = {
-        getQuiz = ex "getState" getQuiz
-        getHistory = ex "getHistory" getHistory
+        getQuiz = ex "getState" <| getQuiz env
+        getHistory = ex "getHistory" <| getHistory env
     }
 
     api
 
-let getQuiz quiz _ =
-    Data2.Quizzes.get quiz.QuizId
+let getQuiz env quiz _ =
+    Data2.Quizzes.get env quiz.QuizId
     |> AsyncResult.map Audience.quizCard
 
-let getHistory quiz _ =
-    Data2.Quizzes.get quiz.QuizId
+let getHistory env quiz _ =
+    Data2.Quizzes.get env quiz.QuizId
     |> AsyncResult.map Audience.quizHistory

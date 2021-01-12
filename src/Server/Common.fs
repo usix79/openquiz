@@ -154,18 +154,12 @@ module Config =
     let getJwtSecret (cfg:IConfiguration) = cfg.["jwtsecret"]
     let getCognitoClientId (cfg:IConfiguration) = cfg.["cognitoClientId"]
     let getCognitoClientName (cfg:IConfiguration) = cfg.["cognitoClientName"]
-    let getFilesAccessPoint (cfg:IConfiguration) = cfg.["filesAccessPoint"]
     let getAppsyncEndpoint (cfg:IConfiguration) = cfg.["appsync-endpoint"]
     let getAppsyncApiKey (cfg:IConfiguration) = cfg.["appsync-apikey"]
     let getAppsyncRegion (cfg:IConfiguration) = cfg.["appsync-region"]
     let getMediaBucketName (cfg:IConfiguration) = cfg.["mediaBucketName"]
     let getMediaHostName (cfg:IConfiguration) = cfg.["mediaHostName"]
-    let getRedirectUrl (cfg:IConfiguration) =
-#if DEBUG
-        cfg.["redirectUrlDebug"]
-#else
-        cfg.["redirectUrl"]
-#endif
+    let getRedirectUrl (cfg:IConfiguration) = cfg.["redirectUrl"]
 
     let getAppSyncCfg (cfg:IConfiguration) =
         {Endpoint = getAppsyncEndpoint cfg; Region = getAppsyncRegion cfg; ApiKey = getAppsyncApiKey cfg}

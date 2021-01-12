@@ -7,10 +7,11 @@
     <None Include="paket.references" />
     <Compile Include="../Shared/Shared.fs" />
     <Compile Include="Common.fs" />
+    <Compile Include="DataLibrary.fs" />
+    <Compile Include="Env.fs" />
     <Compile Include="Domain.fs" />
     <Compile Include="Jury.fs" />
     <Compile Include="Bucket.fs" />
-    <Compile Include="DataLibrary.fs" />
     <Compile Include="Data2.fs" />
     <Compile Include="Presenter.fs" />
     <Compile Include="Agents.fs" />
@@ -22,5 +23,10 @@
     <Compile Include="AudService.fs" />
     <Compile Include="Server.fs" />
   </ItemGroup>
-  <Import Project="..\..\.paket\Paket.Restore.targets" />
+    <ItemGroup>
+    <Content Include="public\**">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    </ItemGroup>
+<Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

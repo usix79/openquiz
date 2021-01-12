@@ -18,3 +18,7 @@ bundle
 src/Server/aws-logger-errors.txt
 *.fs.js
 .DS_Store
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out

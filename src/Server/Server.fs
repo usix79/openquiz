@@ -18,15 +18,15 @@ open Serilog
 
 open Shared
 open Common
+open Env
 
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 
-let isProdMode = Directory.Exists "public"
-let publicPath = Directory.GetCurrentDirectory() + "/" + if isProdMode then "public" else "../Client/public"
-
 let port =
     "SERVER_PORT"
-    |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
+    |> tryGetEnv
+    |> Option.map uint16
+    |> Option.defaultValue 8085us
 
 let errorHandler (ex: Exception) (routeInfo: RouteInfo<HttpContext>) =
     let contextLogger = routeInfo.httpContext.Logger()
@@ -51,18 +51,17 @@ let loginHandler _next (ctx: HttpContext)  =
         return! redirectTo false url _next ctx
     }
 
-let appRouter =
+let appRouter env =
     choose [
         route "/ping" >=> text ("pong")
-        route "/index.html" >=> redirectTo false "/"
-        route "/default.html" >=> redirectTo false "/"
-        route "/login" >=> loginHandler
-        apiHandler SecurityService.api
-        apiHandler MainService.api
-        apiHandler AdminService.api
-        apiHandler TeamService.api
-        apiHandler RegService.api
-        apiHandler AudService.api
+        route "/api/login" >=> loginHandler
+        route "/api/ping" >=> text ("pong")
+        apiHandler <| SecurityService.api env
+        apiHandler <| MainService.api env
+        apiHandler <| AdminService.api env
+        apiHandler <| TeamService.api env
+        apiHandler <| RegService.api env
+        apiHandler <| AudService.api env
     ]
 
 let serilogConfig = {
@@ -80,43 +79,68 @@ let serilogConfig = {
             |> Field.responseContentType
 }
 
-let appRouterWithLogging = SerilogAdapter.Enable(appRouter, serilogConfig)
+let appRouterWithLogging env = SerilogAdapter.Enable(appRouter env, serilogConfig)
 
-let awsLogConfig = AWSLoggerConfig("openquiz")
+let buildEnvironment logger =
+    let configurer = {
+        new Env.IConfigurer with
+        member _.DynamoTablePrefix = "OQ"
+    }
 
-Log.Logger <-
-  LoggerConfiguration()
-    .Destructure.FSharpTypes()
-    .WriteTo.Console()
-    .WriteTo.AWSSeriLog(awsLogConfig, textFormatter=Formatting.Compact.RenderedCompactJsonFormatter())
-    .CreateLogger()
+    let dbEnv = {
+        new Env.IDbEnv with
+        member _.Logger = logger
+        member _.Configurer = configurer
+    }
 
-let configureApp (app : IApplicationBuilder) =
-    app.UseResponseCompression()
-       .UseDefaultFiles()
-       .UseStaticFiles()
-       .UseGiraffe appRouterWithLogging
+    let database = {
+        new Env.IDatabase with
+        member _.GetItem (tableName, reader) = Data2.getItem' dbEnv tableName reader
+        member _.PutItem (tableName, version) = Data2.putItem' dbEnv version tableName
+        member _.DelItem (tableName) = Data2.deleteItem' dbEnv tableName
+        member _.CheckItem (tableName) = Data2.checkItem' dbEnv tableName
+        member _.GetProjection (tableName, reader, projection) = Data2.getItemProjection' dbEnv projection tableName reader
+        member _.PutOptimistic (id, get, put, logic) = Data2.putOptimistic' dbEnv get put id logic
+        member _.Query (tableName, projection, reader) = Data2.query' dbEnv tableName projection reader
+    }
 
-let configureServices (services : IServiceCollection) =
-    services.AddResponseCompression() |> ignore
-    services.AddGiraffe() |> ignore
+    { new Env.IAppEnv with
+        member _.Logger = logger
+        member _.Configurer = configurer
+        member _.Database = database
+    }
 
 [<EntryPoint>]
-let main _ =
+let main args =
     printfn "Working directory - %s" (Directory.GetCurrentDirectory())
     printfn "ulimit -a \n%s" (Diag.run "ulimit -a")
 
     let host =
         WebHost
-            .CreateDefaultBuilder()
-            .UseWebRoot(publicPath)
-            .UseContentRoot(publicPath)
-            .ConfigureAppConfiguration(fun builder -> builder.AddSystemsManager("/openquiz") |> ignore)
-            .Configure(Action<IApplicationBuilder> configureApp)
-            .ConfigureServices(configureServices)
+            .CreateDefaultBuilder(args)
+            .ConfigureAppConfiguration(fun ctx builder ->
+                printfn "Configuring App:%A Env: %A" ctx.HostingEnvironment.ApplicationName ctx.HostingEnvironment.EnvironmentName
+                builder.AddSystemsManager("/OpenQuiz/" + ctx.HostingEnvironment.EnvironmentName) |> ignore )
+            .Configure(fun ctx app ->
+                let logger =
+                  LoggerConfiguration()
+                    .Destructure.FSharpTypes()
+                    .WriteTo.Console()
+                    .WriteTo.AWSSeriLog(
+                        AWSLoggerConfig("OpenQuiz-" + ctx.HostingEnvironment.EnvironmentName),
+                        textFormatter=Formatting.Compact.RenderedCompactJsonFormatter())
+                    .CreateLogger()
+
+                Log.Logger <- logger
+
+                let env = buildEnvironment logger
+
+                app.UseGiraffe (appRouterWithLogging env)
+                )
+            .ConfigureServices(fun services ->
+                services.AddGiraffe() |> ignore )
             .UseUrls("http://0.0.0.0:" + port.ToString() + "/")
             .Build()
-
 
     let cfg = host.Services.GetService<IConfiguration>()
 

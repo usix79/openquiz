@@ -622,7 +622,7 @@ module Infra =
     let private prefix = "media"
 
     let routeBuilder clientPath (typeName: string) (methodName: string) =
-        sprintf "%s/app/api/%s/%s" clientPath typeName methodName
+        sprintf "%s/api/%s/%s" clientPath typeName methodName
 
     let s3KeyForMedia key =
         sprintf "%s/%s" prefix key

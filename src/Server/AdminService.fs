@@ -13,7 +13,7 @@ open Presenter
 
 module AR = AsyncResult
 
-let api (context:HttpContext) : IAdminApi =
+let api env (context:HttpContext) : IAdminApi =
     let logger : ILogger = context.Logger()
     let cfg = context.GetService<IConfiguration>()
     let secret = Config.getJwtSecret cfg
@@ -23,7 +23,7 @@ let api (context:HttpContext) : IAdminApi =
         let ff f = (fun (quizIdStr:string) req ->
             match tryParseInt32 quizIdStr with
             | Some quizId ->
-                Data2.Quizzes.getDescriptor quizId
+                Data2.Quizzes.getDescriptor env quizId
                 |> AsyncResult.bind (fun quiz -> f quiz req)
             | None ->
                 Log.Error ("{Api} {Error} {Quiz}", "admin", "Wrong quiz Id", quizIdStr)
@@ -34,37 +34,37 @@ let api (context:HttpContext) : IAdminApi =
         SecurityService.exec logger proc <| SecurityService.authorizeAdmin secret (ff f)
 
     let api : IAdminApi = {
-        getTeams = ex  "getTeams" getTeams
-        createTeam = ex  "createTeam" (createTeam (Config.getMediaBucketName cfg))
-        createTeamBatch = ex  "createTeamBatch" createTeamBatch
-        getTeamCard = ex  "getTeamCard" getTeamCard
-        updateTeamCard = ex  "updateTeamCard" (updateTeamCard (Config.getMediaBucketName cfg))
-        changeTeamStatus = ex  "changeTeamStatus" changeTeamStatus
-        getQuizCard = ex  "getQuizCard" getQuizCard
-        changeQuizStatus = ex  "changeQuizStatus" changeQuizStatus
-        getPackages = ex "getPackages" getPackages
-        setPackage = ex "setPackage" setPackage
-        getPackageCard = ex "getPackageCard" getPackageCard
-        startCountDown = ex "startCountDown" startCountDown
-        pauseCountDown = ex "pauseCountDown" pauseCountDown
-        settleTour = ex "settleTour" (settleTour (Config.getMediaBucketName cfg))
-        nextTour = ex "nextTour" nextTour
-        nextQuestion = ex "nextQuestion" nextQuestion
-        nextQuestionPart = ex "nextQuestionPart" nextQuestionPart
-        showQuestion = ex "showQuestion" showQuestion
-        getAnswers = ex "getAnswers" getAnswers
-        updateResults = ex "updateResults" (updateResults (Config.getMediaBucketName cfg))
-        getListenToken = ex "getListenToken" getListenToken
-        changeStreamUrl = ex  "changeStreamUrl" changeStreamUrl
+        getTeams = ex  "getTeams" <| getTeams env
+        createTeam = ex  "createTeam" (createTeam env (Config.getMediaBucketName cfg))
+        createTeamBatch = ex  "createTeamBatch" <| createTeamBatch env
+        getTeamCard = ex  "getTeamCard" <| getTeamCard env
+        updateTeamCard = ex  "updateTeamCard" (updateTeamCard env (Config.getMediaBucketName cfg))
+        changeTeamStatus = ex  "changeTeamStatus" <| changeTeamStatus env
+        getQuizCard = ex  "getQuizCard" <| getQuizCard env
+        changeQuizStatus = ex  "changeQuizStatus" <| changeQuizStatus env
+        getPackages = ex "getPackages" <| getPackages env
+        setPackage = ex "setPackage" <| setPackage env
+        getPackageCard = ex "getPackageCard" <| getPackageCard env
+        startCountDown = ex "startCountDown" <| startCountDown env
+        pauseCountDown = ex "pauseCountDown" <| pauseCountDown env
+        settleTour = ex "settleTour" (settleTour env (Config.getMediaBucketName cfg))
+        nextTour = ex "nextTour" <| nextTour env
+        nextQuestion = ex "nextQuestion" <| nextQuestion env
+        nextQuestionPart = ex "nextQuestionPart" <| nextQuestionPart env
+        showQuestion = ex "showQuestion" <| showQuestion env
+        getAnswers = ex "getAnswers" <| getAnswers env
+        updateResults = ex "updateResults" (updateResults env (Config.getMediaBucketName cfg))
+        getListenToken = ex "getListenToken" <| getListenToken env
+        changeStreamUrl = ex  "changeStreamUrl" <| changeStreamUrl env
     }
 
     api
 
-let getTeams quiz req =
-    Data2.Teams.getDescriptors quiz.QuizId
+let getTeams env quiz req =
+    Data2.Teams.getDescriptors env quiz.QuizId
     |> AR.map (List.map Admin.teamRecord)
 
-let createTeam bucketName quiz req =
+let createTeam env bucketName quiz req =
     let teamName = req.TeamName.Trim()
 
     let creator teamsInQuiz teamId =
@@ -72,28 +72,28 @@ let createTeam bucketName quiz req =
         | Some txt -> Error txt
         | None -> Domain.Teams.createNewAdmin teamId teamName quiz Domain.Admitted  |> Ok
 
-    Data2.Teams.getDescriptors quiz.QuizId
+    Data2.Teams.getDescriptors env quiz.QuizId
     |> AR.bind (fun teamsInQuiz ->
-        Data2.Teams.create quiz.QuizId (creator teamsInQuiz)
+        Data2.Teams.create env quiz.QuizId (creator teamsInQuiz)
         |> AR.map (fun team -> {|Record = Admin.teamRecord team.Dsc|}))
-    |> AR.side (fun _ -> Agents.PublishResults (quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
+    |> AR.side (fun _ -> Agents.PublishResults (env, quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
 
-let createTeamBatch quiz req =
+let createTeamBatch env quiz req =
 
     let creator teamName teamId =
         Domain.Teams.createNewAdmin teamId teamName quiz Domain.Admitted  |> Ok
 
     req.TeamNames
-    |> List.map (fun teamName -> Data2.Teams.create quiz.QuizId (creator teamName))
+    |> List.map (fun teamName -> Data2.Teams.create env quiz.QuizId (creator teamName))
     |> List.iter (Async.RunSynchronously >> ignore)
 
     AR.retn ()
 
-let getTeamCard quiz req =
-    Data2.Teams.getDescriptor quiz.QuizId req.TeamId
+let getTeamCard env quiz req =
+    Data2.Teams.getDescriptor env quiz.QuizId req.TeamId
     |> AR.map Admin.teamCard
 
-let updateTeamCard bucketName quiz req =
+let updateTeamCard env bucketName quiz req =
     let logic (team : Domain.Team) =
         { team with
             Dsc = {
@@ -104,55 +104,55 @@ let updateTeamCard bucketName quiz req =
             }
         } |> Ok
 
-    Data2.Teams.update {QuizId = quiz.QuizId; TeamId = req.TeamId} logic
+    Data2.Teams.update env {QuizId = quiz.QuizId; TeamId = req.TeamId} logic
     |> AR.map (fun team -> Admin.teamRecord team.Dsc)
-    |> AR.side (fun _ -> Agents.PublishResults (quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
+    |> AR.side (fun _ -> Agents.PublishResults (env, quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
 
-let changeTeamStatus quiz req =
+let changeTeamStatus env quiz req =
     let logic (team : Domain.Team) =
         { team with Dsc = { team.Dsc with Status = teamStatusToDomain req.TeamStatus } } |> Ok
 
-    Data2.Teams.update {QuizId = quiz.QuizId; TeamId = req.TeamId} logic
+    Data2.Teams.update env {QuizId = quiz.QuizId; TeamId = req.TeamId} logic
     |> AR.map (fun team -> Admin.teamRecord team.Dsc)
 
-let getQuizCard quiz _ =
-    Data2.Quizzes.get quiz.QuizId
+let getQuizCard env quiz _ =
+    Data2.Quizzes.get env quiz.QuizId
     |> AR.map Admin.quizCard
 
-let changeQuizStatus quiz req =
+let changeQuizStatus env quiz req =
     let logic quiz =
-        quiz |> Domain.Quizzes.changeStatus (quizStatusToDomain req.QuizStatus) Data2.Packages.provider |> Ok
+        quiz |> Domain.Quizzes.changeStatus (quizStatusToDomain req.QuizStatus) (Data2.Packages.provider env) |> Ok
 
-    Data2.Quizzes.update quiz.QuizId logic
+    Data2.Quizzes.update env quiz.QuizId logic
     |> AR.map Admin.quizCard
 
-let getPackages quiz _ =
-    Data2.Experts.get quiz.Producer
+let getPackages env quiz _ =
+    Data2.Experts.get env quiz.Producer
     |> AR.bind (fun exp ->
         exp.AllPackages
-        |> List.map Data2.Packages.getDescriptor
+        |> List.map (Data2.Packages.getDescriptor env)
         |> Async.Sequential
         |> Async.map (Array.choose (function Ok dsc -> Some (packageRecord dsc) | _ -> None) >> List.ofSeq >> Ok ))
 
-let setPackage quiz req =
+let setPackage env quiz req =
     let logic quiz = quiz |> Domain.Quizzes.setPackageId req.PackageId |> Ok
 
-    Data2.Experts.get quiz.Producer
+    Data2.Experts.get env quiz.Producer
     |> AR.bind (fun exp ->
             match req.PackageId with
             | Some packageId -> Domain.Experts.authorizePackageRead packageId exp
             | None -> Ok ()
             |> AR.fromResult)
-    |> AR.next (Data2.Quizzes.update quiz.QuizId logic)
+    |> AR.next (Data2.Quizzes.update env quiz.QuizId logic)
     |> AR.map Admin.quizCard
 
-let getPackageCard quiz req =
-    Data2.Experts.get quiz.Producer
+let getPackageCard env quiz req =
+    Data2.Experts.get env quiz.Producer
     |> AR.bind (Domain.Experts.authorizePackageRead req.PackageId >> AR.fromResult)
-    |> AR.next (Data2.Packages.get req.PackageId)
+    |> AR.next (Data2.Packages.get env req.PackageId)
     |> AR.map packageCard
 
-let nextQuestion quiz req =
+let nextQuestion env quiz req =
     let logic quiz =
         match req.CurrentTour with
         | Some tour ->
@@ -161,10 +161,10 @@ let nextQuestion quiz req =
             |> Domain.Quizzes.nextQuestion
         | None -> Error "Question is empty"
 
-    Data2.Quizzes.update quiz.QuizId logic
+    Data2.Quizzes.update env quiz.QuizId logic
     |> AR.map Admin.quizCard
 
-let nextQuestionPart quiz req =
+let nextQuestionPart env quiz req =
     let logic quiz =
         match req.CurrentTour with
         | Some tour ->
@@ -173,10 +173,10 @@ let nextQuestionPart quiz req =
             |> Domain.Quizzes.nextQuestionPart
         | None -> Error "Question is empty"
 
-    Data2.Quizzes.update quiz.QuizId logic
+    Data2.Quizzes.update env quiz.QuizId logic
     |> AR.map Admin.quizCard
 
-let showQuestion quiz req =
+let showQuestion env quiz req =
     let logic quiz =
         match req.CurrentTour with
         | Some tour ->
@@ -185,10 +185,10 @@ let showQuestion quiz req =
             |> Domain.Quizzes.showQuestion
         | None -> Error "Question is empty"
 
-    Data2.Quizzes.update quiz.QuizId logic
+    Data2.Quizzes.update env quiz.QuizId logic
     |> AR.map Admin.quizCard
 
-let startCountDown quiz req =
+let startCountDown env quiz req =
     let logic quiz =
         match req.CurrentTour with
         | Some tour ->
@@ -197,18 +197,18 @@ let startCountDown quiz req =
             |> Domain.Quizzes.startCountdown DateTime.UtcNow
         | None -> Error "Question is empty"
 
-    Data2.Quizzes.update quiz.QuizId logic
+    Data2.Quizzes.update env quiz.QuizId logic
     |> AR.map Admin.quizCard
 
-let pauseCountDown quiz _ =
-    Data2.Quizzes.update quiz.QuizId Domain.Quizzes.pauseCountdown
+let pauseCountDown env quiz _ =
+    Data2.Quizzes.update env quiz.QuizId Domain.Quizzes.pauseCountdown
     |> AR.map Admin.quizCard
 
-let settleTour bucketName quiz _ =
-    Data2.Quizzes.update quiz.QuizId Domain.Quizzes.settle
-    |> AR.side settleAnswers
+let settleTour env bucketName quiz _ =
+    Data2.Quizzes.update env quiz.QuizId Domain.Quizzes.settle
+    |> AR.side (settleAnswers env)
     |> AR.map Admin.quizCard
-    |> AR.side (fun _ -> Agents.PublishResults (quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
+    |> AR.side (fun _ -> Agents.PublishResults (env, quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
 
 type SettleItem = {
     Idx : Domain.QwKey
@@ -218,7 +218,7 @@ type SettleItem = {
     WithChoice: bool
 }
 
-let settleAnswers (quiz : Domain.Quiz) =
+let settleAnswers env (quiz : Domain.Quiz) =
 
     let now = DateTime.UtcNow
 
@@ -249,10 +249,10 @@ let settleAnswers (quiz : Domain.Quiz) =
 
         let sw = Diagnostics.Stopwatch.StartNew()
 
-        Data2.Teams.getIds quiz.Dsc.QuizId
+        Data2.Teams.getIds env quiz.Dsc.QuizId
         |> AR.bind (fun list ->
             list
-            |> List.map (fun teamId -> Data2.Teams.update {QuizId = quiz.Dsc.QuizId; TeamId = teamId} (logic items))
+            |> List.map (fun teamId -> Data2.Teams.update env {QuizId = quiz.Dsc.QuizId; TeamId = teamId} (logic items))
             |> Async.ParallelThrottle 20
             //|> Async.Sequential
             |> Async.map (fun _ ->
@@ -261,39 +261,39 @@ let settleAnswers (quiz : Domain.Quiz) =
                 Ok ()))
     | _ -> AR.retn ()
 
-let nextTour quiz _ =
-    let logic quiz = quiz |> Domain.Quizzes.next Data2.Packages.provider |> Ok
+let nextTour env quiz _ =
+    let logic quiz = quiz |> Domain.Quizzes.next (Data2.Packages.provider env) |> Ok
 
-    Data2.Quizzes.update quiz.QuizId logic
+    Data2.Quizzes.update env quiz.QuizId logic
     |> AR.map Admin.quizCard
 
-let getAnswers quiz range =
-    Data2.Quizzes.get quiz.QuizId
+let getAnswers env quiz range =
+    Data2.Quizzes.get env quiz.QuizId
     |> AR.bind (fun quiz ->
         match range with
-        | Some range -> Data2.Teams.getRangeInQuiz range.From range.To quiz.Dsc.QuizId
-        | None -> Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
+        | Some range -> Data2.Teams.getRangeInQuiz env range.From range.To quiz.Dsc.QuizId
+        | None -> Data2.Teams.getAllInQuiz env quiz.Dsc.QuizId
         |> AR.map (fun teams -> Admin.AnswersBundle quiz teams))
 
-let updateResults bucketName quiz req  =
+let updateResults env bucketName quiz req  =
     let logic qwKey res team =
         team
         |> Domain.Teams.updateResult qwKey res DateTime.UtcNow
         |> (function team,true -> Ok team | _,false -> Error "Nothing to change")
 
     req
-    |> List.map (fun r -> Data2.Teams.update {QuizId = quiz.QuizId; TeamId = r.TeamId} (logic (qwKeyToDomain r.QwKey) r.Res))
+    |> List.map (fun r -> Data2.Teams.update env {QuizId = quiz.QuizId; TeamId = r.TeamId} (logic (qwKeyToDomain r.QwKey) r.Res))
     |> Async.Sequential
     |> Async.map (fun _ -> Ok ())
-    |> AR.side (fun _ -> Agents.PublishResults (quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
+    |> AR.side (fun _ -> Agents.PublishResults (env, quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
 
-let getListenToken quiz _ =
+let getListenToken env quiz _ =
     quiz.ListenToken |> AR.retn
 
 
-let changeStreamUrl quiz url =
+let changeStreamUrl env quiz url =
     let logic (quiz:Domain.Quiz) =
         {quiz with Dsc = {quiz.Dsc with StreamUrl = if url <> "" then Some url else None}} |> Ok
 
-    Data2.Quizzes.update quiz.QuizId logic
+    Data2.Quizzes.update env quiz.QuizId logic
     |> AR.map Admin.quizCard

@@ -6,15 +6,13 @@ open Amazon.DynamoDBv2
 open DynamoDb.Ok
 open DynamoDb.Ok.Read
 open DynamoDb.Ok.Write
-open Serilog
 
 open Common
+open Env
 
 module A = Attribute
 module P = Parse
 module R = AttrReader
-
-type PutResult<'item> = Success | Retry
 
 module Errors =
     let [<Literal>] TransactionFailed = "Transaction Failed"
@@ -24,10 +22,10 @@ module Errors =
     let [<Literal>] DeleteError = "DynamoDB Delete Error"
     let [<Literal>] ItemDoesNotExist = "ItemDoesNotExist"
 
-let private logErrors list =
-    Log.Logger.Error ("{@Proc} {@Details}", "DB", list)
+let private logErrors (env:#ILog) list =
+    env.Logger.Error ("{@Proc} {@Details}", "DB", list)
 
-let private putOptimistic' get put id logic  =
+let putOptimistic' env get put id logic  =
 
     let rec tryUpdate attempt =
         async{
@@ -38,11 +36,11 @@ let private putOptimistic' get put id logic  =
                     match! put updatedEntity with
                     | Ok Success -> return Ok updatedEntity
                     | Ok Retry when attempt < 3 ->
-                        logErrors [sprintf "Put Condition Failed for Key %A Attempt %i" id attempt]
+                        logErrors env [sprintf "Put Condition Failed for Key %A Attempt %i" id attempt]
                         do! Async.Sleep (attempt * 100)
                         return! tryUpdate (attempt + 1)
                     | Ok Retry ->
-                        logErrors [sprintf "Put Condition Failed for Key %A Attempt %i Give Up" id attempt]
+                        logErrors env [sprintf "Put Condition Failed for Key %A Attempt %i Give Up" id attempt]
                         return Error Errors.TransactionFailed
                     | Error txt -> return Error txt
                 | Error txt -> return Error txt
@@ -55,29 +53,29 @@ let client = new AmazonDynamoDBClient()
 
 let semaphore = new SemaphoreSlim(512, 512);
 
-let fullTableName name = sprintf "OQ-%s" name
+let fullTableName (env:#ICfg) name = sprintf "%s-%s" (env.Configurer.DynamoTablePrefix) name
 
-let private checkItem' tableName fields =
+let checkItem' env tableName fields =
     async{
         do! semaphore.WaitAsync() |> Async.AwaitTask
 
         let! res =
-            doesItemExist client (fullTableName tableName) fields
+            doesItemExist client (fullTableName env tableName) fields
             |> Async.Catch
 
         semaphore.Release() |> ignore
 
         return match res with
-               | Choice1Of2 res -> res |> Result.mapError (fun errors -> logErrors errors; Errors.GetError)
+               | Choice1Of2 res -> res |> Result.mapError (fun errors -> logErrors env errors; Errors.GetError)
                | Choice2Of2 exn -> raise exn
     }
 
-let private getItemProjection' projection tableName reader fields  =
+let getItemProjection' env projection tableName reader fields  =
     async{
         do! semaphore.WaitAsync() |> Async.AwaitTask
 
         let! res =
-            getItemProjection projection client (fullTableName tableName) reader fields
+            getItemProjection projection client (fullTableName env tableName) reader fields
             |> Async.Catch
 
         semaphore.Release() |> ignore
@@ -88,19 +86,19 @@ let private getItemProjection' projection tableName reader fields  =
                     | Ok entity -> Ok entity
                     | Error [ItemDoesNotExist] -> Error Errors.ItemDoesNotExist
                     | Error list ->
-                        logErrors list
+                        logErrors env list
                         Error Errors.GetError
                | Choice2Of2 exn -> raise exn
     }
 
-let private getItem' tableName reader = getItemProjection' [] tableName reader
+let getItem' env tableName reader = getItemProjection' env [] tableName reader
 
-let private query' tableName projection reader kce =
+let query' env tableName projection reader kce =
     async{
         do! semaphore.WaitAsync() |> Async.AwaitTask
 
         let! res =
-            queryProjection client projection (fullTableName tableName) reader kce
+            queryProjection client projection (fullTableName env tableName) reader kce
             |> Async.Catch
 
         semaphore.Release() |> ignore
@@ -110,12 +108,12 @@ let private query' tableName projection reader kce =
                     match res with
                     | Ok list -> Ok list
                     | Error list ->
-                        logErrors list
+                        logErrors env list
                         Error Errors.QueryError
                | Choice2Of2 exn -> raise exn
     }
 
-let private putItem' version tableName fields  =
+let putItem' env version tableName fields  =
     async{
         do! semaphore.WaitAsync() |> Async.AwaitTask
 
@@ -126,7 +124,7 @@ let private putItem' version tableName fields  =
             | Some v -> Query.KeyConditionExpression (Query.NumberEquals ("Version", decimal v), []) |> Some
 
         let! res =
-            putItemWithCondition ce client (fullTableName tableName) fields
+            putItemWithCondition ce client (fullTableName env tableName) fields
             |> Async.Catch
 
         semaphore.Release() |> ignore
@@ -137,22 +135,22 @@ let private putItem' version tableName fields  =
                     | Ok () -> Ok Success
                     | Error [ConditionalCheckFailed] -> Ok Retry
                     | Error list ->
-                        logErrors list
+                        logErrors env list
                         Error Errors.PutError
                | Choice2Of2 exn -> raise exn
     }
 
-let private deleteItem' tableName fields =
+let deleteItem' env tableName fields =
     async{
         do! semaphore.WaitAsync() |> Async.AwaitTask
         let! res =
-            deleteItem client (fullTableName tableName) fields
+            deleteItem client (fullTableName env tableName) fields
             |> Async.Catch
 
         semaphore.Release() |> ignore
 
         return match res with
-               | Choice1Of2 res -> res |> Result.mapError (fun errors -> logErrors errors; Errors.DeleteError)
+               | Choice1Of2 res -> res |> Result.mapError (fun errors -> logErrors env errors; Errors.DeleteError)
                | Choice2Of2 exn -> raise exn
     }
 
@@ -207,17 +205,17 @@ module SysItem =
         <*> (req Fields.Map A.docMap >- (Map.map (fun _ -> A.string)))
         <*> (req Fields.Version A.number >-> P.int)
 
-    let get = key >> getItem' tableName reader
+    let get (env:#IDb) = key >> env.Database.GetItem(tableName, reader)
 
-    let put (item:SysItem) =
+    let put (env:#IDb) (item:SysItem) =
         [Attr (Fields.Id, ScalarString item.Id)
          Attr (Fields.Map, DocMap (item.Map |> Map.toList |> List.map (fun (k,v) -> Attr (k, ScalarString v))))
          Attr (Fields.Version, ScalarInt32 (item.Version + 1))]
-        |> putItem' (Some item.Version) tableName
+        |> env.Database.PutItem(tableName, Some item.Version)
 
-    let delete itemKey =
+    let delete (env:#IDb) itemKey =
         key (fullId itemKey)
-        |> deleteItem' tableName
+        |> env.Database.DelItem tableName
 
     let private setLastId id (item:SysItem) =
         {item with Map = item.Map.Add("LastId", id.ToString())}
@@ -225,17 +223,17 @@ module SysItem =
     let private incLastId (item:SysItem) =
         {item with Map = item.Map.Add("LastId", (item.LastId + 1).ToString())}
 
-    let getNextId itemKey (startIdProvider: unit -> int) =
+    let getNextId (env:#IDb) itemKey (startIdProvider: unit -> int) =
         let itemId = fullId itemKey
         async{
-            match! putOptimistic' get put itemId (incLastId >> Ok) with
+            match! env.Database.PutOptimistic(itemId, get env, put env, (incLastId >> Ok)) with
             | Ok item -> return Ok (item.LastId)
             | Error Errors.ItemDoesNotExist ->
                 let item =
                     SysItem.NewItem(itemId)
                     |> setLastId (startIdProvider())
                     |> incLastId
-                let! x = put item
+                let! x = put env item
                 return x |> Result.map (fun _ -> item.LastId)
             | Error txt -> return Error txt
         }
@@ -257,16 +255,16 @@ module RefreshTokens =
         <!> (req Fields.Token A.string)
         <*> (req Fields.Expired A.number >-> P.decimal)
 
-    let get = key >> getItem' tableName reader
+    let get (env:#IDb) = key >> env.Database.GetItem(tableName, reader)
 
-    let put (token:Domain.RefreshToken) =
+    let put (env:#IDb) (token:Domain.RefreshToken) =
         [Attr (Fields.Token, ScalarString token.Value)
          Attr (Fields.Expired, ScalarDecimal (token.Expired |> toEpoch))]
-        |> putItem' None tableName
+        |> env.Database.PutItem(tableName, None)
 
-    let replace (oldToken:Domain.RefreshToken) (newToken:Domain.RefreshToken) =
-        deleteItem' tableName (key oldToken.Value)
-        |> AsyncResult.next (put newToken)
+    let replace (env:#IDb) (oldToken:Domain.RefreshToken) (newToken:Domain.RefreshToken) =
+        env.Database.DelItem(tableName) (key oldToken.Value)
+        |> AsyncResult.next (put env newToken)
 
 module Experts =
     let private tableName = "Experts"
@@ -314,11 +312,11 @@ module Experts =
         <*> (opt Fields.DefaultMixlr (A.nullOr A.number) ?>-> (fun id -> id |> Option.map Int32.Parse |> Ok))
         <*> (req Fields.Version A.number >-> P.int)
 
-    let get = key >> getItem' tableName reader
+    let get (env:#IDb) = key >> env.Database.GetItem(tableName, reader)
 
-    let provider = get >> Async.RunSynchronously >> Result.toOption
+    let provider (env:#IDb) = get env >> Async.RunSynchronously >> Result.toOption
 
-    let private put (exp : Domain.Expert) =
+    let private put (env:#IDb) (exp : Domain.Expert) =
         [
             Attr (Fields.Id, ScalarString exp.Id)
             Attr (Fields.Username, ScalarString exp.Username)
@@ -332,21 +330,22 @@ module Experts =
             yield! optInt32 Fields.DefaultMixlr exp.DefaultMixlr
             Attr (Fields.Version, ScalarInt32 (exp.Version + 1))
         ]
-        |> putItem' (Some exp.Version) tableName
+        |> env.Database.PutItem(tableName, Some exp.Version)
 
-    let update = putOptimistic' get put
+    let update (env:#IDb) id logic =
+        env.Database.PutOptimistic(id, get env, put env, logic )
 
-    let updateOrCreate id logic creator =
+    let updateOrCreate (env:#IDb) id logic creator =
 
         async{
             do!
                 async{
-                    match! checkItem' tableName (key id) with
-                    | Ok false -> return! put <| creator() |> Async.Ignore
+                    match! env.Database.CheckItem(tableName) (key id) with
+                    | Ok false -> return! put env <| creator() |> Async.Ignore
                     | _ -> return ()
                 }
 
-            return! putOptimistic' get put id logic
+            return! env.Database.PutOptimistic(id, get env, put env, logic)
         }
 
 module private Slips =
@@ -520,7 +519,7 @@ module Packages =
         <*> (req Fields.Producer A.string)
         <*> (req Fields.Name A.string)
 
-    let getDescriptor = key >> getItemProjection' dscFields tableName dscReader
+    let getDescriptor (env:#IDb) = key >> env.Database.GetProjection(tableName, dscReader, dscFields)
 
     let private builder dsc transferToken sharedWith slips version : Domain.Package =
         {Dsc = dsc; TransferToken = transferToken; SharedWith = sharedWith |> Set.toList
@@ -534,13 +533,13 @@ module Packages =
         <*> (req Fields.Questions A.docList @>-> (A.docMap, Slips.reader))
         <*> (req Fields.Version A.number >-> P.int)
 
-    let get = key >> getItem' tableName reader
+    let get (env:#IDb) = key >> env.Database.GetItem(tableName, reader)
 
-    let provider = get >> Async.RunSynchronously >> Result.toOption
+    let provider (env:#IDb) = get env >> Async.RunSynchronously >> Result.toOption
 
-    let delete = key >> deleteItem' tableName
+    let delete (env:#IDb) = key >> env.Database.DelItem tableName
 
-    let private put (pkg : Domain.Package) =
+    let private put (env:#IDb) (pkg : Domain.Package) =
         [
             Attr (Fields.Id, ScalarInt32 pkg.Dsc.PackageId)
             Attr (Fields.Producer, ScalarString pkg.Dsc.Producer)
@@ -550,14 +549,15 @@ module Packages =
             Attr (Fields.Questions, DocList (pkg.Slips |> List.map (Slips.fields >> DocMap)))
             Attr (Fields.Version, ScalarInt32 (pkg.Version + 1))
         ]
-        |> putItem' (Some pkg.Version) tableName
+        |> env.Database.PutItem(tableName, Some pkg.Version)
 
-    let create (creator : int -> Domain.Package) =
-        SysItem.getNextId "pkg" (fun () -> -100)
+    let create (env:#IDb) (creator : int -> Domain.Package) =
+        SysItem.getNextId env "pkg" (fun () -> -100)
         |> AsyncResult.bind (creator >> AsyncResult.retn)
-        |> AsyncResult.side put
+        |> AsyncResult.side (put env)
 
-    let update = putOptimistic' get put
+    let update (env:#IDb) id logic =
+        env.Database.PutOptimistic(id, get env, put env, logic)
 
 module Quizzes =
     let private tableName = "Quizzes"
@@ -628,7 +628,7 @@ module Quizzes =
         <*> (opt Fields.MixlrCode (A.nullOr A.number) ??>-> P.int)
         <*> (opt Fields.StreamUrl (A.nullOr A.string) ??>-> Ok)
 
-    let getDescriptor = key >> getItemProjection' dscFields tableName dscReader
+    let getDescriptor (env:#IDb) = key >> env.Database.GetProjection (tableName, dscReader, dscFields)
 
     let private tourBuilder name seconds status qwIdx qwPartIdx isQuestionDisplayed startTime slip : Domain.QuizTour =
         {Name = name; Seconds = seconds; Status = status |> Option.defaultValue Domain.Announcing;
@@ -661,9 +661,9 @@ module Quizzes =
 
     let sysKey quizId = (sprintf "quiz-%i" quizId)
 
-    let get = key >> getItem' tableName reader
+    let get (env:#IDb) = key >> env.Database.GetItem(tableName, reader)
 
-    let private put (item : Domain.Quiz) =
+    let private put (env:#IDb) (item : Domain.Quiz) =
         [
             Attr (Fields.Id, ScalarInt32 item.Dsc.QuizId)
             Attr (Fields.Producer, ScalarString item.Dsc.Producer)
@@ -701,20 +701,20 @@ module Quizzes =
 
             Attr (Fields.Version, ScalarInt32 (item.Version + 1))
         ]
-        |> putItem' (Some item.Version) tableName
+        |> env.Database.PutItem (tableName, Some item.Version)
 
-    let create (creator : int -> Domain.Quiz) =
-        SysItem.getNextId "quizzes" (fun () -> -100)
+    let create (env:#IDb) (creator : int -> Domain.Quiz) =
+        SysItem.getNextId env "quizzes" (fun () -> -100)
         |> AsyncResult.bind (creator >> AsyncResult.retn)
-        |> AsyncResult.side put
+        |> AsyncResult.side (put env)
 
     let mutable private _subscriptions : (Domain.Quiz -> Async<unit>) list = []
 
     let subscribe handler =
         _subscriptions <- handler :: _subscriptions
 
-    let update quizId logic =
-        putOptimistic' get put quizId logic
+    let update (env:#IDb) quizId logic =
+        env.Database.PutOptimistic(quizId, get env, put env, logic)
         |> AsyncResult.side (fun quiz ->
             _subscriptions
             |> List.map (fun handler -> handler quiz)
@@ -723,9 +723,9 @@ module Quizzes =
             |> Async.map Ok
         )
 
-    let delete quizId =
-        deleteItem' tableName (key quizId)
-        |> AsyncResult.next (SysItem.delete (sysKey quizId))
+    let delete (env:#IDb) quizId =
+        env.Database.DelItem(tableName) (key quizId)
+        |> AsyncResult.next (SysItem.delete env (sysKey quizId))
 
 module Teams =
     let private tableName = "Teams"
@@ -784,18 +784,18 @@ module Teams =
         <*> (req Fields.RegistrationDate A.string >-> P.dateTime)
         <*> (req Fields.ActiveSessionId A.number >-> P.int)
 
-    let getDescriptor quizId teamId  =
+    let getDescriptor (env:#IDb) quizId teamId  =
         key quizId teamId
-        |> getItemProjection' dscFields tableName dscReader
+        |> env.Database.GetProjection(tableName, dscReader, dscFields)
 
-    let getIds (quizId: int)  =
+    let getIds (env:#IDb) (quizId: int)  =
         let kce = queryKeyConditions quizId
         let reader = (req Fields.TeamId A.number >-> P.int)
-        query' tableName [Fields.TeamId] reader kce
+        env.Database.Query(tableName, [Fields.TeamId], reader) kce
 
-    let getDescriptors (quizId: int)  =
+    let getDescriptors (env:#IDb) (quizId: int)  =
         let kce = queryKeyConditions quizId
-        query' tableName dscFields dscReader kce
+        env.Database.Query(tableName, dscFields, dscReader) kce
 
     let private teamAnswerBuilder text jpd recieveTime result vote isAutoResult updateTime : Domain.TeamAnswer =
         {Text = text; Jeopardy = jpd; RecieveTime = recieveTime; Vote = vote;
@@ -838,18 +838,18 @@ module Teams =
         <*> (map Fields.Answers qwKeyOfString (A.docMap >> (AttrReader.run teamAnswerReader)))
         <*> (req Fields.Version A.number >-> P.int)
 
-    let get (k:Domain.TeamKey) =
-        getItem' tableName reader (key k.QuizId k.TeamId)
+    let get (env:#IDb) (k:Domain.TeamKey) =
+        env.Database.GetItem(tableName, reader) (key k.QuizId k.TeamId)
 
-    let getAllInQuiz (quizId: int)  =
+    let getAllInQuiz (env:#IDb) (quizId: int)  =
         let kce = queryKeyConditions quizId
-        query' tableName [] reader kce
+        env.Database.Query(tableName, [], reader) kce
 
-    let getRangeInQuiz (from:int) (to':int) (quizId: int)  =
+    let getRangeInQuiz (env:#IDb) (from:int) (to':int) (quizId: int)  =
         let kce = queryRangeConditions (decimal from) (decimal to') quizId
-        query' tableName [] reader kce
+        env.Database.Query(tableName, [], reader) kce
 
-    let private put (item : Domain.Team) =
+    let private put (env:#IDb) (item : Domain.Team) =
         [
             Attr (Fields.QuizId, ScalarInt32 item.Dsc.QuizId)
             Attr (Fields.TeamId, ScalarInt32 item.Dsc.TeamId)
@@ -878,24 +878,25 @@ module Teams =
             ])
             Attr (Fields.Version, ScalarInt32 (item.Version + 1))
         ]
-        |> putItem' (Some item.Version) tableName
+        |> env.Database.PutItem(tableName, Some item.Version)
 
-    let create quizId creator =
+    let create (env:#IDb) quizId creator =
         let lastIdProvider () =
-            match getIds quizId |> Async.RunSynchronously with
+            match getIds env quizId |> Async.RunSynchronously with
             | Ok (head::tail) -> List.max (head::tail)
             | _ -> 0
 
-        SysItem.getNextId (Quizzes.sysKey quizId) lastIdProvider
+        SysItem.getNextId env (Quizzes.sysKey quizId) lastIdProvider
         |> AsyncResult.bind (creator >> AsyncResult.fromResult)
-        |> AsyncResult.side put
+        |> AsyncResult.side (put env)
 
-    let check quizId teamId =
+    let check (env:#IDb) quizId teamId =
         key quizId teamId
-        |> checkItem' tableName
+        |> env.Database.CheckItem tableName
 
-    let update = putOptimistic' get put
+    let update (env:#IDb) id logic =
+        env.Database.PutOptimistic(id, get env, put env, logic)
 
-    let delete quizId teamId  =
+    let delete (env:#IDb) quizId teamId  =
         key quizId teamId
-        |> deleteItem' tableName
+        |> env.Database.DelItem tableName

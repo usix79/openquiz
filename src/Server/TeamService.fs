@@ -10,7 +10,7 @@ open Shared
 open Common
 open Presenter
 
-let api (context:HttpContext) : ITeamApi =
+let api env (context:HttpContext) : ITeamApi =
     let logger : ILogger = context.Logger()
     let cfg = context.GetService<IConfiguration>()
     let secret = Config.getJwtSecret cfg
@@ -18,7 +18,7 @@ let api (context:HttpContext) : ITeamApi =
     let ex proc f =
 
         let ff f = (fun (sessionId:int) (teamKey:Domain.TeamKey) req ->
-            Data2.Teams.getDescriptor teamKey.QuizId teamKey.TeamId
+            Data2.Teams.getDescriptor env teamKey.QuizId teamKey.TeamId
             |> AsyncResult.bind (fun team ->
                 if team.ActiveSessionId = sessionId then f team req
                 else (Error Errors.SessionIsNotActive) |> AsyncResult.fromResult
@@ -28,31 +28,31 @@ let api (context:HttpContext) : ITeamApi =
         SecurityService.exec logger proc <| SecurityService.authorizeTeam secret (ff f)
 
     let api : ITeamApi = {
-        takeActiveSession = SecurityService.exec logger "takeActiveSession" <| SecurityService.authorizeTeam secret takeActiveSession
-        getState = ex "getState" getState
-        answers = ex "answers" answers
-        getHistory = ex "getHistory" getHistory
-        vote = ex "vote" <| vote (Config.getMediaBucketName cfg)
+        takeActiveSession = SecurityService.exec logger "takeActiveSession" <| SecurityService.authorizeTeam secret (takeActiveSession env)
+        getState = ex "getState" <| getState env
+        answers = ex "answers" <| answers env
+        getHistory = ex "getHistory" <| getHistory env
+        vote = ex "vote" <| vote env (Config.getMediaBucketName cfg)
     }
 
     api
 
-let getState team _ =
-    Data2.Quizzes.get team.QuizId
+let getState env team _ =
+    Data2.Quizzes.get env team.QuizId
     |> AsyncResult.bind (fun quiz ->
-        Data2.Teams.get team.Key
+        Data2.Teams.get env team.Key
         |> AsyncResult.map (Teams.quizCard quiz))
 
-let takeActiveSession (sessionId:int) (teamKey:Domain.TeamKey) req =
+let takeActiveSession env (sessionId:int) (teamKey:Domain.TeamKey) req =
     let logic (team:Domain.Team) =
         team |> Domain.Teams.dsc (fun dsc -> {dsc with ActiveSessionId = sessionId} |> Ok)
 
-    Data2.Teams.update teamKey logic
+    Data2.Teams.update env teamKey logic
     |> AsyncResult.bind (fun team ->
-        Data2.Quizzes.get team.Dsc.QuizId
+        Data2.Quizzes.get env team.Dsc.QuizId
         |> AsyncResult.map (fun quiz -> Teams.quizCard quiz team))
 
-let answers team req =
+let answers env team req =
     let logic (team:Domain.Team) =
         let now = DateTime.UtcNow
         req
@@ -64,17 +64,17 @@ let answers team req =
     | Domain.Admitted -> Ok ()
     | _ -> Error "Team's status does not suppose sending answers"
     |> AsyncResult.fromResult
-    |> AsyncResult.next (Data2.Teams.update team.Key logic)
+    |> AsyncResult.next (Data2.Teams.update env team.Key logic)
     |> AsyncResult.map ignore
 
-let getHistory team _ =
-    Data2.Quizzes.get team.QuizId
+let getHistory env team _ =
+    Data2.Quizzes.get env team.QuizId
     |> AsyncResult.bind (fun quiz ->
-        Data2.Teams.get team.Key
+        Data2.Teams.get env team.Key
         |> AsyncResult.map (fun team -> Teams.quizHistory quiz team))
 
 
-let vote bucketName team req =
+let vote env bucketName team req =
     let logic (team:Domain.Team) =
         team
         |> Domain.Teams.updateAnswer (qwKeyToDomain req.Key) (fun aw ->
@@ -83,6 +83,6 @@ let vote bucketName team req =
         | team, true -> Ok team
         | _ -> Error "vote not applied"
 
-    Data2.Teams.update team.Key logic
-    |> AsyncResult.side (fun _ -> Agents.PublishResults (team.QuizId, bucketName) |> Agents.publish |> AsyncResult.retn)
+    Data2.Teams.update env team.Key logic
+    |> AsyncResult.side (fun _ -> Agents.PublishResults (env, team.QuizId, bucketName) |> Agents.publish |> AsyncResult.retn)
     |> AsyncResult.map ignore

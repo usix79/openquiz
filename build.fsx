@@ -11,6 +11,7 @@ open System
 open Fake.Core
 open Fake.DotNet
 open Fake.IO
+open Ionic.Zip
 
 Target.initEnvironment ()
 
@@ -20,6 +21,7 @@ let ptestsPath = Path.getFullName "./src/PerfTests"
 let clientDeployPath = Path.combine clientPath "deploy"
 let clientPublicPath = Path.combine clientPath "public"
 let deployDir = Path.getFullName "./deploy"
+let bundleDir = Path.getFullName "./bundle"
 
 let release = ReleaseNotes.load "RELEASE_NOTES.md"
 
@@ -58,7 +60,7 @@ let runTool cmd args workingDir =
     |> ignore
 
 Target.create "Clean" (fun _ ->
-    [deployDir; clientDeployPath]
+    [deployDir; clientDeployPath; bundleDir]
     |> Shell.cleanDirs)
 
 Target.create "InstallClient" (fun _ -> npm "install" ".")
@@ -68,7 +70,7 @@ Target.create "Build" (fun _ ->
     dotnet "fable --run webpack --mode production" clientPath)
 
 Target.create "Run" (fun _ ->
-    let server = async { dotnet "watch run" serverPath }
+    let server = async { dotnet "watch run --environment Development" serverPath }
     let client = async { dotnet "fable watch --run webpack-dev-server" clientPath }
 
     let safeClientOnly = Environment.hasEnvironVar "safeClientOnly"
@@ -99,12 +101,35 @@ Target.create "Docker" (fun _ ->
     let args = sprintf "build -t %s ." tag
     runTool "docker" args __SOURCE_DIRECTORY__)
 
+let zipDir sourceDir (destFile:string) =
+    use zip = new ZipFile()
+    zip.AddDirectory sourceDir |> ignore
+    zip.Save destFile
+
+Target.create "Bundle" (fun _ ->
+    let serverBundleDir = Path.combine bundleDir "server"
+    let clientBundleDir = Path.combine bundleDir "client"
+    let publishArgs = sprintf "publish -c Release -o \"%s\"" serverBundleDir
+    dotnet publishArgs serverPath
+
+    Shell.copyDir (Path.combine serverBundleDir ".ebextensions") ".ebextensions" FileFilter.allFiles
+    zipDir serverBundleDir (Path.combine bundleDir "openquiz-api.zip")
+
+    Shell.copyDir clientBundleDir clientPublicPath FileFilter.allFiles
+    Shell.copyDir clientBundleDir clientDeployPath FileFilter.allFiles
+    zipDir clientBundleDir (Path.combine bundleDir "openquiz-static.zip") )
+
 open Fake.Core.TargetOperators
 
 "Clean"
     ==> "InstallClient"
     ==> "Build"
     ==> "Docker"
+
+"Clean"
+    ==> "InstallClient"
+    ==> "Build"
+    ==> "Bundle"
 
 "Clean"
     ==> "InstallClient"

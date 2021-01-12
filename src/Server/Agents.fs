@@ -5,11 +5,12 @@ open Newtonsoft.Json
 open Serilog
 
 open Common
+open Env
 
 module AR = AsyncResult
 
 type PublisherCommand =
-    | PublishResults of quizId : int * bucketName : string
+    | PublishResults of IDb * quizId : int * bucketName : string
 
 let private uploadFile bucket (quiz:Domain.Quiz) results =
     let key = Bucket.getResultsKey quiz.Dsc.QuizId quiz.Dsc.ListenToken
@@ -18,10 +19,10 @@ let private uploadFile bucket (quiz:Domain.Quiz) results =
         |> Text.UTF8Encoding.UTF8.GetBytes
     Bucket.uploadFile bucket key "application/json" body
 
-let private publishResuts bucket quizId =
-    Data2.Quizzes.get quizId
+let private publishResuts env bucket quizId =
+    Data2.Quizzes.get env quizId
     |> AR.bind (fun quiz ->
-        Data2.Teams.getAllInQuiz quiz.Dsc.QuizId
+        Data2.Teams.getAllInQuiz env (quiz.Dsc.QuizId)
         |> AR.bind (fun teams ->
             Domain.Results.results quiz teams
             |> uploadFile bucket quiz))
@@ -46,8 +47,8 @@ let private publisherAgent = MailboxProcessor<PublisherCommand>.Start(fun inbox 
 
                 for msg in msgs do
                     match msg with
-                    | PublishResults (quizId,bucket) ->
-                        do! publishResuts bucket quizId
+                    | PublishResults (env,quizId,bucket) ->
+                        do! publishResuts env bucket quizId
             with
             | ex -> Log.Error ("{Op} {Exeption}", "publishAgentLoop", ex)
 

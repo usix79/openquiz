@@ -12,6 +12,7 @@ open Microsoft.Extensions.Configuration
 
 open Shared
 open Common
+open Env
 open Domain
 
 module AR = AsyncResult
@@ -97,18 +98,18 @@ let private validateJwt (secret:string) (jwt : string) validateLifetime  =
 let private createRefreshToken () =
     { Value = generateRandomToken(); Expired = DateTime.UtcNow.AddDays 7.0} : RefreshToken
 
-let refreshToken secret (req:REQ<{| RefreshToken: string |}>) =
+let refreshToken env secret (req:REQ<{| RefreshToken: string |}>) =
     async{
         let status, value =
             match validateJwt secret req.Token false with
             | Ok principal ->
                 let res =
                     async{
-                        match! Data2.RefreshTokens.get req.Arg.RefreshToken with
+                        match! Data2.RefreshTokens.get env req.Arg.RefreshToken with
                         | Ok refreshToken when refreshToken.Expired < DateTime.UtcNow -> return Error "Refresh token expired"
                         | Ok refreshToken ->
                             let newRefreshToken = createRefreshToken()
-                            match! Data2.RefreshTokens.replace refreshToken newRefreshToken with
+                            match! Data2.RefreshTokens.replace env refreshToken newRefreshToken with
                             | Ok _ ->
                                 let token = generateToken secret principal.Claims
                                 return Ok {|Token = token; RefreshToken = newRefreshToken.Value|}
@@ -213,12 +214,12 @@ let exec (logger : ILogger) (proc:string) (f: REQ<'Req> -> ARESP<'Resp>) : REQ<'
             return resp
         }
 
-let loginResp secret claims user =
+let loginResp env secret claims user =
     async{
         let token = generateToken secret claims
         let refreshToken = createRefreshToken()
 
-        let! res = Data2.RefreshTokens.put refreshToken
+        let! res = Data2.RefreshTokens.put env refreshToken
         return res |> Result.map (fun _ -> {|Token = token; RefreshToken = refreshToken.Value; User = user|})
     }
 
@@ -233,7 +234,7 @@ let private tryExtractPrivateQuizId secret token =
         | _ -> None
     else None
 
-let loginMainUser secret token clientId clientName redirectUrl code =
+let loginMainUser env secret token clientId clientName redirectUrl code =
     async {
         let! tokensResult = Aws.getUserToken clientName clientId redirectUrl code
         match tokensResult with
@@ -242,14 +243,14 @@ let loginMainUser secret token clientId clientName redirectUrl code =
             match userInfoResult with
             | Ok info ->
                 let privateQuizId = tryExtractPrivateQuizId secret token
-                let! exp = Data2.Experts.get info.Sub
+                let! exp = Data2.Experts.get env info.Sub
 
                 // update expert if attributes changed
                 let! _ =
                     match exp with
                     | Ok exp when exp.Username <> info.Username || exp.Name <> info.Name ->
                         let logic (exp:Domain.Expert) = {exp with Username = info.Username; Name = info.Name} |> Ok
-                        Data2.Experts.update exp.Id logic
+                        Data2.Experts.update env exp.Id logic
                         |> AsyncResult.map ignore
                     | _-> AsyncResult.retn ()
 
@@ -269,27 +270,27 @@ let loginMainUser secret token clientId clientName redirectUrl code =
                     Claim(CustomClaims.Role, CustomRoles.Expert)
                     if (privateQuizId.IsSome) then Claim(CustomClaims.QuizId, privateQuizId.Value.ToString())
                 ]
-                return! loginResp secret claims user
+                return! loginResp env secret claims user
             | Error txt ->
                 return Error txt
         | Error txt ->
             return Error txt
     }
 
-let loginAdminUser secret quizId token =
-    Data2.Quizzes.getDescriptor quizId
+let loginAdminUser env secret quizId token =
+    Data2.Quizzes.getDescriptor env quizId
     |> AR.bind (fun quiz ->
         if quiz.AdminToken = System.Web.HttpUtility.UrlDecode token then
             let claims = [Claim(CustomClaims.Role, CustomRoles.Admin); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
             let user = AdminUser {QuizId = quiz.QuizId; QuizName = quiz.Name; QuizImg = quiz.ImgKey; ListenToken = quiz.ListenToken}
-            loginResp secret claims user
+            loginResp env secret claims user
         else Error "Wrong entry token" |> AR.fromResult)
 
-let loginTeamUser secret appsyncCfg quizId teamId token =
-    Data2.Teams.getDescriptor quizId teamId
+let loginTeamUser env secret appsyncCfg quizId teamId token =
+    Data2.Teams.getDescriptor env quizId teamId
     |> AR.bind (fun team ->
         if team.EntryToken = token then
-            Data2.Quizzes.getDescriptor quizId
+            Data2.Quizzes.getDescriptor env quizId
             |> AR.bind (fun quiz ->
                 let sessionId = rand.Next(Int32.MaxValue)
                 let user = {QuizId = team.QuizId; QuizName = quiz.Name; TeamId = team.TeamId; TeamName = team.Name; AppSyncCfg = appsyncCfg}
@@ -300,44 +301,43 @@ let loginTeamUser secret appsyncCfg quizId teamId token =
                     Claim(CustomClaims.TeamId, user.TeamId.ToString())
                     Claim(CustomClaims.SessionId, sessionId.ToString())]
                 if team.ActiveSessionId = 0 then
-                    Data2.Teams.update {QuizId = quizId; TeamId = teamId}
+                    Data2.Teams.update env {QuizId = quizId; TeamId = teamId}
                       (fun team -> team |> Domain.Teams.dsc (fun dsc -> {dsc with ActiveSessionId = sessionId} |> Ok))
                     |> AR.next (AR.retn ())
                 else AR.retn ()
-                |> AR.next (loginResp secret claims (TeamUser user)))
+                |> AR.next (loginResp env secret claims (TeamUser user)))
         else Error "Authenticaton Error" |> AR.fromResult)
 
-let loginRegUser secret quizId token =
-    Data2.Quizzes.getDescriptor quizId
+let loginRegUser env secret quizId token =
+    Data2.Quizzes.getDescriptor env quizId
     |> AR.bind (fun quiz ->
         if quiz.RegToken = System.Web.HttpUtility.UrlDecode token then
             let claims = [Claim(CustomClaims.Role, CustomRoles.Reg); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
             let user = RegUser {QuizId = quiz.QuizId}
-            loginResp secret claims user
+            loginResp env secret claims user
         else Error "Wrong entry token" |> AR.fromResult)
 
-let loginAudUser secret appsyncCfg quizId token =
-    Data2.Quizzes.getDescriptor quizId
+let loginAudUser env secret appsyncCfg quizId token =
+    Data2.Quizzes.getDescriptor env quizId
     |> AR.bind (fun quiz ->
         if quiz.ListenToken = System.Web.HttpUtility.UrlDecode token then
             let claims = [Claim(CustomClaims.Role, CustomRoles.Aud); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
             let user = AudUser {QuizId = quiz.QuizId; AppSyncCfg = appsyncCfg}
-            loginResp secret claims user
+            loginResp env secret claims user
         else Error "Wrong entry token" |> AR.fromResult)
 
-let api (context:HttpContext) : ISecurityApi =
-    let logger : ILogger = context.Logger()
+let api (env:'T when 'T :> IDb and 'T :> ILog) (context:HttpContext) : ISecurityApi =
     let cfg = context.GetService<IConfiguration>()
     let secret = Config.getJwtSecret cfg
 
     let api : ISecurityApi = {
-        login = exec logger "login" <| executedResponse  (login secret cfg)
-        refreshToken = exec logger "refreshToken" <| refreshToken secret
+        login = exec env.Logger "login" <| executedResponse  (login env secret cfg)
+        refreshToken = exec env.Logger "refreshToken" <| refreshToken env secret
     }
 
     api
 
-let login secret (cfg:IConfiguration) (token:string) (req : LoginReq) =
+let login env secret (cfg:IConfiguration) (token:string) (req : LoginReq) =
 
     let resolveSttings() =
         {MediaHost = Config.getMediaHostName cfg}
@@ -347,9 +347,9 @@ let login secret (cfg:IConfiguration) (token:string) (req : LoginReq) =
         let clientId = Config.getCognitoClientId cfg
         let clientName = Config.getCognitoClientName cfg
         let redirectUri = Config.getRedirectUrl cfg
-        loginMainUser secret token clientId clientName redirectUri data.Code
-    | LoginReq.AdminUser data -> loginAdminUser secret data.QuizId data.Token
-    | LoginReq.TeamUser data -> loginTeamUser secret (Config.getAppSyncCfg cfg) data.QuizId data.TeamId data.Token
-    | LoginReq.RegUser data -> loginRegUser secret data.QuizId data.Token
-    | LoginReq.AudUser data -> loginAudUser secret (Config.getAppSyncCfg cfg) data.QuizId data.Token
+        loginMainUser env secret token clientId clientName redirectUri data.Code
+    | LoginReq.AdminUser data -> loginAdminUser env secret data.QuizId data.Token
+    | LoginReq.TeamUser data -> loginTeamUser env secret (Config.getAppSyncCfg cfg) data.QuizId data.TeamId data.Token
+    | LoginReq.RegUser data -> loginRegUser env secret data.QuizId data.Token
+    | LoginReq.AudUser data -> loginAudUser env secret (Config.getAppSyncCfg cfg) data.QuizId data.Token
     |> AR.map (fun res ->{|RefreshToken = res.RefreshToken; Token = res.Token; User = res.User; Settings = resolveSttings()|})

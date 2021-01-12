@@ -25,10 +25,10 @@ var CONFIG = {
     // to a external API server. See https://webpack.js.org/configuration/dev-server/#devserver-proxy
     devServerProxy: {
         // root
-        '/': {
-            target: 'http://localhost:' + (process.env.SERVER_PROXY_PORT || "8085"),
-               changeOrigin: true
-           },
+        // '/': {
+        //     target: 'http://localhost:' + (process.env.SERVER_PROXY_PORT || "8085"),
+        //        changeOrigin: true
+        //    },
         // redirect requests that start with /api/* to the server on port 8085
         '/api/*': {
             target: 'http://localhost:' + (process.env.SERVER_PROXY_PORT || "8085"),
@@ -102,9 +102,7 @@ module.exports = {
     //      - HotModuleReplacementPlugin: Enables hot reloading when code changes without refreshing
     plugins: isProduction ?
         commonPlugins.concat([
-            new MiniCssExtractPlugin({ filename: 'style.[hash].css' }),
-            new CopyWebpackPlugin({
-                patterns: [{ from: resolve(CONFIG.assetsDir) }]}),
+            new MiniCssExtractPlugin({ filename: 'style.[hash].css' })
         ])
         : commonPlugins.concat([
             new webpack.HotModuleReplacementPlugin(),

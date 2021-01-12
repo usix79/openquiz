@@ -1,18 +1,17 @@
 module rec MainService
 
-open Giraffe.SerilogExtensions
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Configuration
 open Serilog
 
 open Shared
 open Common
+open Env
 open Presenter
 
 module AR = AsyncResult
 
-let api (context:HttpContext) : IMainApi =
-    let logger : ILogger = context.Logger()
+let api (env:'T when 'T :> IDb and 'T :> ILog) (context:HttpContext) : IMainApi =
     let cfg = context.GetService<IConfiguration>()
     let secret = Config.getJwtSecret cfg
 
@@ -21,13 +20,13 @@ let api (context:HttpContext) : IMainApi =
             f expertId usersysname username (tryParseInt32 quizIdStr) req
         )
 
-        SecurityService.exec logger proc <| SecurityService.authorizeExpertCheckPrivateQuiz secret (ff f)
+        SecurityService.exec env.Logger proc <| SecurityService.authorizeExpertCheckPrivateQuiz secret (ff f)
 
     let exPublisher proc f =
 
         let ff f = (fun expertId username req ->
             async{
-                match! Data2.Experts.get expertId with
+                match! Data2.Experts.get env expertId with
                 | Ok expert ->
                     return! f expert req
                 | Error _ ->
@@ -36,62 +35,62 @@ let api (context:HttpContext) : IMainApi =
             }
         )
 
-        SecurityService.exec logger proc <| SecurityService.authorizeExpert secret (ff f)
+        SecurityService.exec env.Logger proc <| SecurityService.authorizeExpert secret (ff f)
 
     let api : IMainApi = {
-        becomeProducer = ex "becomeProducer" becomeProducer
-        getRegModel = ex "getRegModel" getRegModel
-        registerTeam = ex "registerTeam" (registerTeam (Config.getMediaBucketName cfg))
-        createQuiz = exPublisher  "createQuiz" createQuiz
-        getProdQuizzes = exPublisher "getProdQuizzes" getProdQuizzes
-        getProdQuizCard = exPublisher "getProdQuizCard" getProdQuizCard
-        updateProdQuizCard = exPublisher "updateProdQuizCard" updateProdQuizCard
-        getProdPackages = exPublisher "getProdPackages" getProdPackages
-        getProdPackageCard = exPublisher  "getProdPackageCard" getProdPackageCard
-        createPackage = exPublisher  "createPackage" createPackage
-        updateProdPackageCard = exPublisher  "updateProdPackageCard" updateProdPackageCard
-        aquirePackage = exPublisher "aquirePackage" aquirePackage
-        deleteQuiz = exPublisher "deleteQuiz" <| deleteQuiz (Config.getMediaBucketName cfg)
-        deletePackage = exPublisher "deletePackage" deletePackage
-        getSettings = exPublisher "getSettings" getSettings
-        updateSettings = exPublisher "updateSettings" updateSettings
-        sharePackage = exPublisher "sharePackage" sharePackage
-        removePackageShare = exPublisher "removePackageShare" removePackageShare
-        getUploadUrl = exPublisher "getUploadUrl" <| getUploadUrl (Config.getMediaBucketName cfg)
+        becomeProducer = ex "becomeProducer" <| becomeProducer env
+        getRegModel = ex "getRegModel" <| getRegModel env
+        registerTeam = ex "registerTeam" (registerTeam env (Config.getMediaBucketName cfg))
+        createQuiz = exPublisher  "createQuiz" <| createQuiz env
+        getProdQuizzes = exPublisher "getProdQuizzes" <| getProdQuizzes env
+        getProdQuizCard = exPublisher "getProdQuizCard" <| getProdQuizCard env
+        updateProdQuizCard = exPublisher "updateProdQuizCard" <| updateProdQuizCard env
+        getProdPackages = exPublisher "getProdPackages" <| getProdPackages env
+        getProdPackageCard = exPublisher  "getProdPackageCard" <| getProdPackageCard env
+        createPackage = exPublisher  "createPackage" <| createPackage env
+        updateProdPackageCard = exPublisher  "updateProdPackageCard" <| updateProdPackageCard env
+        aquirePackage = exPublisher "aquirePackage" <| aquirePackage env
+        deleteQuiz = exPublisher "deleteQuiz" <| deleteQuiz env (Config.getMediaBucketName cfg)
+        deletePackage = exPublisher "deletePackage" <| deletePackage env
+        getSettings = exPublisher "getSettings" <| getSettings
+        updateSettings = exPublisher "updateSettings" <| updateSettings env
+        sharePackage = exPublisher "sharePackage" <| sharePackage env
+        removePackageShare = exPublisher "removePackageShare" <| removePackageShare env
+        getUploadUrl = exPublisher "getUploadUrl" <| getUploadUrl env (Config.getMediaBucketName cfg)
     }
 
     api
 
-let becomeProducer expertId usersysname name _ _ =
+let becomeProducer env expertId usersysname name _ _ =
     let creator = fun () -> Domain.Experts.createNew expertId usersysname name
     let logic expert = expert |> Domain.Experts.becomeProducer |> Ok
 
-    Data2.Experts.updateOrCreate expertId logic creator
+    Data2.Experts.updateOrCreate env expertId logic creator
     |> AR.map ignore
 
-let createQuiz expert _ =
+let createQuiz env expert _ =
     let creator quizId =
         Domain.Quizzes.createNew quizId expert.Id expert.DefaultImg expert.DefaultMixlr
 
     let logic (quiz:Domain.Quiz) expert  = expert |> Domain.Experts.addQuiz quiz.Dsc.QuizId |> Ok
 
-    Data2.Quizzes.create creator
-    |> AR.side (fun quiz -> Data2.Experts.update expert.Id (logic quiz))
+    Data2.Quizzes.create env creator
+    |> AR.side (fun quiz -> Data2.Experts.update env expert.Id (logic quiz))
     |> AR.map (fun quiz -> {|Record = quiz.Dsc |> Main.quizProdRecord; Card = Main.quizProdCard quiz; |})
 
-let getProdQuizzes expert _ =
+let getProdQuizzes env expert _ =
     expert.Quizzes
-    |> List.map Data2.Quizzes.getDescriptor
+    |> List.map (Data2.Quizzes.getDescriptor env)
     |> Async.Sequential
     |> Async.map (Array.choose (function Ok r -> Some (Main.quizProdRecord r) | _ -> None))
     |> Async.map (List.ofArray >> Ok)
 
-let getProdQuizCard expert (req : {|QuizId : int|}) =
-    Data2.Quizzes.get req.QuizId
+let getProdQuizCard env expert (req : {|QuizId : int|}) =
+    Data2.Quizzes.get env req.QuizId
     |> AR.sideRes (fun quiz -> Domain.Quizzes.authorize expert.Id quiz.Dsc)
     |> AR.map Main.quizProdCard
 
-let updateProdQuizCard expert card =
+let updateProdQuizCard env expert card =
     let logic (quiz : Domain.Quiz) =
         Domain.Quizzes.authorize expert.Id quiz.Dsc
         |> Result.map (fun _ ->
@@ -102,82 +101,82 @@ let updateProdQuizCard expert card =
             { quiz with Dsc = dsc}
         )
 
-    Data2.Quizzes.update card.QuizId logic
+    Data2.Quizzes.update env card.QuizId logic
     |> AR.map (fun quiz -> quiz.Dsc |> Main.quizProdRecord)
 
-let deleteQuiz bucket expert req =
-    Data2.Quizzes.getDescriptor req.QuizId
+let deleteQuiz env bucket expert req =
+    Data2.Quizzes.getDescriptor env req.QuizId
     |> AR.sideRes (Domain.Quizzes.authorize expert.Id)
     |> AR.side ( fun _ ->
-        Data2.Teams.getIds req.QuizId
+        Data2.Teams.getIds env req.QuizId
         |> AR.bind ( fun list ->
             list
-            |> List.map (Data2.Teams.delete req.QuizId)
+            |> List.map (Data2.Teams.delete env req.QuizId)
             |> Async.Sequential
             |> Async.map (fun _ -> Ok ())))
     |> AR.side ( fun quiz ->
         Bucket.deleteFile bucket (Bucket.getResultsKey quiz.QuizId quiz.ListenToken)
         |> Async.map (fun _ -> Ok ()))
-    |> AR.next (Data2.Quizzes.delete req.QuizId)
-    |> AR.next (Data2.Experts.update expert.Id (Domain.Experts.removeQuiz req.QuizId))
+    |> AR.next (Data2.Quizzes.delete env req.QuizId)
+    |> AR.next (Data2.Experts.update env expert.Id (Domain.Experts.removeQuiz req.QuizId))
     |> AR.map ignore
 
-let getRegModel expId username name quizId _ =
+let getRegModel env expId username name quizId _ =
     quizId |> Result.fromOption "Quiz not defined"
     |> AR.fromResult
     |> AR.bind (fun quizId ->
-        Data2.Experts.get expId
+        Data2.Experts.get env expId
         |> AR.bind (fun exp ->
             match exp.Competitions.TryFind quizId with
             | Some teamId ->
-                Data2.Teams.getDescriptor quizId teamId
+                Data2.Teams.getDescriptor env quizId teamId
                 |> AR.map Some
                 |> AR.ifError (fun _ -> None)
             | None -> AR.retn None)
         |> AR.ifError (fun _ -> None)
         |> AR.bind (fun team ->
-            Data2.Quizzes.getDescriptor quizId
+            Data2.Quizzes.getDescriptor env quizId
             |> AR.map (fun quiz -> Main.quizRegRecord quiz team)))
 
-let registerTeam bucketName expId username name quizId req =
+let registerTeam env bucketName expId username name quizId req =
     let expCreator () = Domain.Experts.createNew expId username name
 
     quizId |> Result.fromOption "Quiz not defined"
     |> AR.fromResult
-    |> AR.bind Data2.Quizzes.getDescriptor
+    |> AR.bind (Data2.Quizzes.getDescriptor env)
     |> AR.bind (fun quiz ->
-        Data2.Experts.updateOrCreate expId Ok expCreator
+        Data2.Experts.updateOrCreate env expId Ok expCreator
         |> AR.bind (fun exp ->
             let teamName = req.TeamName.Trim()
             match Domain.Experts.getComp quiz.QuizId exp with
             | Some teamId ->
-                Data2.Teams.check quiz.QuizId teamId
+                Data2.Teams.check env quiz.QuizId teamId
                 |> AR.bind (fun exist ->
                     match exist with
                     | true ->
-                        Data2.Teams.get {QuizId = quiz.QuizId; TeamId = teamId}
-                        |> AR.bind (fun team -> updateTeam quiz team teamName)
-                    | false -> createTeam exp quiz teamName
+                        Data2.Teams.get env {QuizId = quiz.QuizId; TeamId = teamId}
+                        |> AR.bind (fun team -> updateTeam env quiz team teamName)
+                    | false -> createTeam env exp quiz teamName
                 )
-            | None -> createTeam exp quiz teamName
+            | None -> createTeam env exp quiz teamName
             |> AR.map (fun (team:Domain.Team) -> Main.quizRegRecord quiz (Some team.Dsc))))
-    |> AR.side (fun qr -> Agents.PublishResults (qr.QuizId, bucketName) |> Agents.publish |> AR.retn)
+    |> AR.side (fun qr -> Agents.PublishResults (env, qr.QuizId, bucketName) |> Agents.publish |> AR.retn)
 
-let private createTeam exp quiz teamName  =
+let private createTeam env exp quiz teamName  =
 
     let creator teamsInQuiz teamId =
         match Domain.Teams.validateTeamUpdate true teamName teamsInQuiz quiz with
         | Some txt -> Error txt
         | None -> Domain.Teams.createNew teamId teamName quiz |> Ok
 
-    Data2.Teams.getDescriptors quiz.QuizId
+    Data2.Teams.getDescriptors env quiz.QuizId
     |> AR.bind (fun teamsInQuiz ->
-        Data2.Teams.create quiz.QuizId (creator teamsInQuiz)
+        Data2.Teams.create env quiz.QuizId (creator teamsInQuiz)
         |> AR.side (fun team ->
             let logic expert = expert |> Domain.Experts.addComp team.Dsc.QuizId team.Dsc.TeamId |> Ok
-            Data2.Experts.update exp.Id logic))
+            Data2.Experts.update env exp.Id logic))
 
-let private updateTeam quiz team teamName  =
+let private updateTeam env quiz team teamName  =
     match team.Dsc.Name = teamName with
     | true -> Ok team |> AsyncResult.fromResult
     | false ->
@@ -186,15 +185,15 @@ let private updateTeam quiz team teamName  =
                 do! match Domain.Teams.validateTeamUpdate false teamName teamsInQuiz quiz with Some txt -> Error txt | _ -> Ok()
                 return team |> Domain.Teams.changeName teamName
             }
-        Data2.Teams.getDescriptors quiz.QuizId
+        Data2.Teams.getDescriptors env quiz.QuizId
         |> AR.bind (fun teamsInQuiz ->
-            Data2.Teams.update team.Key (logic teamsInQuiz))
+            Data2.Teams.update env team.Key (logic teamsInQuiz))
 
-let getProdPackages expert _ =
+let getProdPackages env expert _ =
     async{
         let! list =
             expert.AllPackages
-            |> List.map Data2.Packages.getDescriptor
+            |> List.map (Data2.Packages.getDescriptor env)
             |> Async.Sequential
 
         return
@@ -204,19 +203,19 @@ let getProdPackages expert _ =
             |> Ok
     }
 
-let getProdPackageCard expert (req : {|PackageId : int|}) =
+let getProdPackageCard env expert (req : {|PackageId : int|}) =
     expert
     |> Domain.Experts.authorizePackageRead req.PackageId
     |> AR.fromResult
-    |> AR.next (Data2.Packages.get req.PackageId)
-    |> AR.map (Main.packageCard expert.Id Data2.Experts.provider)
+    |> AR.next (Data2.Packages.get env req.PackageId)
+    |> AR.map (Main.packageCard expert.Id (Data2.Experts.provider env))
 
-let createPackage expert _ =
-    Data2.Packages.create (Domain.Packages.createNew expert.Id)
-    |> AR.side (fun pkg -> Data2.Experts.update expert.Id (Domain.Experts.addPackage pkg.Dsc.PackageId))
-    |> AR.map (fun pkg -> {|Record = pkg.Dsc |> packageRecord; Card = Main.packageCard expert.Id Data2.Experts.provider pkg ; |})
+let createPackage env expert _ =
+    Data2.Packages.create env (Domain.Packages.createNew expert.Id)
+    |> AR.side (fun pkg -> Data2.Experts.update env expert.Id (Domain.Experts.addPackage pkg.Dsc.PackageId))
+    |> AR.map (fun pkg -> {|Record = pkg.Dsc |> packageRecord; Card = Main.packageCard expert.Id (Data2.Experts.provider env) pkg ; |})
 
-let updateProdPackageCard expert card =
+let updateProdPackageCard env expert card =
     let logic (pkg:Domain.Package) =
         { pkg with
             Dsc = { pkg.Dsc with Name = card.Name}
@@ -227,57 +226,57 @@ let updateProdPackageCard expert card =
     expert
     |> Domain.Experts.authorizePackageWrite card.PackageId
     |> AR.fromResult
-    |> AR.next (Data2.Packages.update card.PackageId logic)
+    |> AR.next (Data2.Packages.update env card.PackageId logic)
     |> AR.map (fun pkg -> pkg.Dsc |> packageRecord)
 
-let aquirePackage expert req =
-    Data2.Packages.getDescriptor req.PackageId
+let aquirePackage env expert req =
+    Data2.Packages.getDescriptor env req.PackageId
     |> AR.bind (fun origPkg ->
-        Data2.Packages.update origPkg.PackageId (Domain.Packages.transfer expert.Id req.TransferToken)
-        |> AR.side (fun _ -> Data2.Experts.update origPkg.Producer (Domain.Experts.removePackage origPkg.PackageId)))
-    |> AR.side (fun pkg -> Data2.Experts.update expert.Id (Domain.Experts.addPackage pkg.Dsc.PackageId))
+        Data2.Packages.update env origPkg.PackageId (Domain.Packages.transfer expert.Id req.TransferToken)
+        |> AR.side (fun _ -> Data2.Experts.update env origPkg.Producer (Domain.Experts.removePackage origPkg.PackageId)))
+    |> AR.side (fun pkg -> Data2.Experts.update env expert.Id (Domain.Experts.addPackage pkg.Dsc.PackageId))
     |> AR.map (fun pkg -> packageRecord pkg.Dsc)
 
-let deletePackage expert req =
+let deletePackage env expert req =
     expert
     |> Domain.Experts.authorizePackageWrite req.PackageId
     |> AR.fromResult
-    |> AR.next (Data2.Packages.get req.PackageId)
+    |> AR.next (Data2.Packages.get env req.PackageId)
     |> AR.side (fun pkg ->
         pkg.SharedWith
-        |> List.map (fun expId -> Data2.Experts.update expId (Domain.Experts.removeSharedPackage req.PackageId))
+        |> List.map (fun expId -> Data2.Experts.update env expId (Domain.Experts.removeSharedPackage req.PackageId))
         |> Async.Sequential
         |> Async.map (fun _ -> Ok ()))
-    |> AR.next (Data2.Packages.delete req.PackageId)
-    |> AR.next (Data2.Experts.update expert.Id (Domain.Experts.removePackage req.PackageId))
+    |> AR.next (Data2.Packages.delete env req.PackageId)
+    |> AR.next (Data2.Experts.update env expert.Id (Domain.Experts.removePackage req.PackageId))
     |> AR.map ignore
 
 let getSettings expert req =
     expert |> Main.settingsCard |> Ok |> AR.fromResult
 
-let updateSettings expert req =
+let updateSettings env expert req =
     let logic (exp:Domain.Expert) =
         {exp with DefaultImg = req.DefaultImg; DefaultMixlr = req.DefaultMixlr} |> Ok
 
-    Data2.Experts.update expert.Id logic
+    Data2.Experts.update env expert.Id logic
     |> AR.map Main.settingsCard
 
-let sharePackage expert req =
+let sharePackage env expert req =
     expert
     |> Domain.Experts.authorizePackageWrite req.PackageId
     |> AR.fromResult
-    |> AR.side (fun _ -> Data2.Packages.update req.PackageId (Domain.Packages.shareWith req.UserId))
-    |> AR.next (Data2.Experts.update req.UserId (Domain.Experts.addSharedPackage req.PackageId))
+    |> AR.side (fun _ -> Data2.Packages.update env req.PackageId (Domain.Packages.shareWith req.UserId))
+    |> AR.next (Data2.Experts.update env req.UserId (Domain.Experts.addSharedPackage req.PackageId))
     |> AR.map Main.expertRecord
 
-let removePackageShare expert req =
+let removePackageShare env expert req =
     expert
     |> Domain.Experts.authorizePackageWrite req.PackageId
     |> AR.fromResult
-    |> AR.side (fun _ -> Data2.Packages.update req.PackageId (Domain.Packages.removeShareWith req.UserId))
-    |> AR.next (Data2.Experts.update req.UserId (Domain.Experts.removeSharedPackage req.PackageId))
+    |> AR.side (fun _ -> Data2.Packages.update env req.PackageId (Domain.Packages.removeShareWith req.UserId))
+    |> AR.next (Data2.Experts.update env req.UserId (Domain.Experts.removeSharedPackage req.PackageId))
     |> AR.map ignore
 
-let getUploadUrl bucketName expert req  =
+let getUploadUrl env bucketName expert req  =
     let key,url = Bucket.getSignedUrl bucketName req.Cat
     AR.retn  {|Url = url; BucketKey = key|}

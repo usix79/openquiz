@@ -30,6 +30,7 @@ and NonEmptyList<'a when 'a: comparison> = NonEmptyList of head: 'a * tail: 'a l
 
 type private A = AttributeValue
 
+type PutResult<'item> = Success | Retry
 
 module private AttrMapping =
 
