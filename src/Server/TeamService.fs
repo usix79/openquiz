@@ -8,6 +8,7 @@ open Serilog
 
 open Shared
 open Common
+open Env
 open Presenter
 
 let api env (context:HttpContext) : ITeamApi =
@@ -84,5 +85,5 @@ let vote env bucketName team req =
         | _ -> Error "vote not applied"
 
     Data2.Teams.update env team.Key logic
-    |> AsyncResult.side (fun _ -> Agents.PublishResults (env, team.QuizId, bucketName) |> Agents.publish |> AsyncResult.retn)
+    |> AsyncResult.side (fun _ -> PublishResults (team.QuizId, bucketName) |> (env:>IPublisher).Publish |> AsyncResult.retn)
     |> AsyncResult.map ignore

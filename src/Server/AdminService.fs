@@ -9,6 +9,7 @@ open Serilog
 
 open Shared
 open Common
+open Env
 open Presenter
 
 module AR = AsyncResult
@@ -76,7 +77,7 @@ let createTeam env bucketName quiz req =
     |> AR.bind (fun teamsInQuiz ->
         Data2.Teams.create env quiz.QuizId (creator teamsInQuiz)
         |> AR.map (fun team -> {|Record = Admin.teamRecord team.Dsc|}))
-    |> AR.side (fun _ -> Agents.PublishResults (env, quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
+    |> AR.side (fun _ -> PublishResults (quiz.QuizId, bucketName) |> (env :> IPublisher).Publish |> AR.retn)
 
 let createTeamBatch env quiz req =
 
@@ -106,7 +107,7 @@ let updateTeamCard env bucketName quiz req =
 
     Data2.Teams.update env {QuizId = quiz.QuizId; TeamId = req.TeamId} logic
     |> AR.map (fun team -> Admin.teamRecord team.Dsc)
-    |> AR.side (fun _ -> Agents.PublishResults (env, quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
+    |> AR.side (fun _ -> PublishResults (quiz.QuizId, bucketName) |> env.Publish |> AR.retn)
 
 let changeTeamStatus env quiz req =
     let logic (team : Domain.Team) =
@@ -208,7 +209,7 @@ let settleTour env bucketName quiz _ =
     Data2.Quizzes.update env quiz.QuizId Domain.Quizzes.settle
     |> AR.side (settleAnswers env)
     |> AR.map Admin.quizCard
-    |> AR.side (fun _ -> Agents.PublishResults (env, quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
+    |> AR.side (fun _ -> PublishResults (quiz.QuizId, bucketName) |> env.Publish |> AR.retn)
 
 type SettleItem = {
     Idx : Domain.QwKey
@@ -285,7 +286,7 @@ let updateResults env bucketName quiz req  =
     |> List.map (fun r -> Data2.Teams.update env {QuizId = quiz.QuizId; TeamId = r.TeamId} (logic (qwKeyToDomain r.QwKey) r.Res))
     |> Async.Sequential
     |> Async.map (fun _ -> Ok ())
-    |> AR.side (fun _ -> Agents.PublishResults (env, quiz.QuizId, bucketName) |> Agents.publish |> AR.retn)
+    |> AR.side (fun _ -> PublishResults (quiz.QuizId, bucketName) |> env.Publish |> AR.retn)
 
 let getListenToken env quiz _ =
     quiz.ListenToken |> AR.retn

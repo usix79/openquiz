@@ -87,27 +87,20 @@ let buildEnvironment logger =
         member _.DynamoTablePrefix = "OQ"
     }
 
-    let dbEnv = {
-        new Env.IDbEnv with
+    let publisherEnv = {
+        new Env.IPublisherEnv with
         member _.Logger = logger
         member _.Configurer = configurer
     }
 
-    let database = {
-        new Env.IDatabase with
-        member _.GetItem (tableName, reader) = Data2.getItem' dbEnv tableName reader
-        member _.PutItem (tableName, version) = Data2.putItem' dbEnv version tableName
-        member _.DelItem (tableName) = Data2.deleteItem' dbEnv tableName
-        member _.CheckItem (tableName) = Data2.checkItem' dbEnv tableName
-        member _.GetProjection (tableName, reader, projection) = Data2.getItemProjection' dbEnv projection tableName reader
-        member _.PutOptimistic (id, get, put, logic) = Data2.putOptimistic' dbEnv get put id logic
-        member _.Query (tableName, projection, reader) = Data2.query' dbEnv tableName projection reader
-    }
+    let publisherAgent = Agents.publisherAgent publisherEnv
 
     { new Env.IAppEnv with
         member _.Logger = logger
         member _.Configurer = configurer
-        member _.Database = database
+        member _.Publish cmd =
+            printfn "PUBLISH: %A" cmd
+            publisherAgent.Post cmd
     }
 
 [<EntryPoint>]

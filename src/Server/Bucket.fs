@@ -7,6 +7,7 @@ open Serilog
 
 open Shared
 open Common
+open Env
 
 let getResultsKey quizId token =
     sprintf "static/%d-%s/results.json" quizId token
@@ -22,7 +23,7 @@ let getSignedUrl bucketName (cat:MediaCategory) =
             Verb = HttpVerb.PUT,
             Expires = System.DateTime.UtcNow.AddDays(1.0)))
 
-let uploadFile bucketName (key:string) (fileType:string) (fileBody : byte[]) : Async<Result<unit, string>> =
+let uploadFile (env:#ILog) bucketName (key:string) (fileType:string) (fileBody : byte[]) : Async<Result<unit, string>> =
 
     use client = new AmazonS3Client()
 
@@ -42,10 +43,10 @@ let uploadFile bucketName (key:string) (fileType:string) (fileBody : byte[]) : A
             if resp.HttpStatusCode = System.Net.HttpStatusCode.OK then Ok ()
             else Error <| resp.HttpStatusCode.ToString()
         | Choice2Of2 ex ->
-            Log.Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
+            env.Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
             Error ex.Message)
 
-let deleteFile bucketName (key:string) : Async<Result<unit, string>> =
+let deleteFile (env:#ILog) bucketName (key:string) : Async<Result<unit, string>> =
 
     use client = new AmazonS3Client()
 
@@ -60,5 +61,5 @@ let deleteFile bucketName (key:string) : Async<Result<unit, string>> =
             if resp.HttpStatusCode = System.Net.HttpStatusCode.OK then Ok ()
             else Error <| resp.HttpStatusCode.ToString()
         | Choice2Of2 ex ->
-            Log.Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
+            env.Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
             Error ex.Message)

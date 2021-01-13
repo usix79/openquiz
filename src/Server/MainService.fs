@@ -11,7 +11,7 @@ open Presenter
 
 module AR = AsyncResult
 
-let api (env:'T when 'T :> IDb and 'T :> ILog) (context:HttpContext) : IMainApi =
+let api env (context:HttpContext) : IMainApi =
     let cfg = context.GetService<IConfiguration>()
     let secret = Config.getJwtSecret cfg
 
@@ -20,7 +20,7 @@ let api (env:'T when 'T :> IDb and 'T :> ILog) (context:HttpContext) : IMainApi 
             f expertId usersysname username (tryParseInt32 quizIdStr) req
         )
 
-        SecurityService.exec env.Logger proc <| SecurityService.authorizeExpertCheckPrivateQuiz secret (ff f)
+        SecurityService.exec (env :> ILog).Logger proc <| SecurityService.authorizeExpertCheckPrivateQuiz secret (ff f)
 
     let exPublisher proc f =
 
@@ -115,7 +115,7 @@ let deleteQuiz env bucket expert req =
             |> Async.Sequential
             |> Async.map (fun _ -> Ok ())))
     |> AR.side ( fun quiz ->
-        Bucket.deleteFile bucket (Bucket.getResultsKey quiz.QuizId quiz.ListenToken)
+        Bucket.deleteFile env bucket (Bucket.getResultsKey quiz.QuizId quiz.ListenToken)
         |> Async.map (fun _ -> Ok ()))
     |> AR.next (Data2.Quizzes.delete env req.QuizId)
     |> AR.next (Data2.Experts.update env expert.Id (Domain.Experts.removeQuiz req.QuizId))
@@ -160,7 +160,7 @@ let registerTeam env bucketName expId username name quizId req =
                 )
             | None -> createTeam env exp quiz teamName
             |> AR.map (fun (team:Domain.Team) -> Main.quizRegRecord quiz (Some team.Dsc))))
-    |> AR.side (fun qr -> Agents.PublishResults (env, qr.QuizId, bucketName) |> Agents.publish |> AR.retn)
+    |> AR.side (fun qr -> PublishResults (qr.QuizId, bucketName) |> (env :> IPublisher).Publish |> AR.retn)
 
 let private createTeam env exp quiz teamName  =
 

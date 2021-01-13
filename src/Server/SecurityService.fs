@@ -326,12 +326,12 @@ let loginAudUser env secret appsyncCfg quizId token =
             loginResp env secret claims user
         else Error "Wrong entry token" |> AR.fromResult)
 
-let api (env:'T when 'T :> IDb and 'T :> ILog) (context:HttpContext) : ISecurityApi =
+let api env (context:HttpContext) : ISecurityApi =
     let cfg = context.GetService<IConfiguration>()
     let secret = Config.getJwtSecret cfg
 
     let api : ISecurityApi = {
-        login = exec env.Logger "login" <| executedResponse  (login env secret cfg)
+        login = exec (env :> ILog).Logger "login" <| executedResponse  (login env secret cfg)
         refreshToken = exec env.Logger "refreshToken" <| refreshToken env secret
     }
 

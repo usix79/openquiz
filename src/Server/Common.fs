@@ -148,6 +148,9 @@ module AsyncResult =
     let next mn m =
         bind (fun _ -> mn) m
 
+type PublisherCommand =
+    | PublishResults of quizId : int * bucketName : string
+
 module Config =
     open Microsoft.Extensions.Configuration
 
