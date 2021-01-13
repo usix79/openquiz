@@ -234,12 +234,12 @@ let private tryExtractPrivateQuizId secret token =
         | _ -> None
     else None
 
-let loginMainUser env secret token clientId clientName redirectUrl code =
+let loginMainUser env secret token code =
     async {
-        let! tokensResult = Aws.getUserToken clientName clientId redirectUrl code
+        let! tokensResult = Aws.getUserToken (env:>ICfg).Configurer.CognitoUri env.Configurer.CognitoClientId env.Configurer.RedirectUrl code
         match tokensResult with
         | Ok tokens ->
-            let! userInfoResult = Aws.getUserInfo clientName tokens.AccessToken
+            let! userInfoResult = Aws.getUserInfo env.Configurer.CognitoUri tokens.AccessToken
             match userInfoResult with
             | Ok info ->
                 let privateQuizId = tryExtractPrivateQuizId secret token
@@ -286,14 +286,14 @@ let loginAdminUser env secret quizId token =
             loginResp env secret claims user
         else Error "Wrong entry token" |> AR.fromResult)
 
-let loginTeamUser env secret appsyncCfg quizId teamId token =
+let loginTeamUser env secret quizId teamId token =
     Data2.Teams.getDescriptor env quizId teamId
     |> AR.bind (fun team ->
         if team.EntryToken = token then
             Data2.Quizzes.getDescriptor env quizId
             |> AR.bind (fun quiz ->
                 let sessionId = rand.Next(Int32.MaxValue)
-                let user = {QuizId = team.QuizId; QuizName = quiz.Name; TeamId = team.TeamId; TeamName = team.Name; AppSyncCfg = appsyncCfg}
+                let user = {QuizId = team.QuizId; QuizName = quiz.Name; TeamId = team.TeamId; TeamName = team.Name; AppSyncCfg = (env:>ICfg).Configurer.AppSyncCfg}
                 let claims = [
                     Claim(CustomClaims.Name, user.TeamName)
                     Claim(CustomClaims.Role, CustomRoles.Team)
@@ -317,18 +317,18 @@ let loginRegUser env secret quizId token =
             loginResp env secret claims user
         else Error "Wrong entry token" |> AR.fromResult)
 
-let loginAudUser env secret appsyncCfg quizId token =
+let loginAudUser env secret quizId token =
     Data2.Quizzes.getDescriptor env quizId
     |> AR.bind (fun quiz ->
         if quiz.ListenToken = System.Web.HttpUtility.UrlDecode token then
             let claims = [Claim(CustomClaims.Role, CustomRoles.Aud); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
-            let user = AudUser {QuizId = quiz.QuizId; AppSyncCfg = appsyncCfg}
+            let user = AudUser {QuizId = quiz.QuizId; AppSyncCfg = (env:>ICfg).Configurer.AppSyncCfg}
             loginResp env secret claims user
         else Error "Wrong entry token" |> AR.fromResult)
 
 let api env (context:HttpContext) : ISecurityApi =
     let cfg = context.GetService<IConfiguration>()
-    let secret = Config.getJwtSecret cfg
+    let secret = (env:>ICfg).Configurer.JwtSecret
 
     let api : ISecurityApi = {
         login = exec (env :> ILog).Logger "login" <| executedResponse  (login env secret cfg)
@@ -340,16 +340,16 @@ let api env (context:HttpContext) : ISecurityApi =
 let login env secret (cfg:IConfiguration) (token:string) (req : LoginReq) =
 
     let resolveSttings() =
-        {MediaHost = Config.getMediaHostName cfg}
+        {MediaHost = env.Configurer.MediaHostName}
 
     match req with
     | LoginReq.MainUser data ->
-        let clientId = Config.getCognitoClientId cfg
-        let clientName = Config.getCognitoClientName cfg
-        let redirectUri = Config.getRedirectUrl cfg
-        loginMainUser env secret token clientId clientName redirectUri data.Code
+        let clientId = env.Configurer.CognitoClientId
+        //let clientName = env.Configurer.CognitoClientName
+        let redirectUri = env.Configurer.RedirectUrl
+        loginMainUser env secret token data.Code
     | LoginReq.AdminUser data -> loginAdminUser env secret data.QuizId data.Token
-    | LoginReq.TeamUser data -> loginTeamUser env secret (Config.getAppSyncCfg cfg) data.QuizId data.TeamId data.Token
+    | LoginReq.TeamUser data -> loginTeamUser env secret data.QuizId data.TeamId data.Token
     | LoginReq.RegUser data -> loginRegUser env secret data.QuizId data.Token
-    | LoginReq.AudUser data -> loginAudUser env secret (Config.getAppSyncCfg cfg) data.QuizId data.Token
+    | LoginReq.AudUser data -> loginAudUser env secret data.QuizId data.Token
     |> AR.map (fun res ->{|RefreshToken = res.RefreshToken; Token = res.Token; User = res.User; Settings = resolveSttings()|})

@@ -9,20 +9,20 @@ open Env
 
 module AR = AsyncResult
 
-let private uploadFile env bucket (quiz:Domain.Quiz) results =
+let private uploadFile env (quiz:Domain.Quiz) results =
     let key = Bucket.getResultsKey quiz.Dsc.QuizId quiz.Dsc.ListenToken
     let body =
         JsonConvert.SerializeObject(results, Common.fableConverter)
         |> Text.UTF8Encoding.UTF8.GetBytes
-    Bucket.uploadFile env bucket key "application/json" body
+    Bucket.uploadFile env key "application/json" body
 
-let private publishResuts env bucket quizId =
+let private publishResuts env quizId =
     Data2.Quizzes.get env quizId
     |> AR.bind (fun quiz ->
         Data2.Teams.getAllInQuiz env (quiz.Dsc.QuizId)
         |> AR.bind (fun teams ->
             Domain.Results.results quiz teams
-            |> uploadFile env bucket quiz))
+            |> uploadFile env quiz))
     |> Async.map ignore
 
 let publisherAgent env =
@@ -45,8 +45,8 @@ let publisherAgent env =
 
                 for msg in msgs do
                     match msg with
-                    | PublishResults (quizId,bucket) ->
-                        do! publishResuts env bucket quizId
+                    | PublishResults quizId ->
+                        do! publishResuts env quizId
             with
             | ex -> Log.Error ("{Op} {Exeption}", "publishAgentLoop", ex)
 

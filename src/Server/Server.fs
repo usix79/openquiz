@@ -41,20 +41,18 @@ let apiHandler api =
     |> Remoting.withErrorHandler errorHandler
     |> Remoting.buildHttpHandler
 
-let loginHandler _next (ctx: HttpContext)  =
+let loginHandler env _next (ctx: HttpContext)  =
     task {
-        let cfg = ctx.GetService<IConfiguration>()
-        let clientId = Config.getCognitoClientId cfg
-        let clientName = Config.getCognitoClientName cfg
-        let redirectUrl = Config.getRedirectUrl cfg
-        let url = sprintf "%s/login?client_id=%s&response_type=code&redirect_uri=%s" (Aws.getCognitoUri clientName) clientId redirectUrl
+        let clientId = (env:>ICfg).Configurer.CognitoClientId
+        let redirectUrl = env.Configurer.RedirectUrl
+        let url = sprintf "%s/login?client_id=%s&response_type=code&redirect_uri=%s" env.Configurer.CognitoUri clientId redirectUrl
         return! redirectTo false url _next ctx
     }
 
 let appRouter env =
     choose [
         route "/ping" >=> text ("pong")
-        route "/api/login" >=> loginHandler
+        route "/api/login" >=> loginHandler env
         route "/api/ping" >=> text ("pong")
         apiHandler <| SecurityService.api env
         apiHandler <| MainService.api env
@@ -81,10 +79,23 @@ let serilogConfig = {
 
 let appRouterWithLogging env = SerilogAdapter.Enable(appRouter env, serilogConfig)
 
-let buildEnvironment logger =
+let buildEnvironment logger (cfg:IConfiguration) =
     let configurer = {
         new Env.IConfigurer with
         member _.DynamoTablePrefix = "OQ"
+        member _.JwtSecret = cfg.["jwtsecret"]
+        member _.CognitoClientId = cfg.["cognitoClientId"]
+        member _.CognitoUri =
+            printfn "URIIIII: %A" cfg.["cognitoUri"]
+            cfg.["cognitoUri"]
+        member _.MediaBucketName = cfg.["mediaBucketName"]
+        member _.MediaHostName = cfg.["mediaHostName"]
+        member _.RedirectUrl = cfg.["redirectUrl"]
+        member _.AppSyncCfg = {
+            Endpoint = cfg.["appsync-endpoint"]
+            Region = cfg.["appsync-region"]
+            ApiKey = cfg.["appsync-apikey"]
+        }
     }
 
     let publisherEnv = {
@@ -126,28 +137,26 @@ let main args =
 
                 Log.Logger <- logger
 
-                let env = buildEnvironment logger
+                let env = buildEnvironment logger ctx.Configuration
 
-                app.UseGiraffe (appRouterWithLogging env)
-                )
+                Data2.Quizzes.subscribe (fun quiz ->
+                        let event' = Presenter.quizChangeEvent quiz
+                        env.Logger.Information ("{@Op} {@Evt}", "Event", event')
+
+                        let appSyncCfg = env.Configurer.AppSyncCfg
+                        Aws.publishQuizMessage
+                            appSyncCfg.Endpoint
+                            appSyncCfg.Region
+                            quiz.Dsc.QuizId
+                            quiz.Dsc.ListenToken
+                            quiz.Version
+                            event' )
+
+                app.UseGiraffe (appRouterWithLogging env) )
             .ConfigureServices(fun services ->
                 services.AddGiraffe() |> ignore )
             .UseUrls("http://0.0.0.0:" + port.ToString() + "/")
             .Build()
-
-    let cfg = host.Services.GetService<IConfiguration>()
-
-    Data2.Quizzes.subscribe (fun quiz ->
-            let evt = Presenter.quizChangeEvent quiz
-            Log.Information ("{@Op} {@Evt}", "Event", evt)
-
-            Aws.publishQuizMessage
-                (Config.getAppsyncEndpoint cfg)
-                (Config.getAppsyncRegion cfg)
-                quiz.Dsc.QuizId
-                quiz.Dsc.ListenToken
-                quiz.Version evt
-         )
 
     //Agents.publish (Agents.PublishResults (834,"open-quiz-media"))
     host.Run()

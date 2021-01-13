@@ -149,34 +149,15 @@ module AsyncResult =
         bind (fun _ -> mn) m
 
 type PublisherCommand =
-    | PublishResults of quizId : int * bucketName : string
-
-module Config =
-    open Microsoft.Extensions.Configuration
-
-    let getJwtSecret (cfg:IConfiguration) = cfg.["jwtsecret"]
-    let getCognitoClientId (cfg:IConfiguration) = cfg.["cognitoClientId"]
-    let getCognitoClientName (cfg:IConfiguration) = cfg.["cognitoClientName"]
-    let getAppsyncEndpoint (cfg:IConfiguration) = cfg.["appsync-endpoint"]
-    let getAppsyncApiKey (cfg:IConfiguration) = cfg.["appsync-apikey"]
-    let getAppsyncRegion (cfg:IConfiguration) = cfg.["appsync-region"]
-    let getMediaBucketName (cfg:IConfiguration) = cfg.["mediaBucketName"]
-    let getMediaHostName (cfg:IConfiguration) = cfg.["mediaHostName"]
-    let getRedirectUrl (cfg:IConfiguration) = cfg.["redirectUrl"]
-
-    let getAppSyncCfg (cfg:IConfiguration) =
-        {Endpoint = getAppsyncEndpoint cfg; Region = getAppsyncRegion cfg; ApiKey = getAppsyncApiKey cfg}
+    | PublishResults of quizId : int
 
 module Aws =
     let private httpClient = new HttpClient()
 
-    let getCognitoUri clientName =
-        sprintf "https://%s.auth.eu-central-1.amazoncognito.com" clientName
-
-    let getUserToken clientName clientId redirectUrl code =
+    let getUserToken cognitoUri clientId redirectUrl code =
 
         async {
-            let uri = sprintf "%s/oauth2/token" (getCognitoUri clientName)
+            let uri = sprintf "%s/oauth2/token" cognitoUri
 
             let values = new Dictionary<string, string>()
             values.Add("grant_type", "authorization_code")
@@ -204,10 +185,10 @@ module Aws =
                 return Error (resp.StatusCode.ToString())
         }
 
-    let getUserInfo clientName accessToken =
+    let getUserInfo cognitoUri accessToken =
 
         async {
-            let uri = sprintf "%s/oauth2/userInfo" (getCognitoUri clientName)
+            let uri = sprintf "%s/oauth2/userInfo" cognitoUri
             let httpReq = new HttpRequestMessage(HttpMethod.Get, uri)
             httpReq.Headers.Add ("Authorization", sprintf "Bearer %s" accessToken)
 

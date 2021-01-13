@@ -13,7 +13,7 @@ module AR = AsyncResult
 
 let api env (context:HttpContext) : IMainApi =
     let cfg = context.GetService<IConfiguration>()
-    let secret = Config.getJwtSecret cfg
+    let secret =  (env :> ICfg).Configurer.JwtSecret
 
     let ex proc f =
         let ff f = (fun expertId usersysname username (quizIdStr:string) req ->
@@ -40,7 +40,7 @@ let api env (context:HttpContext) : IMainApi =
     let api : IMainApi = {
         becomeProducer = ex "becomeProducer" <| becomeProducer env
         getRegModel = ex "getRegModel" <| getRegModel env
-        registerTeam = ex "registerTeam" (registerTeam env (Config.getMediaBucketName cfg))
+        registerTeam = ex "registerTeam" <| registerTeam env
         createQuiz = exPublisher  "createQuiz" <| createQuiz env
         getProdQuizzes = exPublisher "getProdQuizzes" <| getProdQuizzes env
         getProdQuizCard = exPublisher "getProdQuizCard" <| getProdQuizCard env
@@ -50,13 +50,13 @@ let api env (context:HttpContext) : IMainApi =
         createPackage = exPublisher  "createPackage" <| createPackage env
         updateProdPackageCard = exPublisher  "updateProdPackageCard" <| updateProdPackageCard env
         aquirePackage = exPublisher "aquirePackage" <| aquirePackage env
-        deleteQuiz = exPublisher "deleteQuiz" <| deleteQuiz env (Config.getMediaBucketName cfg)
+        deleteQuiz = exPublisher "deleteQuiz" <| deleteQuiz env
         deletePackage = exPublisher "deletePackage" <| deletePackage env
         getSettings = exPublisher "getSettings" <| getSettings
         updateSettings = exPublisher "updateSettings" <| updateSettings env
         sharePackage = exPublisher "sharePackage" <| sharePackage env
         removePackageShare = exPublisher "removePackageShare" <| removePackageShare env
-        getUploadUrl = exPublisher "getUploadUrl" <| getUploadUrl env (Config.getMediaBucketName cfg)
+        getUploadUrl = exPublisher "getUploadUrl" <| getUploadUrl env
     }
 
     api
@@ -104,7 +104,7 @@ let updateProdQuizCard env expert card =
     Data2.Quizzes.update env card.QuizId logic
     |> AR.map (fun quiz -> quiz.Dsc |> Main.quizProdRecord)
 
-let deleteQuiz env bucket expert req =
+let deleteQuiz env expert req =
     Data2.Quizzes.getDescriptor env req.QuizId
     |> AR.sideRes (Domain.Quizzes.authorize expert.Id)
     |> AR.side ( fun _ ->
@@ -115,7 +115,7 @@ let deleteQuiz env bucket expert req =
             |> Async.Sequential
             |> Async.map (fun _ -> Ok ())))
     |> AR.side ( fun quiz ->
-        Bucket.deleteFile env bucket (Bucket.getResultsKey quiz.QuizId quiz.ListenToken)
+        Bucket.deleteFile env (Bucket.getResultsKey quiz.QuizId quiz.ListenToken)
         |> Async.map (fun _ -> Ok ()))
     |> AR.next (Data2.Quizzes.delete env req.QuizId)
     |> AR.next (Data2.Experts.update env expert.Id (Domain.Experts.removeQuiz req.QuizId))
@@ -138,7 +138,7 @@ let getRegModel env expId username name quizId _ =
             Data2.Quizzes.getDescriptor env quizId
             |> AR.map (fun quiz -> Main.quizRegRecord quiz team)))
 
-let registerTeam env bucketName expId username name quizId req =
+let registerTeam env expId username name quizId req =
     let expCreator () = Domain.Experts.createNew expId username name
 
     quizId |> Result.fromOption "Quiz not defined"
@@ -160,7 +160,7 @@ let registerTeam env bucketName expId username name quizId req =
                 )
             | None -> createTeam env exp quiz teamName
             |> AR.map (fun (team:Domain.Team) -> Main.quizRegRecord quiz (Some team.Dsc))))
-    |> AR.side (fun qr -> PublishResults (qr.QuizId, bucketName) |> (env :> IPublisher).Publish |> AR.retn)
+    |> AR.side (fun qr -> PublishResults qr.QuizId |> (env :> IPublisher).Publish |> AR.retn)
 
 let private createTeam env exp quiz teamName  =
 
@@ -277,6 +277,6 @@ let removePackageShare env expert req =
     |> AR.next (Data2.Experts.update env req.UserId (Domain.Experts.removeSharedPackage req.PackageId))
     |> AR.map ignore
 
-let getUploadUrl env bucketName expert req  =
-    let key,url = Bucket.getSignedUrl bucketName req.Cat
+let getUploadUrl env expert req  =
+    let key,url = Bucket.getSignedUrl env.Configurer.MediaBucketName req.Cat
     AR.retn  {|Url = url; BucketKey = key|}

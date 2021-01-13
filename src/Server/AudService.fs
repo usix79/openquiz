@@ -8,12 +8,13 @@ open Serilog
 
 open Shared
 open Common
+open Env
 open Presenter
 
 let api env (context:HttpContext) : IAudApi =
     let logger : ILogger = context.Logger()
     let cfg = context.GetService<IConfiguration>()
-    let secret = Config.getJwtSecret cfg
+    let secret = (env :> ICfg).Configurer.JwtSecret
 
     let ex proc f =
 

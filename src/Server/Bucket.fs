@@ -23,13 +23,13 @@ let getSignedUrl bucketName (cat:MediaCategory) =
             Verb = HttpVerb.PUT,
             Expires = System.DateTime.UtcNow.AddDays(1.0)))
 
-let uploadFile (env:#ILog) bucketName (key:string) (fileType:string) (fileBody : byte[]) : Async<Result<unit, string>> =
+let uploadFile env (key:string) (fileType:string) (fileBody : byte[]) : Async<Result<unit, string>> =
 
     use client = new AmazonS3Client()
 
     let req =
         PutObjectRequest (
-            BucketName = bucketName,
+            BucketName = (env:>ICfg).Configurer.MediaBucketName,
             Key = key,
             InputStream = new MemoryStream(fileBody),
             ContentType = fileType)
@@ -43,14 +43,14 @@ let uploadFile (env:#ILog) bucketName (key:string) (fileType:string) (fileBody :
             if resp.HttpStatusCode = System.Net.HttpStatusCode.OK then Ok ()
             else Error <| resp.HttpStatusCode.ToString()
         | Choice2Of2 ex ->
-            env.Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
+            (env:>ILog).Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
             Error ex.Message)
 
-let deleteFile (env:#ILog) bucketName (key:string) : Async<Result<unit, string>> =
+let deleteFile env (key:string) : Async<Result<unit, string>> =
 
     use client = new AmazonS3Client()
 
-    let req = DeleteObjectRequest (BucketName = bucketName, Key = key)
+    let req = DeleteObjectRequest (BucketName = (env:>ICfg).Configurer.MediaBucketName, Key = key)
 
     client.DeleteObjectAsync(req)
     |> Async.AwaitTask
@@ -61,5 +61,5 @@ let deleteFile (env:#ILog) bucketName (key:string) : Async<Result<unit, string>>
             if resp.HttpStatusCode = System.Net.HttpStatusCode.OK then Ok ()
             else Error <| resp.HttpStatusCode.ToString()
         | Choice2Of2 ex ->
-            env.Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
+            (env :> ILog).Logger.Error ("{@Proc} {@Exception}", "BUCKET", ex)
             Error ex.Message)

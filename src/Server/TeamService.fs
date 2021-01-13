@@ -14,7 +14,7 @@ open Presenter
 let api env (context:HttpContext) : ITeamApi =
     let logger : ILogger = context.Logger()
     let cfg = context.GetService<IConfiguration>()
-    let secret = Config.getJwtSecret cfg
+    let secret =  (env :> ICfg).Configurer.JwtSecret
 
     let ex proc f =
 
@@ -33,7 +33,7 @@ let api env (context:HttpContext) : ITeamApi =
         getState = ex "getState" <| getState env
         answers = ex "answers" <| answers env
         getHistory = ex "getHistory" <| getHistory env
-        vote = ex "vote" <| vote env (Config.getMediaBucketName cfg)
+        vote = ex "vote" <| vote env
     }
 
     api
@@ -75,7 +75,7 @@ let getHistory env team _ =
         |> AsyncResult.map (fun team -> Teams.quizHistory quiz team))
 
 
-let vote env bucketName team req =
+let vote env team req =
     let logic (team:Domain.Team) =
         team
         |> Domain.Teams.updateAnswer (qwKeyToDomain req.Key) (fun aw ->
@@ -85,5 +85,5 @@ let vote env bucketName team req =
         | _ -> Error "vote not applied"
 
     Data2.Teams.update env team.Key logic
-    |> AsyncResult.side (fun _ -> PublishResults (team.QuizId, bucketName) |> (env:>IPublisher).Publish |> AsyncResult.retn)
+    |> AsyncResult.side (fun _ -> PublishResults team.QuizId |> (env:>IPublisher).Publish |> AsyncResult.retn)
     |> AsyncResult.map ignore
