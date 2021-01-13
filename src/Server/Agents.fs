@@ -2,19 +2,17 @@ module Agents
 
 open System
 open Newtonsoft.Json
-open Serilog
 
 open Common
-open Env
 
 module AR = AsyncResult
 
 let private uploadFile env (quiz:Domain.Quiz) results =
-    let key = Bucket.getResultsKey quiz.Dsc.QuizId quiz.Dsc.ListenToken
+    let key = Aws.getResultsKey quiz.Dsc.QuizId quiz.Dsc.ListenToken
     let body =
         JsonConvert.SerializeObject(results, Common.fableConverter)
         |> Text.UTF8Encoding.UTF8.GetBytes
-    Bucket.uploadFile env key "application/json" body
+    Aws.uploadFile env key "application/json" body
 
 let private publishResuts env quizId =
     Data2.Quizzes.get env quizId
@@ -48,7 +46,7 @@ let publisherAgent env =
                     | PublishResults quizId ->
                         do! publishResuts env quizId
             with
-            | ex -> Log.Error ("{Op} {Exeption}", "publishAgentLoop", ex)
+            | ex -> env.Logger.Error ("{Op} {Exeption}", "publishAgentLoop", ex)
 
             return! loop()
         }

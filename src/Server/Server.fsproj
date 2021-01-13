@@ -9,9 +9,9 @@
     <Compile Include="Common.fs" />
     <Compile Include="DataLibrary.fs" />
     <Compile Include="Env.fs" />
+    <Compile Include="Aws.fs" />
     <Compile Include="Domain.fs" />
     <Compile Include="Jury.fs" />
-    <Compile Include="Bucket.fs" />
     <Compile Include="Data2.fs" />
     <Compile Include="Presenter.fs" />
     <Compile Include="Agents.fs" />

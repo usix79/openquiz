@@ -24,7 +24,7 @@ let api env (context:HttpContext) : IAudApi =
                 Data2.Quizzes.getDescriptor env quizId
                 |> AsyncResult.bind (fun quiz -> f quiz req)
             | None ->
-                Log.Error ("{Api} {Error} {Quiz}", "aud", "Wrong quiz Id", quizIdStr)
+                env.Logger.Error ("{Api} {Error} {Quiz}", "aud", "Wrong quiz Id", quizIdStr)
                 Error "Wrong Quiz Id"
                 |> AsyncResult.fromResult
         )

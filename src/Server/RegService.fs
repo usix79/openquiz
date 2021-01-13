@@ -22,7 +22,7 @@ let api env (context:HttpContext) : IRegApi =
                 Data2.Quizzes.getDescriptor env quizId
                 |> AsyncResult.bind (fun quiz -> f quiz req)
             | None ->
-                Log.Error ("{Api} {Error} {Quiz}", "reg", "Wrong quiz Id", quizIdStr)
+                env.Logger.Error ("{Api} {Error} {Quiz}", "reg", "Wrong quiz Id", quizIdStr)
                 Error "Wrong Quiz Id"
                 |> AsyncResult.fromResult
         )

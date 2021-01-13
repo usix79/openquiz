@@ -1,14 +1,10 @@
 module Common
 
 open System
-open System.Collections.Generic
 open System.Security.Cryptography
-open System.Net.Http
 
 open Fable.Remoting.Server
 open Fable.Remoting.Json
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
 
 open Shared
 
@@ -151,112 +147,6 @@ module AsyncResult =
 type PublisherCommand =
     | PublishResults of quizId : int
 
-module Aws =
-    let private httpClient = new HttpClient()
-
-    let getUserToken cognitoUri clientId redirectUrl code =
-
-        async {
-            let uri = sprintf "%s/oauth2/token" cognitoUri
-
-            let values = new Dictionary<string, string>()
-            values.Add("grant_type", "authorization_code")
-            values.Add("client_id", clientId)
-            values.Add("code", code)
-            values.Add("redirect_uri", redirectUrl)
-            let content = new FormUrlEncodedContent(values);
-
-            let! resp = httpClient.PostAsync(uri, content) |> Async.AwaitTask
-            let! respStr = resp.Content.ReadAsStringAsync() |> Async.AwaitTask
-
-            match resp.StatusCode with
-            | Net.HttpStatusCode.OK ->
-                let json = JObject.Parse respStr
-
-                let res = {|
-                    IdToken = json.GetValue("id_token").ToString()
-                    AccessToken = json.GetValue("access_token").ToString()
-                    RefreshToken = json.GetValue("refresh_token").ToString()
-                |}
-
-                return Ok res
-            | _ ->
-                Serilog.Log.Error ("{@Op} {@Status} {@Resp}", "Aws.getUserToken", resp.StatusCode,  respStr)
-                return Error (resp.StatusCode.ToString())
-        }
-
-    let getUserInfo cognitoUri accessToken =
-
-        async {
-            let uri = sprintf "%s/oauth2/userInfo" cognitoUri
-            let httpReq = new HttpRequestMessage(HttpMethod.Get, uri)
-            httpReq.Headers.Add ("Authorization", sprintf "Bearer %s" accessToken)
-
-            let! resp = httpClient.SendAsync(httpReq) |> Async.AwaitTask
-            let! respStr = resp.Content.ReadAsStringAsync() |> Async.AwaitTask
-
-            match resp.StatusCode with
-            | Net.HttpStatusCode.OK ->
-                let json = JObject.Parse respStr
-
-                let username = json.GetValue("username").ToString()
-
-                let picture = json.GetValue("picture").ToString();
-
-                let picture =
-                    match username with
-                    | _ when not (String.IsNullOrEmpty picture) && username.Contains ("facebook") ->
-                        let picJson = JObject.Parse picture
-                        picJson.["data"].["url"].ToString()
-                    | _ -> picture
-
-                let res = {|
-                    Sub = json.GetValue("sub").ToString()
-                    Username = username
-                    Name = json.GetValue("name").ToString()
-                    Picture = picture
-                |}
-
-                return Ok res
-            | _ ->
-                Serilog.Log.Error ("{@Op} {@Status} {@Resp}", "Aws.getUserToken", resp.StatusCode,  respStr)
-                return Error (resp.StatusCode.ToString())
-
-        }
-
-    let private publishQuery = sprintf """{ "query": "mutation quizMessage {quizMessage(quizId: %i, token: \"%s\", body: \"%s\", version: %i){quizId, token, body, version} }"}"""
-
-    let publishQuizMessage (endpoint:string) region quizId token version evt =
-        async {
-            try
-                let! creds = Amazon.Runtime.FallbackCredentialsFactory.GetCredentials().GetCredentialsAsync() |> Async.AwaitTask
-
-                let signer = new Aws4RequestSigner.AWS4RequestSigner(creds.AccessKey, creds.SecretKey)
-
-                let body =
-                    JsonConvert.SerializeObject(evt,fableConverter)
-                    |> Text.UTF8Encoding.UTF8.GetBytes
-                    |> Convert.ToBase64String
-
-                let data = publishQuery quizId token body version
-
-                let content = new StringContent(data, Text.Encoding.UTF8, "application/graphql")
-
-                let origReq = new HttpRequestMessage(HttpMethod.Post, endpoint, Content = content)
-
-                let! signedReq = signer.Sign(origReq, "appsync", region) |> Async.AwaitTask
-
-                if creds.UseToken then
-                    signedReq.Headers.Add("X-Amz-Security-Token", creds.Token)
-
-                let! resp = httpClient.SendAsync(signedReq) |> Async.AwaitTask
-                let! respStr = resp.Content.ReadAsStringAsync() |> Async.AwaitTask
-                match resp.StatusCode with
-                | Net.HttpStatusCode.OK -> return ()
-                | _ -> return Serilog.Log.Error ("{@Op} {@Status} {@Resp}", "Aws.appsync", resp.StatusCode,  respStr)
-            with
-            | ex -> return Serilog.Log.Error ("{@Op} {@Exception}", "Aws.appsync", ex)
-        }
 
 let ofOption error = function Some s -> Ok s | None -> Error error
 

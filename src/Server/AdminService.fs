@@ -15,8 +15,6 @@ open Presenter
 module AR = AsyncResult
 
 let api env (context:HttpContext) : IAdminApi =
-    let logger : ILogger = context.Logger()
-    let cfg = context.GetService<IConfiguration>()
     let secret =  (env :> ICfg).Configurer.JwtSecret
 
     let ex proc f =
@@ -27,12 +25,12 @@ let api env (context:HttpContext) : IAdminApi =
                 Data2.Quizzes.getDescriptor env quizId
                 |> AsyncResult.bind (fun quiz -> f quiz req)
             | None ->
-                Log.Error ("{Api} {Error} {Quiz}", "admin", "Wrong quiz Id", quizIdStr)
+                (env:>ILog).Logger.Error ("{Api} {Error} {Quiz}", "admin", "Wrong quiz Id", quizIdStr)
                 Error "Wrong Quiz Id"
                 |> AsyncResult.fromResult
         )
 
-        SecurityService.exec logger proc <| SecurityService.authorizeAdmin secret (ff f)
+        SecurityService.exec env.Logger proc <| SecurityService.authorizeAdmin secret (ff f)
 
     let api : IAdminApi = {
         getTeams = ex  "getTeams" <| getTeams env
@@ -258,7 +256,7 @@ let settleAnswers env (quiz : Domain.Quiz) =
             //|> Async.Sequential
             |> Async.map (fun _ ->
                 sw.Stop()
-                Log.Information("{@Op} {@Proc} {@Quiz} {@TeamsCount} {@Duration}", "Settle", "admin", quiz.Dsc.QuizId, list.Length, sw.ElapsedMilliseconds)
+                env.Logger.Information("{@Op} {@Proc} {@Quiz} {@TeamsCount} {@Duration}", "Settle", "admin", quiz.Dsc.QuizId, list.Length, sw.ElapsedMilliseconds)
                 Ok ()))
     | _ -> AR.retn ()
 

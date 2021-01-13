@@ -6,7 +6,6 @@ open System.Text
 open System.IdentityModel.Tokens.Jwt
 open Microsoft.AspNetCore.Http
 open Microsoft.IdentityModel.Tokens
-open Giraffe.SerilogExtensions
 open Serilog
 open Microsoft.Extensions.Configuration
 
@@ -236,10 +235,10 @@ let private tryExtractPrivateQuizId secret token =
 
 let loginMainUser env secret token code =
     async {
-        let! tokensResult = Aws.getUserToken (env:>ICfg).Configurer.CognitoUri env.Configurer.CognitoClientId env.Configurer.RedirectUrl code
+        let! tokensResult = Aws.getUserToken env code
         match tokensResult with
         | Ok tokens ->
-            let! userInfoResult = Aws.getUserInfo env.Configurer.CognitoUri tokens.AccessToken
+            let! userInfoResult = Aws.getUserInfo env tokens.AccessToken
             match userInfoResult with
             | Ok info ->
                 let privateQuizId = tryExtractPrivateQuizId secret token
@@ -331,23 +330,19 @@ let api env (context:HttpContext) : ISecurityApi =
     let secret = (env:>ICfg).Configurer.JwtSecret
 
     let api : ISecurityApi = {
-        login = exec (env :> ILog).Logger "login" <| executedResponse  (login env secret cfg)
+        login = exec (env :> ILog).Logger "login" <| executedResponse  (login env secret)
         refreshToken = exec env.Logger "refreshToken" <| refreshToken env secret
     }
 
     api
 
-let login env secret (cfg:IConfiguration) (token:string) (req : LoginReq) =
+let login env secret (token:string) (req : LoginReq) =
 
     let resolveSttings() =
         {MediaHost = env.Configurer.MediaHostName}
 
     match req with
-    | LoginReq.MainUser data ->
-        let clientId = env.Configurer.CognitoClientId
-        //let clientName = env.Configurer.CognitoClientName
-        let redirectUri = env.Configurer.RedirectUrl
-        loginMainUser env secret token data.Code
+    | LoginReq.MainUser data -> loginMainUser env secret token data.Code
     | LoginReq.AdminUser data -> loginAdminUser env secret data.QuizId data.Token
     | LoginReq.TeamUser data -> loginTeamUser env secret data.QuizId data.TeamId data.Token
     | LoginReq.RegUser data -> loginRegUser env secret data.QuizId data.Token

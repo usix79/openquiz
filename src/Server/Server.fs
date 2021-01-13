@@ -9,11 +9,9 @@ open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
 open FSharp.Control.Tasks.V2
 open Microsoft.AspNetCore
-open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Configuration
-open Microsoft.Extensions.DependencyInjection
 open Serilog
 
 open Shared
@@ -143,10 +141,8 @@ let main args =
                         let event' = Presenter.quizChangeEvent quiz
                         env.Logger.Information ("{@Op} {@Evt}", "Event", event')
 
-                        let appSyncCfg = env.Configurer.AppSyncCfg
                         Aws.publishQuizMessage
-                            appSyncCfg.Endpoint
-                            appSyncCfg.Region
+                            env
                             quiz.Dsc.QuizId
                             quiz.Dsc.ListenToken
                             quiz.Version

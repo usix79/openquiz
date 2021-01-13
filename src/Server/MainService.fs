@@ -1,8 +1,6 @@
 module rec MainService
 
 open Microsoft.AspNetCore.Http
-open Microsoft.Extensions.Configuration
-open Serilog
 
 open Shared
 open Common
@@ -12,7 +10,6 @@ open Presenter
 module AR = AsyncResult
 
 let api env (context:HttpContext) : IMainApi =
-    let cfg = context.GetService<IConfiguration>()
     let secret =  (env :> ICfg).Configurer.JwtSecret
 
     let ex proc f =
@@ -30,7 +27,7 @@ let api env (context:HttpContext) : IMainApi =
                 | Ok expert ->
                     return! f expert req
                 | Error _ ->
-                    Log.Error ("{Op} {Error} {ExpertId}", "main", "Wrong Publisher Id", expertId)
+                    env.Logger.Error ("{Op} {Error} {ExpertId}", "main", "Wrong Publisher Id", expertId)
                     return Error "Wrong Publisher Id"
             }
         )
@@ -115,7 +112,7 @@ let deleteQuiz env expert req =
             |> Async.Sequential
             |> Async.map (fun _ -> Ok ())))
     |> AR.side ( fun quiz ->
-        Bucket.deleteFile env (Bucket.getResultsKey quiz.QuizId quiz.ListenToken)
+        Aws.deleteFile env (Aws.getResultsKey quiz.QuizId quiz.ListenToken)
         |> Async.map (fun _ -> Ok ()))
     |> AR.next (Data2.Quizzes.delete env req.QuizId)
     |> AR.next (Data2.Experts.update env expert.Id (Domain.Experts.removeQuiz req.QuizId))
@@ -278,5 +275,5 @@ let removePackageShare env expert req =
     |> AR.map ignore
 
 let getUploadUrl env expert req  =
-    let key,url = Bucket.getSignedUrl env.Configurer.MediaBucketName req.Cat
+    let key,url = Aws.getSignedUrl env.Configurer.MediaBucketName req.Cat
     AR.retn  {|Url = url; BucketKey = key|}
