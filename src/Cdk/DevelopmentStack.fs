@@ -4,6 +4,7 @@ open Amazon.CDK
 open Amazon.CDK.AWS.DynamoDB
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.SSM
+open Amazon.CDK.AWS.Cognito
 
 module Helpers =
 
@@ -36,12 +37,19 @@ module Helpers =
 
         StringParameter(stack, fullName, props) |> ignore
 
+    let lookupParameter stack env name =
+        let fullName = sprintf "/OpenQuiz/%A/%s" env name
+
+        let currentValue = StringParameter.ValueFromLookup(stack, fullName)
+        if currentValue.StartsWith("dummy-value-for-") then "dummy"
+        else currentValue
 
 open Helpers
 
-type DevelopmentStack(env, scope, id, props) as this =
+type DevelopmentStack(env, scope:Construct, id, props) as this =
     inherit Stack(scope, (sprintf "%s-%A" id env), props)
 
+    // DynamoDB Tables
     do createTable this env "System" "Id" AttributeType.STRING
     do createTable this env "Experts" "Id" AttributeType.STRING
     do createTable this env "Packages" "Id" AttributeType.NUMBER
@@ -59,3 +67,39 @@ type DevelopmentStack(env, scope, id, props) as this =
     let bucket = Bucket(this, "Bucket", bucketProps)
     do createParameter this env "BucketName" bucket.BucketName
     do createParameter this env "BucketUrl" bucket.BucketWebsiteUrl
+
+    // Cognito UserPool
+    let userPool =
+        UserPool(this, "UserPool",
+            UserPoolProps(
+                UserPoolName = sprintf "OpenQuiz-%A" env,
+                SignInCaseSensitive = false,
+                AutoVerify = AutoVerifiedAttrs(Email = true),
+                SignInAliases = SignInAliases(Username = true, Email = true),
+                StandardAttributes = StandardAttributes(Email = StandardAttribute(Required = true)),
+                PasswordPolicy = PasswordPolicy(MinLength=6., RequireDigits=false, RequireLowercase=false, RequireSymbols=false, RequireUppercase=false),
+                SelfSignUpEnabled = true ))
+
+    let domainPrefix = lookupParameter this env "UserPoolDomainPrefix"
+
+    let userPoolDomain =
+        userPool.AddDomain("UserPoolDomain",
+            UserPoolDomainOptions(
+                CognitoDomain = CognitoDomainOptions(DomainPrefix = domainPrefix)))
+
+    let appClientProps =
+        UserPoolClientProps(
+            UserPool = userPool,
+            AuthFlows = AuthFlow(UserPassword = true),
+            OAuth = OAuthSettings(
+                Flows = OAuthFlows(AuthorizationCodeGrant = true, ImplicitCodeGrant = true),
+                Scopes = [|OAuthScope.EMAIL; OAuthScope.OPENID; OAuthScope.PROFILE|],
+                CallbackUrls = [|"http://localhost:8080/app/"|]
+                ),
+            SupportedIdentityProviders = [|UserPoolClientIdentityProvider.COGNITO|],
+            UserPoolClientName = sprintf "OpenQuiz-%A-Client" env )
+
+    let appClient = UserPoolClient(this, "OpenQuiz", appClientProps)
+    do createParameter this env "LoginUrl" <| userPoolDomain.BaseUrl()
+    do createParameter this env "UserPoolClientId" appClient.UserPoolClientId
+    do createParameter this env "AppUrl" "http://localhost:8080/app/"

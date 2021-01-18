@@ -41,9 +41,9 @@ let apiHandler api =
 
 let loginHandler env _next (ctx: HttpContext)  =
     task {
-        let clientId = (env:>ICfg).Configurer.CognitoClientId
-        let redirectUrl = env.Configurer.RedirectUrl
-        let url = sprintf "%s/login?client_id=%s&response_type=code&redirect_uri=%s" env.Configurer.CognitoUri clientId redirectUrl
+        let clientId = (env:>ICfg).Configurer.UserPoolClientId
+        let redirectUrl = env.Configurer.AppUrl
+        let url = sprintf "%s/login?client_id=%s&response_type=code&redirect_uri=%s" env.Configurer.LoginUrl clientId redirectUrl
         return! redirectTo false url _next ctx
     }
 
@@ -82,11 +82,11 @@ let buildEnvironment envName logger (cfg:IConfiguration) =
         new Env.IConfigurer with
         member _.DynamoTablePrefix = "OpenQuiz-" + envName
         member _.JwtSecret = cfg.["jwtsecret"]
-        member _.CognitoClientId = cfg.["cognitoClientId"]
-        member _.CognitoUri = cfg.["cognitoUri"]
+        member _.UserPoolClientId = cfg.["UserPoolClientId"]
+        member _.LoginUrl = cfg.["LoginUrl"]
+        member _.AppUrl = cfg.["AppUrl"]
         member _.BucketName = cfg.["BucketName"]
         member _.BucketUrl = cfg.["BucketUrl"]
-        member _.RedirectUrl = cfg.["redirectUrl"]
         member _.AppSyncCfg = {
             Endpoint = cfg.["appsync-endpoint"]
             Region = cfg.["appsync-region"]

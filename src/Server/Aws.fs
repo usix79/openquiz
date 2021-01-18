@@ -18,13 +18,13 @@ let private httpClient = new HttpClient()
 let getUserToken env code =
 
     async {
-        let uri = sprintf "%s/oauth2/token" (env:>ICfg).Configurer.CognitoUri
+        let uri = sprintf "%s/oauth2/token" (env:>ICfg).Configurer.LoginUrl
 
         let values = new Dictionary<string, string>()
         values.Add("grant_type", "authorization_code")
-        values.Add("client_id", env.Configurer.CognitoClientId)
+        values.Add("client_id", env.Configurer.UserPoolClientId)
         values.Add("code", code)
-        values.Add("redirect_uri", env.Configurer.RedirectUrl)
+        values.Add("redirect_uri", env.Configurer.AppUrl)
         let content = new FormUrlEncodedContent(values);
 
         let! resp = httpClient.PostAsync(uri, content) |> Async.AwaitTask
@@ -49,7 +49,7 @@ let getUserToken env code =
 let getUserInfo env accessToken =
 
     async {
-        let uri = sprintf "%s/oauth2/userInfo"  (env:>ICfg).Configurer.CognitoUri
+        let uri = sprintf "%s/oauth2/userInfo"  (env:>ICfg).Configurer.LoginUrl
         let httpReq = new HttpRequestMessage(HttpMethod.Get, uri)
         httpReq.Headers.Add ("Authorization", sprintf "Bearer %s" accessToken)
 
@@ -62,19 +62,27 @@ let getUserInfo env accessToken =
 
             let username = json.GetValue("username").ToString()
 
-            let picture = json.GetValue("picture").ToString();
-
             let picture =
-                match username with
-                | _ when not (String.IsNullOrEmpty picture) && username.Contains ("facebook") ->
-                    let picJson = JObject.Parse picture
-                    picJson.["data"].["url"].ToString()
-                | _ -> picture
+                match json.GetValue("picture") with
+                | null -> None
+                | jtoken ->
+                    let picture = jtoken.ToString();
+                    match username with
+                    | _ when not (String.IsNullOrEmpty picture) && username.Contains ("facebook") ->
+                        let picJson = JObject.Parse picture
+                        picJson.["data"].["url"].ToString()
+                    | _ -> picture
+                    |> Some
+
+            let name =
+                match json.GetValue("name") with
+                | null -> username
+                | jtoken -> jtoken.ToString()
 
             let res = {|
                 Sub = json.GetValue("sub").ToString()
                 Username = username
-                Name = json.GetValue("name").ToString()
+                Name = name
                 Picture = picture
             |}
 

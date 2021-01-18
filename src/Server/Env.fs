@@ -9,11 +9,11 @@ open Shared
 type IConfigurer =
     abstract DynamoTablePrefix: string
     abstract JwtSecret : string
-    abstract CognitoClientId : string
-    abstract CognitoUri : string
+    abstract UserPoolClientId : string
+    abstract LoginUrl : string
+    abstract AppUrl : string
     abstract BucketName : string
     abstract BucketUrl : string
-    abstract RedirectUrl : string
     abstract AppSyncCfg : AppSyncConfig
 
 [<Interface>] type ICfg = abstract Configurer: IConfigurer

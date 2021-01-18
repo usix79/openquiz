@@ -45,7 +45,7 @@ type MainUser = {
     Sub : string
     Username : string
     Name : string
-    PictureUrl : string
+    PictureUrl : string option
     IsProducer : bool
     IsPrivate : bool
 }

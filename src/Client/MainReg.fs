@@ -152,9 +152,12 @@ let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : M
                     div [Class "navbar-menu"][
                         div [Class "navbar-end"][
                             div [Class "navbar-item"] [
-                                figure [Class "image"][
-                                    img [Class "is-rounded"; Style [Height "50px"; Width "50px"; MaxHeight "50px"]; Src user.PictureUrl]
-                                ]
+                                match user.PictureUrl with
+                                | Some url ->
+                                    figure [Class "image"][
+                                        img [Class "is-rounded"; Style [Height "50px"; Width "50px"; MaxHeight "50px"]; Src url]
+                                    ]
+                                | None -> ()
                                 span [Style [MarginLeft "5px"]][str user.Name]
                             ]
                         ]
