@@ -24,7 +24,7 @@
         "whatwg-fetch": "^3.5.0"
     },
     "dependencies": {
-        "aws-amplify": "^3.3.10",
+        "aws-amplify": "^3.3.14",
         "react-flatpickr": "^3.10.6",
         "react-player": "^2.7.0"
     }
