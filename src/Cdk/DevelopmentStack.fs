@@ -2,6 +2,8 @@ namespace OpenQuiz.Cdk
 
 open Amazon.CDK
 open Amazon.CDK.AWS.DynamoDB
+open Amazon.CDK.AWS.S3
+open Amazon.CDK.AWS.SSM
 
 module Helpers =
 
@@ -24,6 +26,16 @@ module Helpers =
     let createTableWithSortKey stack env tableName partitionKeyName partitionKeyType sortKeyName sortKeyType =
         createTable' stack env tableName partitionKeyName partitionKeyType (Some (sortKeyName,sortKeyType)) None
 
+    let createParameter stack env name value' =
+        let fullName = sprintf "/OpenQuiz/%A/%s" env name
+        let props =
+            StringParameterProps(
+                ParameterName = fullName,
+                StringValue = value'
+            )
+
+        StringParameter(stack, fullName, props) |> ignore
+
 
 open Helpers
 
@@ -36,3 +48,14 @@ type DevelopmentStack(env, scope, id, props) as this =
     do createTable this env "Quizzes" "Id" AttributeType.NUMBER
     do createTableWithSortKey this env "Teams" "QuizId" AttributeType.NUMBER "TeamId" AttributeType.NUMBER
     do createTableWithTTL this env "Tokens" "Token" AttributeType.STRING "TTL"
+
+    // S3 Bucket for all static content
+    let bucketProps =
+        BucketProps(
+            WebsiteIndexDocument = "index.html",
+            WebsiteErrorDocument = "error.html",
+            PublicReadAccess = true,
+            Cors = [|CorsRule(AllowedMethods = [| HttpMethods.PUT |], AllowedOrigins = [| "*" |], AllowedHeaders  = [| "*" |])|])
+    let bucket = Bucket(this, "Bucket", bucketProps)
+    do createParameter this env "BucketName" bucket.BucketName
+    do createParameter this env "BucketUrl" bucket.BucketWebsiteUrl

@@ -93,7 +93,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (appSettings:Settings) (model 
                         div [Class "field"][
                             label [Class "label"][str "Default Quiz Picture (128x128) 128K Size Max"]
 
-                            yield! MainTemplates.imgArea128 () model.IsLoading (QuizImgChanged>>dispatch) (QuizImgClear>>dispatch) appSettings.MediaHost settings.DefaultImg "logo256.png" "Reset to default"
+                            yield! MainTemplates.imgArea128 () model.IsLoading (QuizImgChanged>>dispatch) (QuizImgClear>>dispatch) appSettings.MediaHost settings.DefaultImg "/logo256.png" "Reset to default"
                         ]
                     ]
                 ]

@@ -296,7 +296,7 @@ let card (dispatch : Msg -> unit) (appSettings:Settings) (card : MainModels.Quiz
                 div [Class "field"][
                     label [Class "label"][str "Quiz picture (128x128) 128K size max"]
 
-                    yield! MainTemplates.imgArea128 card.QuizId isLoading (QuizImgChanged>>dispatch) (QuizImgClear>>dispatch) appSettings.MediaHost card.ImgKey "logo256.png" "Reset to default"
+                    yield! MainTemplates.imgArea128 card.QuizId isLoading (QuizImgChanged>>dispatch) (QuizImgClear>>dispatch) appSettings.MediaHost card.ImgKey "/logo256.png" "Reset to default"
                 ]
 
                 div [Class "field"][

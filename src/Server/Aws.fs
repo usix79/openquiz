@@ -124,8 +124,8 @@ let getResultsKey quizId token =
     sprintf "static/%d-%s/results.json" quizId token
 
 let getSignedUrl bucketName (cat:MediaCategory) =
-    use client = new AmazonS3Client(AmazonS3Config(UseAccelerateEndpoint = true))
-    let key = sprintf "%s/%.0f-%s" cat.Prefix (toEpoch System.DateTime.UtcNow) (Common.generateRandomToken())
+    use client = new AmazonS3Client(AmazonS3Config(UseAccelerateEndpoint = false)) // acceletation is disabled until an accelerate endpoint is added throught cdk
+    let key = sprintf "%s/%.0f-%s" cat.Prefix (toEpoch DateTime.UtcNow) (generateRandomToken())
     key,
     client.GetPreSignedURL(
         GetPreSignedUrlRequest(
@@ -140,7 +140,7 @@ let uploadFile env (key:string) (fileType:string) (fileBody : byte[]) : Async<Re
 
     let req =
         PutObjectRequest (
-            BucketName = (env:>ICfg).Configurer.MediaBucketName,
+            BucketName = (env:>ICfg).Configurer.BucketName,
             Key = key,
             InputStream = new MemoryStream(fileBody),
             ContentType = fileType)
@@ -161,7 +161,7 @@ let deleteFile env (key:string) : Async<Result<unit, string>> =
 
     use client = new AmazonS3Client()
 
-    let req = DeleteObjectRequest (BucketName = (env:>ICfg).Configurer.MediaBucketName, Key = key)
+    let req = DeleteObjectRequest (BucketName = (env:>ICfg).Configurer.BucketName, Key = key)
 
     client.DeleteObjectAsync(req)
     |> Async.AwaitTask

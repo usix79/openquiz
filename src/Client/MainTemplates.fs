@@ -49,7 +49,7 @@ let imgArea' style tag disabled changeMsg clearMsg mediaHost imgKey defaultImg c
         if not (System.String.IsNullOrWhiteSpace imgKey) then
             figure [classList ["image", true; style, true]; Style[MaxWidth "320px"]][ img [Shared.Infra.urlForMedia mediaHost imgKey |> Src]]
         else if not (System.String.IsNullOrWhiteSpace defaultImg) then
-            figure [classList ["image", true; style, true]; Style[MaxWidth "320px"]][ img [Shared.Infra.urlForMedia mediaHost defaultImg |> Src]]
+            figure [classList ["image", true; style, true]; Style[MaxWidth "320px"]][ img [defaultImg |> Src]]
 
         div [Class "file"; Style [MarginTop "8px"]][
             label [Class "file-label"][
@@ -62,9 +62,6 @@ let imgArea' style tag disabled changeMsg clearMsg mediaHost imgKey defaultImg c
             button [Class "button"; Disabled disabled; Style [MarginLeft "5px"]; OnClick (fun _ -> clearMsg())] [str clearText]
         ]
     ]
-
-let imgArea tag disabled changeMsg clearMsg mediaHost imgKey defaultImg clearText =
-    imgArea' "" tag disabled changeMsg clearMsg mediaHost imgKey defaultImg clearText
 
 let imgArea128 tag disabled changeMsg clearMsg mediaHost imgKey defaultImg clearText =
     imgArea' "is-128x128" tag disabled changeMsg clearMsg mediaHost imgKey defaultImg clearText

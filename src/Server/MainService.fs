@@ -275,5 +275,5 @@ let removePackageShare env expert req =
     |> AR.map ignore
 
 let getUploadUrl env expert req  =
-    let key,url = Aws.getSignedUrl env.Configurer.MediaBucketName req.Cat
+    let key,url = Aws.getSignedUrl env.Configurer.BucketName req.Cat
     AR.retn  {|Url = url; BucketKey = key|}

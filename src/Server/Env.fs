@@ -11,8 +11,8 @@ type IConfigurer =
     abstract JwtSecret : string
     abstract CognitoClientId : string
     abstract CognitoUri : string
-    abstract MediaBucketName : string
-    abstract MediaHostName : string
+    abstract BucketName : string
+    abstract BucketUrl : string
     abstract RedirectUrl : string
     abstract AppSyncCfg : AppSyncConfig
 

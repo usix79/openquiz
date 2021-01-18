@@ -77,17 +77,15 @@ let serilogConfig = {
 
 let appRouterWithLogging env = SerilogAdapter.Enable(appRouter env, serilogConfig)
 
-let buildEnvironment logger (cfg:IConfiguration) =
+let buildEnvironment envName logger (cfg:IConfiguration) =
     let configurer = {
         new Env.IConfigurer with
-        member _.DynamoTablePrefix = "OQ"
+        member _.DynamoTablePrefix = "OpenQuiz-" + envName
         member _.JwtSecret = cfg.["jwtsecret"]
         member _.CognitoClientId = cfg.["cognitoClientId"]
-        member _.CognitoUri =
-            printfn "URIIIII: %A" cfg.["cognitoUri"]
-            cfg.["cognitoUri"]
-        member _.MediaBucketName = cfg.["mediaBucketName"]
-        member _.MediaHostName = cfg.["mediaHostName"]
+        member _.CognitoUri = cfg.["cognitoUri"]
+        member _.BucketName = cfg.["BucketName"]
+        member _.BucketUrl = cfg.["BucketUrl"]
         member _.RedirectUrl = cfg.["redirectUrl"]
         member _.AppSyncCfg = {
             Endpoint = cfg.["appsync-endpoint"]
@@ -135,7 +133,7 @@ let main args =
 
                 Log.Logger <- logger
 
-                let env = buildEnvironment logger ctx.Configuration
+                let env = buildEnvironment ctx.HostingEnvironment.EnvironmentName logger ctx.Configuration
 
                 Data2.Quizzes.subscribe (fun quiz ->
                         let event' = Presenter.quizChangeEvent quiz

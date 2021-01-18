@@ -339,7 +339,7 @@ let api env (context:HttpContext) : ISecurityApi =
 let login env secret (token:string) (req : LoginReq) =
 
     let resolveSttings() =
-        {MediaHost = env.Configurer.MediaHostName}
+        {MediaHost = env.Configurer.BucketUrl}
 
     match req with
     | LoginReq.MainUser data -> loginMainUser env secret token data.Code
