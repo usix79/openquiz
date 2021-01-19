@@ -19,5 +19,5 @@ let init (api:IAdminApi) user : Model*Cmd<Msg> =
 let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     cm |> noCmd
 
-let view (dispatch : Msg -> unit) (user:AdminUser) (model : Model) =
-    MainTemplates.resultsViewEmb' true user.QuizId user.ListenToken None
+let view (dispatch : Msg -> unit) (user:AdminUser) (model : Model) contentHost =
+    MainTemplates.resultsViewEmb' true user.QuizId user.ListenToken None contentHost

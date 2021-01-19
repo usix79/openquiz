@@ -281,7 +281,13 @@ let loginAdminUser env secret quizId token =
     |> AR.bind (fun quiz ->
         if quiz.AdminToken = System.Web.HttpUtility.UrlDecode token then
             let claims = [Claim(CustomClaims.Role, CustomRoles.Admin); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
-            let user = AdminUser {QuizId = quiz.QuizId; QuizName = quiz.Name; QuizImg = quiz.ImgKey; ListenToken = quiz.ListenToken}
+            let user =
+                AdminUser {
+                    QuizId = quiz.QuizId
+                    QuizName = quiz.Name
+                    QuizImg = quiz.ImgKey
+                    ListenToken = quiz.ListenToken
+                    ContentHost = env.Configurer.BucketUrl }
             loginResp env secret claims user
         else Error "Wrong entry token" |> AR.fromResult)
 
@@ -292,7 +298,13 @@ let loginTeamUser env secret quizId teamId token =
             Data2.Quizzes.getDescriptor env quizId
             |> AR.bind (fun quiz ->
                 let sessionId = rand.Next(Int32.MaxValue)
-                let user = {QuizId = team.QuizId; QuizName = quiz.Name; TeamId = team.TeamId; TeamName = team.Name; AppSyncCfg = (env:>ICfg).Configurer.AppSyncCfg}
+                let user = {
+                    QuizId = team.QuizId
+                    QuizName = quiz.Name
+                    TeamId = team.TeamId
+                    TeamName = team.Name
+                    AppSyncCfg = (env:>ICfg).Configurer.AppSyncCfg
+                    ContentHost = env.Configurer.BucketUrl }
                 let claims = [
                     Claim(CustomClaims.Name, user.TeamName)
                     Claim(CustomClaims.Role, CustomRoles.Team)
@@ -321,7 +333,11 @@ let loginAudUser env secret quizId token =
     |> AR.bind (fun quiz ->
         if quiz.ListenToken = System.Web.HttpUtility.UrlDecode token then
             let claims = [Claim(CustomClaims.Role, CustomRoles.Aud); Claim(CustomClaims.QuizId, quiz.QuizId.ToString())]
-            let user = AudUser {QuizId = quiz.QuizId; AppSyncCfg = (env:>ICfg).Configurer.AppSyncCfg}
+            let user =
+                AudUser {
+                    QuizId = quiz.QuizId
+                    AppSyncCfg = (env:>ICfg).Configurer.AppSyncCfg
+                    ContentHost = env.Configurer.BucketUrl }
             loginResp env secret claims user
         else Error "Wrong entry token" |> AR.fromResult)
 

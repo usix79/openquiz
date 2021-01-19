@@ -80,11 +80,11 @@ let urlForReg quizId token =
 let urlForAud quizId token =
      sprintf "%s?who=aud&quiz=%d&token=%s" (Infra.locationFullPath ()) quizId token
 
-let urlForResults quizId quizName quizImgKey token =
-     sprintf "/results.html?who=res&quiz=%d&quizName=%s&quizImg=%s&token=%s" quizId quizName quizImgKey token
+let urlForResults quizId quizName quizImgKey token mediaHost =
+     sprintf "/results.html?who=res&quiz=%d&quizName=%s&quizImg=%s&token=%s&url=%s" quizId quizName quizImgKey token mediaHost
 
-let urlForResultsIframe quizId token teamId =
-     let url = sprintf "/results.html?who=emb&quiz=%d&token=%s" quizId token
+let urlForResultsIframe quizId token teamId mediaHost =
+     let url = sprintf "/results.html?who=emb&quiz=%d&token=%s&url=%s" quizId token mediaHost
      match teamId with
      | Some id -> url + (sprintf "&teamId=%d" id)
      | None -> url

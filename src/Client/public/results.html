@@ -307,7 +307,7 @@ function displayResults (data, teamId, l10n, full) {
 }
 
 $(document).ready(function() {
-    var defaults = {quiz : 0, quizName : "", quizImg : "", teamId : 0, token : ""}
+    var defaults = {quiz : 0, quizName : "", quizImg : "", teamId : 0, token : "", url: "https://www.open-quiz.com"}
     var parameters = $.parseParams(location.search.substring(1))
     var settings = $.extend({}, defaults, parameters);
 
@@ -322,7 +322,7 @@ $(document).ready(function() {
     $("meta[property='og\\:url']").attr("content", window.location.href)
 
     if (settings.quizImg != ""){
-        $("#quizLogo").attr("src", "https://www.open-quiz.com/media/" + settings.quizImg);
+        $("#quizLogo").attr("src", settings.url + "/media/" + settings.quizImg);
     }
     $("#quizName").text(settings.quizName);
 
@@ -332,7 +332,7 @@ $(document).ready(function() {
         $(".hero-foot").show()
     }
 
-    var url = "https://www.open-quiz.com/static/" + settings.quiz + "-" + settings.token + "/results.json?nocache=" + (new Date()).getTime()
+    var url = settings.url + "/static/" + settings.quiz + "-" + settings.token + "/results.json?nocache=" + (new Date()).getTime()
     $.getJSON(url, function(data) {displayResults(data, settings.teamId, l10n)});
 });
 </script>

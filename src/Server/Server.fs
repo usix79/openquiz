@@ -81,7 +81,7 @@ let buildEnvironment envName logger (cfg:IConfiguration) =
     let configurer = {
         new Env.IConfigurer with
         member _.DynamoTablePrefix = "OpenQuiz-" + envName
-        member _.JwtSecret = cfg.["jwtsecret"]
+        member _.JwtSecret = cfg.["GwtSecret"]
         member _.UserPoolClientId = cfg.["UserPoolClientId"]
         member _.LoginUrl = cfg.["LoginUrl"]
         member _.AppUrl = cfg.["AppUrl"]

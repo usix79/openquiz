@@ -61,6 +61,7 @@ type TeamUser = {
     TeamId : int
     TeamName : string
     AppSyncCfg : AppSyncConfig
+    ContentHost : string
 }
 
 type AdminUser = {
@@ -68,11 +69,13 @@ type AdminUser = {
     QuizName : string
     QuizImg : string
     ListenToken : string
+    ContentHost : string
 }
 
 type AudUser = {
     QuizId : int
     AppSyncCfg : AppSyncConfig
+    ContentHost : string
 }
 
 type RegUser = {

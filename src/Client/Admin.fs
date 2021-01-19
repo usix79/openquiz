@@ -106,7 +106,7 @@ let view (dispatch : Msg -> unit) (user:AdminUser) (settings:Settings) (model : 
                 | Teams subModel -> AdminTeams.view (Msg.Teams >> dispatch) user subModel
                 | CP subModel -> AdminCP.view (Msg.CP >> dispatch) user settings subModel
                 | Answers subModel -> AdminAnswers.view (Msg.Answers >> dispatch) user subModel
-                | Results subModel -> AdminResults.view (Msg.Results >> dispatch) user subModel
+                | Results subModel -> AdminResults.view (Msg.Results >> dispatch) user subModel settings.MediaHost
             ]
         ]
         div [Class "hero-foot has-background-dark has-text-grey-light"] [

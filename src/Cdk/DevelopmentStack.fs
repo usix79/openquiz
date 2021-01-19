@@ -11,7 +11,7 @@ module Helpers =
     let createTable' stack env tableName partitionKeyName partitionKeyType sortKey ttl =
         Table(stack, tableName,
                 TableProps(
-                    TableName = sprintf "OpenQuiz-%A-%s" env tableName,
+                    TableName = sprintf "OpenQuiz-%s-%s" env tableName,
                     PartitionKey = Attribute (Name = partitionKeyName, Type = partitionKeyType),
                     SortKey = (match sortKey with Some (name,type') -> Attribute (Name = name, Type = type') | None -> null),
                     BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -28,7 +28,7 @@ module Helpers =
         createTable' stack env tableName partitionKeyName partitionKeyType (Some (sortKeyName,sortKeyType)) None
 
     let createParameter stack env name value' =
-        let fullName = sprintf "/OpenQuiz/%A/%s" env name
+        let fullName = sprintf "/OpenQuiz/%s/%s" env name
         let props =
             StringParameterProps(
                 ParameterName = fullName,
@@ -37,17 +37,11 @@ module Helpers =
 
         StringParameter(stack, fullName, props) |> ignore
 
-    let lookupParameter stack env name =
-        let fullName = sprintf "/OpenQuiz/%A/%s" env name
-
-        let currentValue = StringParameter.ValueFromLookup(stack, fullName)
-        if currentValue.StartsWith("dummy-value-for-") then "dummy"
-        else currentValue
-
 open Helpers
 
-type DevelopmentStack(env, scope:Construct, id, props) as this =
-    inherit Stack(scope, (sprintf "%s-%A" id env), props)
+type DevelopmentStack(scope:Construct, id, props, globalId) as this =
+    inherit Stack(scope, id, props)
+    let env = "Development"
 
     // DynamoDB Tables
     do createTable this env "System" "Id" AttributeType.STRING
@@ -63,7 +57,7 @@ type DevelopmentStack(env, scope:Construct, id, props) as this =
             WebsiteIndexDocument = "index.html",
             WebsiteErrorDocument = "error.html",
             PublicReadAccess = true,
-            Cors = [|CorsRule(AllowedMethods = [| HttpMethods.PUT |], AllowedOrigins = [| "*" |], AllowedHeaders  = [| "*" |])|])
+            Cors = [|CorsRule(AllowedMethods = [| HttpMethods.GET; HttpMethods.PUT |], AllowedOrigins = [| "*" |], AllowedHeaders  = [| "*" |])|])
     let bucket = Bucket(this, "Bucket", bucketProps)
     do createParameter this env "BucketName" bucket.BucketName
     do createParameter this env "BucketUrl" bucket.BucketWebsiteUrl
@@ -72,7 +66,7 @@ type DevelopmentStack(env, scope:Construct, id, props) as this =
     let userPool =
         UserPool(this, "UserPool",
             UserPoolProps(
-                UserPoolName = sprintf "OpenQuiz-%A" env,
+                UserPoolName = sprintf "OpenQuiz-%s" env,
                 SignInCaseSensitive = false,
                 AutoVerify = AutoVerifiedAttrs(Email = true),
                 SignInAliases = SignInAliases(Username = true, Email = true),
@@ -80,12 +74,10 @@ type DevelopmentStack(env, scope:Construct, id, props) as this =
                 PasswordPolicy = PasswordPolicy(MinLength=6., RequireDigits=false, RequireLowercase=false, RequireSymbols=false, RequireUppercase=false),
                 SelfSignUpEnabled = true ))
 
-    let domainPrefix = lookupParameter this env "UserPoolDomainPrefix"
-
     let userPoolDomain =
         userPool.AddDomain("UserPoolDomain",
             UserPoolDomainOptions(
-                CognitoDomain = CognitoDomainOptions(DomainPrefix = domainPrefix)))
+                CognitoDomain = CognitoDomainOptions(DomainPrefix = "openquiz-" + globalId)))
 
     let appClientProps =
         UserPoolClientProps(
@@ -97,9 +89,9 @@ type DevelopmentStack(env, scope:Construct, id, props) as this =
                 CallbackUrls = [|"http://localhost:8080/app/"|]
                 ),
             SupportedIdentityProviders = [|UserPoolClientIdentityProvider.COGNITO|],
-            UserPoolClientName = sprintf "OpenQuiz-%A-Client" env )
+            UserPoolClientName = sprintf "OpenQuiz-%s-Client" env )
 
     let appClient = UserPoolClient(this, "OpenQuiz", appClientProps)
+    do createParameter this env "AppUrl" "http://localhost:8080/app/"
     do createParameter this env "LoginUrl" <| userPoolDomain.BaseUrl()
     do createParameter this env "UserPoolClientId" appClient.UserPoolClientId
-    do createParameter this env "AppUrl" "http://localhost:8080/app/"

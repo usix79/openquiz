@@ -180,7 +180,7 @@ let private optInt32 fieldName v =
 type SysItem = {
     Id : string; Map : Map<string,string>; Version : int
 } with
-    member x.LastId = x.Map.TryFind "LastId" |> Option.map Int32.Parse |> Option.defaultValue -100
+    member x.LastId = x.Map.TryFind "LastId" |> Option.map Int32.Parse |> Option.defaultValue 0
     static member NewItem key = {Id = key; Map = Map.empty; Version = 0}
 
 module SysItem =
@@ -552,7 +552,7 @@ module Packages =
         |> putItem' env (Some pkg.Version) tableName
 
     let create env (creator : int -> Domain.Package) =
-        SysItem.getNextId env "pkg" (fun () -> -100)
+        SysItem.getNextId env "pkg" (fun () -> 0)
         |> AsyncResult.bind (creator >> AsyncResult.retn)
         |> AsyncResult.side (put env)
 
@@ -704,7 +704,7 @@ module Quizzes =
         |> putItem' env (Some item.Version) tableName
 
     let create env (creator : int -> Domain.Quiz) =
-        SysItem.getNextId env "quizzes" (fun () -> -100)
+        SysItem.getNextId env "quizzes" (fun () -> 0)
         |> AsyncResult.bind (creator >> AsyncResult.retn)
         |> AsyncResult.side (put env)
 

@@ -124,7 +124,7 @@ let quizView (dispatch : Msg -> unit) settings (model:Model) (quizId:int) (quiz:
                             | MS (name,slips) -> yield multipleQwView settings tour name slips l10n
                         | None -> ()
                     | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg l10n.Common
-                | Results -> yield MainTemplates.resultsViewEmb  quizId quiz.LT None
+                | Results -> yield MainTemplates.resultsViewEmb  quizId quiz.LT None settings.MediaHost
 
             ]
             p [Class "help is-danger"][ str model.Error ]

@@ -12,6 +12,7 @@ open Fake.Core
 open Fake.DotNet
 open Fake.IO
 open Ionic.Zip
+open Amazon.SimpleSystemsManagement
 
 Target.initEnvironment ()
 
@@ -23,7 +24,6 @@ let clientPublicPath = Path.combine clientPath "public"
 let deployDir = Path.getFullName "./deploy"
 let bundleDir = Path.getFullName "./bundle"
 
-let release = ReleaseNotes.load "RELEASE_NOTES.md"
 
 let npm args workingDir =
     let npmPath =
@@ -36,7 +36,7 @@ let npm args workingDir =
 
     let arguments = args |> String.split ' ' |> Arguments.OfArgs
 
-    Command.RawCommand (npmPath, arguments)
+    RawCommand (npmPath, arguments)
     |> CreateProcess.fromCommand
     |> CreateProcess.withWorkingDirectory workingDir
     |> CreateProcess.ensureExitCode
@@ -52,12 +52,32 @@ let dotnet = dotnetWithArgs []
 
 let runTool cmd args workingDir =
     let arguments = args |> String.split ' ' |> Arguments.OfArgs
-    Command.RawCommand (cmd, arguments)
+    RawCommand (cmd, arguments)
     |> CreateProcess.fromCommand
     |> CreateProcess.withWorkingDirectory workingDir
     |> CreateProcess.ensureExitCode
     |> Proc.run
     |> ignore
+
+let getOrCreateRandomParam' type' count paramName =
+    use client = new AmazonSimpleSystemsManagementClient()
+
+    try
+        let paramResp = client.GetParameterAsync(Model.GetParameterRequest(Name = paramName)).Result
+        paramResp.Parameter.Value
+    with
+    | :? AggregateException as ex ->
+        match ex.InnerException with
+        | :? Model.ParameterNotFoundException ->
+            let rand = Random(DateTime.Now.Millisecond)
+            let newGlobalId =
+                Seq.init count (fun _ -> rand.Next(10).ToString())
+                |> String.concat ""
+            client.PutParameterAsync(Model.PutParameterRequest(Name = paramName, Type = type', Value = newGlobalId)).Wait()
+            newGlobalId
+        | _ -> raise ex
+
+let getOrCreateRandomParam = getOrCreateRandomParam' ParameterType.String 16
 
 Target.create "Clean" (fun _ ->
     [deployDir; clientDeployPath; bundleDir]
@@ -118,6 +138,15 @@ Target.create "Bundle" (fun _ ->
     Shell.copyDir clientBundleDir clientPublicPath FileFilter.allFiles
     Shell.copyDir clientBundleDir clientDeployPath FileFilter.allFiles
     zipDir clientBundleDir (Path.combine bundleDir "openquiz-static.zip") )
+
+Target.create "DevEnv" (fun _ ->
+    getOrCreateRandomParam' ParameterType.SecureString 24 "/OpenQuiz/Development/GwtSecret" |> ignore
+    let globalId = getOrCreateRandomParam "/OpenQuiz/GlobalId"
+    printfn "OpenQuiz GlobalId: %s" globalId
+    let args = (sprintf " -c globalId=%s OpenQuiz-Development" globalId)
+    runTool "cdk" ("synth" + args) __SOURCE_DIRECTORY__
+    runTool "cdk" ("deploy" + args) __SOURCE_DIRECTORY__
+)
 
 open Fake.Core.TargetOperators
 

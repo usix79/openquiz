@@ -224,10 +224,10 @@ let singleTourInfo mediaHost tourName (slip:Shared.SingleSlipCard) (l10n:L10n.Co
     ]
 
 
-let resultsViewEmb' full quizId listenToken teamId =
+let resultsViewEmb' full quizId listenToken teamId mediaHost =
     div [Class "content"; Style []][
         let height = if full then "80vh" else "60vh"
-        iframe [Src (Common.urlForResultsIframe quizId listenToken teamId); Style [Width "100%"; Height height; OverflowX OverflowOptions.Visible; OverflowY OverflowOptions.Visible]][]
+        iframe [Src (Common.urlForResultsIframe quizId listenToken teamId mediaHost); Style [Width "100%"; Height height; OverflowX OverflowOptions.Visible; OverflowY OverflowOptions.Visible]][]
     ]
 
 let resultsViewEmb = resultsViewEmb' false

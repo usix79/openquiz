@@ -267,7 +267,7 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) quiz
                             match quiz.QS, model.Answers with
                             | Live, Some answers -> yield quiestionView dispatch settings quiz answers isCountdownActive isCountdownFinished l10n
                             | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg l10n.Common
-                        | Results -> yield MainTemplates.resultsViewEmb user.QuizId quiz.LT (Some user.TeamId)
+                        | Results -> yield MainTemplates.resultsViewEmb user.QuizId quiz.LT (Some user.TeamId) settings.MediaHost
                     ]
                 | Rejected -> div [Class "notification is-white"][span[Class "has-text-danger has-text-weight-bold"][str l10n.RegistrationHasBeenRejected]]
             ]

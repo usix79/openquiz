@@ -56,3 +56,4 @@ group Build
     nuget Fake.DotNet.Cli
     nuget Fake.IO.FileSystem
     nuget DotNetZip
+    nuget AWSSDK.SimpleSystemsManagement

@@ -5,12 +5,7 @@ open OpenQuiz.Cdk
 [<EntryPoint>]
 let main _ =
     let app = App(null)
-    let props =
-        StackProps(
-            Env = Environment(
-                Account = Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT"),
-                Region = Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION"))
-    )
-    DevelopmentStack(Development, app, "OpenQuiz", props) |> ignore
+    let globalId = app.Node.TryGetContext("globalId") :?> string
+    DevelopmentStack(app, "OpenQuiz-Development", StackProps(), globalId) |> ignore
     app.Synth() |> ignore
     0
