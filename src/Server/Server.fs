@@ -88,9 +88,9 @@ let buildEnvironment envName logger (cfg:IConfiguration) =
         member _.BucketName = cfg.["BucketName"]
         member _.BucketUrl = cfg.["BucketUrl"]
         member _.AppSyncCfg = {
-            Endpoint = cfg.["appsync-endpoint"]
-            Region = cfg.["appsync-region"]
-            ApiKey = cfg.["appsync-apikey"]
+            Endpoint = cfg.["AppsyncEndpoint"]
+            Region = cfg.["AppsyncRegion"]
+            ApiKey = cfg.["AppsyncApiKey"]
         }
     }
 

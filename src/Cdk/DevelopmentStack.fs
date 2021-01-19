@@ -5,6 +5,7 @@ open Amazon.CDK.AWS.DynamoDB
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.SSM
 open Amazon.CDK.AWS.Cognito
+open Amazon.CDK.AWS.AppSync
 
 module Helpers =
 
@@ -95,3 +96,46 @@ type DevelopmentStack(scope:Construct, id, props, globalId) as this =
     do createParameter this env "AppUrl" "http://localhost:8080/app/"
     do createParameter this env "LoginUrl" <| userPoolDomain.BaseUrl()
     do createParameter this env "UserPoolClientId" appClient.UserPoolClientId
+
+    // Appsync API
+    let api =
+        GraphqlApi(this, "Api",
+            GraphqlApiProps(
+                Name = sprintf "OpenQuiz-%s-API" env,
+                Schema = Schema.FromAsset("./aws/schema.graphql"),
+                AuthorizationConfig =
+                    AuthorizationConfig(
+                        DefaultAuthorization = AuthorizationMode(AuthorizationType = AuthorizationType.IAM),
+                        AdditionalAuthorizationModes = [|
+                            AuthorizationMode(
+                                AuthorizationType = AuthorizationType.API_KEY,
+                                ApiKeyConfig = ApiKeyConfig(Name="MainApiKey", Expires = Expiration.AtDate(System.DateTime.UtcNow.AddDays(365.))))
+                            |]
+                    )
+            ))
+    let ds = NoneDataSource(this, "DummyDataSource", NoneDataSourceProps(Api = api))
+    do ds.CreateResolver(
+        BaseResolverProps(
+            TypeName = "Mutation",
+            FieldName = "quizMessage",
+            RequestMappingTemplate = MappingTemplate.FromString("""
+#**
+Resolvers with None data sources can locally publish events that fire
+subscriptions or otherwise transform data without hitting a backend data source.
+The value of 'payload' is forwarded to $ctx.result in the response mapping template.
+*#
+{
+    "version": "2017-02-28",
+    "payload": {
+        "quizId": $util.toJson($context.arguments.quizId),
+        "token": $util.toJson($context.arguments.token),
+        "body" : $util.toJson($context.arguments.body),
+        "version": $util.toJson($context.arguments.version),
+    }
+}"""        ),
+            ResponseMappingTemplate = MappingTemplate.FromString("$util.toJson($context.result)")
+            )) |> ignore
+
+    do createParameter this env "AppsyncEndpoint" api.GraphqlUrl
+    do createParameter this env "AppsyncRegion" api.Env.Region
+    do createParameter this env "AppsyncApiKey" api.ApiKey

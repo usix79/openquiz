@@ -97,6 +97,7 @@ let private publishQuery = sprintf """{ "query": "mutation quizMessage {quizMess
 
 let publishQuizMessage env quizId token version evt =
     let appSyncCfg = (env:>ICfg).Configurer.AppSyncCfg
+    printfn "PUBLISH TO %A" appSyncCfg
     async {
         try
             let! creds = Amazon.Runtime.FallbackCredentialsFactory.GetCredentials().GetCredentialsAsync() |> Async.AwaitTask
@@ -109,6 +110,7 @@ let publishQuizMessage env quizId token version evt =
                 |> Convert.ToBase64String
 
             let data = publishQuery quizId token body version
+            printfn "QUERY: %s" data
 
             let content = new StringContent(data, Text.Encoding.UTF8, "application/graphql")
 
