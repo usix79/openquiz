@@ -6,6 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Common.fs" />
+    <Compile Include="ProductionStack.fs" />
     <Compile Include="DevelopmentStack.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
