@@ -170,8 +170,8 @@ let playFooter dispatch history questions results current isCountdownActive seco
         ]
 
 let playSounds mediaHost secondsLeft =
-    if secondsLeft = 11 then Infra.play (Shared.Infra.urlForMedia mediaHost "chgk2-sig2.mp3")
-    if secondsLeft = 1 then Infra.play (Shared.Infra.urlForMedia mediaHost "chgk2-sig3.mp3")
+    if secondsLeft = 11 then Infra.play "/chgk2-sig2.mp3"
+    if secondsLeft = 1 then Infra.play "/chgk2-sig3.mp3"
 
 let playTitle mediaHost quizImg mixlr url =
     div[Style [Margin "5px"]][

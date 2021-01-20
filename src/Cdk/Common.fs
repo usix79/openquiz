@@ -50,14 +50,14 @@ module Assets =
         createTableWithSortKey stack env "Teams" "QuizId" AttributeType.NUMBER "TeamId" AttributeType.NUMBER
         createTableWithTTL stack env "Tokens" "Token" AttributeType.STRING "TTL"
 
-    let createS3Bucket stack env =
+    let createMediaBucket stack env =
         let bucketProps =
             BucketProps(
                 WebsiteIndexDocument = "index.html",
                 WebsiteErrorDocument = "error.html",
                 PublicReadAccess = true,
                 Cors = [|CorsRule(AllowedMethods = [| HttpMethods.GET; HttpMethods.PUT |], AllowedOrigins = [| "*" |], AllowedHeaders  = [| "*" |])|])
-        let bucket = Bucket(stack, "Bucket", bucketProps)
+        let bucket = Bucket(stack, "MediaBucket", bucketProps)
         createParameter stack env "BucketName" bucket.BucketName
         createParameter stack env "BucketUrl" bucket.BucketWebsiteUrl
         bucket

@@ -171,6 +171,12 @@ open Fake.Core.TargetOperators
 
 "Clean"
     ==> "InstallClient"
+    ==> "Build"
+    ==> "Bundle"
+    ==> "Deploy"
+
+"Clean"
+    ==> "InstallClient"
     ==> "Run"
 
 Target.runOrDefaultWithArguments "Build"
