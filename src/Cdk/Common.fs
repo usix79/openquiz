@@ -90,7 +90,7 @@ module Assets =
                 SupportedIdentityProviders = [|UserPoolClientIdentityProvider.COGNITO|],
                 UserPoolClientName = sprintf "OpenQuiz-%s-Client" env )
 
-        let appClient = UserPoolClient(stack, "OpenQuiz", appClientProps)
+        let appClient = UserPoolClient(stack, "OpenQuizUserPoolClient", appClientProps)
         do createParameter stack env "AppUrl" appUrl
         do createParameter stack env "LoginUrl" <| userPoolDomain.BaseUrl()
         do createParameter stack env "UserPoolClientId" appClient.UserPoolClientId

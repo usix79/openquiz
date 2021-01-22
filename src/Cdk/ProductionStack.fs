@@ -25,11 +25,20 @@ type ProductionStack(scope:Construct, id, props, globalId) as this =
                 WebsiteErrorDocument = "error.html",
                 PublicReadAccess = true ))
 
-    let bucketDeployment =
-        BucketDeployment(this, "DeploymentOfStatic",
+    do BucketDeployment(this, "DeploymentOfStatic",
             BucketDeploymentProps(
                 DestinationBucket = bucket,
-                Sources = [| Source.Asset("./bundle/openquiz-static.zip") |] ))
+                Sources = [| Source.Asset("./bundle/client/", AssetOptions(Exclude = [|"*.*"; "!*.html";|])) |],
+                CacheControl = [|CacheControl.FromString("max-age=0,no-cache,no-store,must-revalidate")|],
+                Prune = false
+            )) |> ignore
+    do BucketDeployment(this, "DeploymentOfApp",
+            BucketDeploymentProps(
+                DestinationBucket = bucket,
+                Sources = [| Source.Asset("./bundle/client/", AssetOptions(Exclude = [|"*.html"|])) |],
+                CacheControl = [|CacheControl.FromString("max-age=31536000,public,immutable")|],
+                Prune = false
+            )) |> ignore
 
     let vpc =
         Vpc(this, "OpenQuizVpc",
@@ -81,7 +90,7 @@ type ProductionStack(scope:Construct, id, props, globalId) as this =
     let apiEnvCname = sprintf "%s.%s.elasticbeanstalk.com" cnamePrefix this.Region
 
     let distribution =
-        CloudFrontWebDistribution(this, "OpenQuiz",
+        CloudFrontWebDistribution(this, "OpenQuizWebDistribution",
             CloudFrontWebDistributionProps(
                 OriginConfigs = [|
                     SourceConfiguration(
@@ -100,4 +109,8 @@ type ProductionStack(scope:Construct, id, props, globalId) as this =
             )
         )
 
-    do Helpers.createParameter this env "BucketUrl" distribution.DistributionDomainName
+    let cloudFrontUrl = "https://" + distribution.DistributionDomainName
+    do Helpers.createParameter this env "BucketUrl" cloudFrontUrl
+
+    let userPool = Assets.createUserPool this env globalId (cloudFrontUrl + "/app/index.html")
+    do Assets.createAppsyncApi this env
