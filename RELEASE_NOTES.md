@@ -3,7 +3,7 @@
 ## 1.14.0 - 2020-12-01
 * Single quiz question is diplayed before countdown
 * Mixlr player starts automatically (on desktop)
-* Added donate button (not worked until paypall allows ukrainian accounts recieve payments)
+* Added donate button (disabled until paypall allows ukrainian accounts recieve payments)
 
 ## 1.13.0 - 2020-07-27
 

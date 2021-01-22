@@ -16,23 +16,16 @@ type ProductionStack(scope:Construct, id, props, globalId) as this =
 
     do Assets.createDynamoDBTables this env
 
-    let mediaBucket = Assets.createMediaBucket this env
+    let bucket = Assets.createBucket this env
 
-    let bucket =
-        Bucket(this, "StaticBucket",
-            BucketProps(
-                WebsiteIndexDocument = "index.html",
-                WebsiteErrorDocument = "error.html",
-                PublicReadAccess = true ))
-
-    do BucketDeployment(this, "DeploymentOfStatic",
+    do BucketDeployment(this, "DeploymentOfHtml",
             BucketDeploymentProps(
                 DestinationBucket = bucket,
                 Sources = [| Source.Asset("./bundle/client/", AssetOptions(Exclude = [|"*.*"; "!*.html";|])) |],
                 CacheControl = [|CacheControl.FromString("max-age=0,no-cache,no-store,must-revalidate")|],
                 Prune = false
             )) |> ignore
-    do BucketDeployment(this, "DeploymentOfApp",
+    do BucketDeployment(this, "DeploymentOfRest",
             BucketDeploymentProps(
                 DestinationBucket = bucket,
                 Sources = [| Source.Asset("./bundle/client/", AssetOptions(Exclude = [|"*.html"|])) |],
@@ -95,22 +88,22 @@ type ProductionStack(scope:Construct, id, props, globalId) as this =
                 OriginConfigs = [|
                     SourceConfiguration(
                         S3OriginSource = S3OriginConfig(S3BucketSource = bucket),
-                        Behaviors = [|Behavior(IsDefaultBehavior = true )|])
-                    SourceConfiguration(
-                        CustomOriginSource = CustomOriginConfig(DomainName = apiEnvCname, OriginProtocolPolicy = OriginProtocolPolicy.HTTP_ONLY),
-                        Behaviors = [|Behavior(PathPattern = "/api/*", AllowedMethods = CloudFrontAllowedMethods.ALL, DefaultTtl = Duration.Seconds(0.) )|])
-                    SourceConfiguration(
-                        S3OriginSource = S3OriginConfig(S3BucketSource = mediaBucket),
                         Behaviors = [|
                             Behavior(PathPattern = "/static/*", AllowedMethods = CloudFrontAllowedMethods.GET_HEAD_OPTIONS, DefaultTtl = Duration.Seconds(0.) )
                             Behavior(PathPattern = "/media/*", AllowedMethods = CloudFrontAllowedMethods.GET_HEAD_OPTIONS)
+                            Behavior(IsDefaultBehavior = true )
                             |])
+                    SourceConfiguration(
+                        CustomOriginSource = CustomOriginConfig(DomainName = apiEnvCname, OriginProtocolPolicy = OriginProtocolPolicy.HTTP_ONLY),
+                        Behaviors = [|Behavior(PathPattern = "/api/*", AllowedMethods = CloudFrontAllowedMethods.ALL, DefaultTtl = Duration.Seconds(0.) )|])
                 |]
             )
         )
 
     let cloudFrontUrl = "https://" + distribution.DistributionDomainName
     do Helpers.createParameter this env "BucketUrl" cloudFrontUrl
+
+    do CfnOutput(this, "OpenQuizUrl", CfnOutputProps (Value = cloudFrontUrl, Description = "Alias your domain name with the Url")) |> ignore
 
     let userPool = Assets.createUserPool this env globalId (cloudFrontUrl + "/app/index.html")
     do Assets.createAppsyncApi this env

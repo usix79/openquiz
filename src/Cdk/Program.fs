@@ -8,5 +8,6 @@ let main _ =
     let globalId = app.Node.TryGetContext("globalId") :?> string
     DevelopmentStack(app, "OpenQuiz-Development", StackProps(), globalId) |> ignore
     ProductionStack(app, "OpenQuiz-Production", StackProps(), globalId) |> ignore
+    Tags.Of(app).Add("Product", "OpenQuiz");
     app.Synth() |> ignore
     0

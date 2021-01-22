@@ -8,8 +8,8 @@ type DevelopmentStack(scope:Construct, id, props, globalId) as this =
     let env = "Development"
 
     do Assets.createDynamoDBTables this env
-    let mediaBucket = Assets.createMediaBucket this env
-    do Helpers.createParameter this env "BucketUrl" mediaBucket.BucketWebsiteUrl
+    let bucket = Assets.createBucket this env
+    do Helpers.createParameter this env "BucketUrl" bucket.BucketWebsiteUrl
 
     do Assets.createUserPool this env globalId "http://localhost:8080/app/" |> ignore
     do Assets.createAppsyncApi this env
