@@ -1,7 +1,5 @@
 namespace OpenQuiz.Cdk
 
-open System
-
 open Amazon.CDK
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.S3.Deployment
@@ -9,6 +7,7 @@ open Amazon.CDK.AWS.S3.Assets
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.ElasticBeanstalk
 open Amazon.CDK.AWS.CloudFront
+open Amazon.CDK.AWS.IAM
 
 type ProductionStack(scope:Construct, id, props, globalId) as this =
     inherit Stack(scope, id, props)
@@ -46,12 +45,38 @@ type ProductionStack(scope:Construct, id, props, globalId) as this =
             CfnApplicationProps(
                 ApplicationName = sprintf "OpenQuiz-%s" env ))
 
+
+    let apiAppRoleName = "open-quiz-api-handler"
+    let apiAppRole =
+        Role(this, "ApiAppRole",
+            RoleProps(
+                RoleName = apiAppRoleName,
+                AssumedBy = ServicePrincipal("ec2")))
+
+    let instanceProfile =
+        CfnInstanceProfile(this, "ApiInstanceProfile",
+            CfnInstanceProfileProps(
+                InstanceProfileName = apiAppRoleName,
+                Roles = [|apiAppRole.RoleName|]
+            ))
+
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AmazonS3FullAccess"))
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("CloudWatchAgentServerPolicy"))
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AWSAppSyncInvokeFullAccess"))
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AmazonDynamoDBFullAccess"))
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("CloudWatchLogsFullAccess"))
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AmazonSSMFullAccess"))
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AmazonEC2ContainerRegistryReadOnly"))
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AWSElasticBeanstalkWebTier"))
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AWSElasticBeanstalkMulticontainerDocker"))
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AWSElasticBeanstalkWorkerTier"))
+
     let subnets = vpc.SelectSubnets(SubnetSelection(SubnetType = SubnetType.PUBLIC)).SubnetIds |> String.concat ","
 
     let optionSettingProperties = [|
         CfnEnvironment.OptionSettingProperty(Namespace = "aws:elasticbeanstalk:environment", OptionName = "EnvironmentType", Value = "SingleInstance")
         CfnEnvironment.OptionSettingProperty(Namespace = "aws:autoscaling:launchconfiguration", OptionName = "InstanceType", Value = "t2.micro")
-        CfnEnvironment.OptionSettingProperty(Namespace = "aws:autoscaling:launchconfiguration", OptionName = "IamInstanceProfile", Value = "aws-elasticbeanstalk-ec2-role")
+        CfnEnvironment.OptionSettingProperty(Namespace = "aws:autoscaling:launchconfiguration", OptionName = "IamInstanceProfile", Value = instanceProfile.InstanceProfileName)
         CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "VPCId", Value = vpc.VpcId)
         CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "AssociatePublicIpAddress", Value = "true")
         CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "Subnets", Value = subnets)

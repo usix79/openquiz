@@ -150,11 +150,11 @@ open Fake.Core.TargetOperators
     ==> "Bundle"
     ==> "DevEnv"
 
-"Clean"
-    ==> "InstallClient"
-    ==> "Build"
-    ==> "Bundle"
-    ==> "Deploy"
+// "Clean"
+//     ==> "InstallClient"
+//     ==> "Build"
+//     ==> "Bundle"
+//     ==> "Deploy"
 
 "Clean"
     ==> "InstallClient"
