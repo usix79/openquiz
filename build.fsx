@@ -169,11 +169,11 @@ open Fake.Core.TargetOperators
     ==> "Build"
     ==> "Bundle"
 
-"Clean"
-    ==> "InstallClient"
-    ==> "Build"
-    ==> "Bundle"
-    ==> "Deploy"
+// "Clean"
+//     ==> "InstallClient"
+//     ==> "Build"
+//     ==> "Bundle"
+//     ==> "Deploy"
 
 
 "Clean"

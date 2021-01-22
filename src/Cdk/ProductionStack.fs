@@ -8,13 +8,15 @@ open Amazon.CDK.AWS.S3.Deployment
 open Amazon.CDK.AWS.S3.Assets
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.ElasticBeanstalk
+open Amazon.CDK.AWS.CloudFront
 
 type ProductionStack(scope:Construct, id, props, globalId) as this =
     inherit Stack(scope, id, props)
     let env = "Production"
 
     do Assets.createDynamoDBTables this env
-    do Assets.createMediaBucket this env |> ignore
+
+    let mediaBucket = Assets.createMediaBucket this env
 
     let bucket =
         Bucket(this, "StaticBucket",
@@ -62,6 +64,7 @@ type ProductionStack(scope:Construct, id, props, globalId) as this =
                 SourceBundle = CfnApplicationVersion.SourceBundleProperty(S3Bucket = apiBundle.S3BucketName, S3Key = apiBundle.S3ObjectKey)
             ))
 
+    let cnamePrefix = sprintf "openquiz-%s-%s" (env.ToLower()) globalId
     let appEnv =
         CfnEnvironment(this, "ApiAppEnv",
             CfnEnvironmentProps(
@@ -69,7 +72,32 @@ type ProductionStack(scope:Construct, id, props, globalId) as this =
                 ApplicationName = apiApp.ApplicationName,
                 SolutionStackName = "64bit Amazon Linux 2 v2.1.1 running .NET Core",
                 OptionSettings =  optionSettingProperties,
+                CnamePrefix = cnamePrefix,
                 VersionLabel = appVersion.Ref
             ))
 
     do appVersion.AddDependsOn(apiApp)
+
+    let apiEnvCname = sprintf "%s.%s.elasticbeanstalk.com" cnamePrefix this.Region
+
+    let distribution =
+        CloudFrontWebDistribution(this, "OpenQuiz",
+            CloudFrontWebDistributionProps(
+                OriginConfigs = [|
+                    SourceConfiguration(
+                        S3OriginSource = S3OriginConfig(S3BucketSource = bucket),
+                        Behaviors = [|Behavior(IsDefaultBehavior = true )|])
+                    SourceConfiguration(
+                        CustomOriginSource = CustomOriginConfig(DomainName = apiEnvCname, OriginProtocolPolicy = OriginProtocolPolicy.HTTP_ONLY),
+                        Behaviors = [|Behavior(PathPattern = "/api/*", AllowedMethods = CloudFrontAllowedMethods.ALL, DefaultTtl = Duration.Seconds(0.) )|])
+                    SourceConfiguration(
+                        S3OriginSource = S3OriginConfig(S3BucketSource = mediaBucket),
+                        Behaviors = [|
+                            Behavior(PathPattern = "/static/*", AllowedMethods = CloudFrontAllowedMethods.GET_HEAD_OPTIONS, DefaultTtl = Duration.Seconds(0.) )
+                            Behavior(PathPattern = "/media/*", AllowedMethods = CloudFrontAllowedMethods.GET_HEAD_OPTIONS)
+                            |])
+                |]
+            )
+        )
+
+    do Helpers.createParameter this env "BucketUrl" distribution.DistributionDomainName

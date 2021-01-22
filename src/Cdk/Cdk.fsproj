@@ -16,6 +16,7 @@
     <!-- CDK Construct Library dependencies -->
     <PackageReference Include="Amazon.CDK" Version="1.85.0" />
     <PackageReference Include="Amazon.CDK.AWS.Appsync" Version="1.85.0" />
+    <PackageReference Include="Amazon.CDK.AWS.CloudFront" Version="1.85.0" />
     <PackageReference Include="Amazon.CDK.AWS.Cognito" Version="1.85.0" />
     <PackageReference Include="Amazon.CDK.AWS.DynamoDB" Version="1.85.0" />
     <PackageReference Include="Amazon.CDK.AWS.ElasticBeanstalk" Version="1.85.0" />

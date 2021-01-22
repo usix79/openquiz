@@ -59,7 +59,6 @@ module Assets =
                 Cors = [|CorsRule(AllowedMethods = [| HttpMethods.GET; HttpMethods.PUT |], AllowedOrigins = [| "*" |], AllowedHeaders  = [| "*" |])|])
         let bucket = Bucket(stack, "MediaBucket", bucketProps)
         createParameter stack env "BucketName" bucket.BucketName
-        createParameter stack env "BucketUrl" bucket.BucketWebsiteUrl
         bucket
 
     let createUserPool stack env globalId appUrl =
