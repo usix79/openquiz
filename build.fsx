@@ -106,21 +106,6 @@ Target.create "PTests" (fun p ->
     dotnet "build" ptestsPath
     dotnetWithArgs p.Context.Arguments "run -c Release" ptestsPath)
 
-Target.create "Docker" (fun _ ->
-    let publicDir = Path.combine deployDir "public"
-    let publishArgs = sprintf "publish -c Release -o \"%s\"" deployDir
-    dotnet publishArgs serverPath
-
-    Shell.copyDir publicDir clientPublicPath FileFilter.allFiles
-    Shell.copyDir publicDir clientDeployPath FileFilter.allFiles
-
-    let dockerUser = "usix"
-    let dockerImageName = "openquiz"
-    let tag = sprintf "%s/%s" dockerUser dockerImageName
-
-    let args = sprintf "build -t %s ." tag
-    runTool "docker" args __SOURCE_DIRECTORY__)
-
 let zipDir sourceDir (destFile:string) =
     use zip = new ZipFile()
     zip.AddDirectory sourceDir |> ignore
@@ -132,12 +117,13 @@ Target.create "Bundle" (fun _ ->
     let publishArgs = sprintf "publish -c Release -o \"%s\"" serverBundleDir
     dotnet publishArgs serverPath
 
-    Shell.copyDir (Path.combine serverBundleDir ".ebextensions") ".ebextensions" FileFilter.allFiles
+    Shell.copyDir (Path.combine serverBundleDir ".ebextensions") "./aws/.ebextensions" FileFilter.allFiles
     zipDir serverBundleDir (Path.combine bundleDir "openquiz-api.zip")
 
-    Shell.copyDir clientBundleDir clientPublicPath FileFilter.allFiles
-    Shell.copyDir clientBundleDir clientDeployPath FileFilter.allFiles
-    zipDir clientBundleDir (Path.combine bundleDir "openquiz-static.zip") )
+    // Shell.copyDir clientBundleDir clientPublicPath FileFilter.allFiles
+    // Shell.copyDir clientBundleDir clientDeployPath FileFilter.allFiles
+    // zipDir clientBundleDir (Path.combine bundleDir "openquiz-static.zip")
+    )
 
 Target.create "DevEnv" (fun _ ->
     getOrCreateRandomParam' ParameterType.SecureString 24 "/OpenQuiz/Development/GwtSecret" |> ignore
@@ -158,16 +144,6 @@ Target.create "Deploy" (fun _ ->
 )
 
 open Fake.Core.TargetOperators
-
-"Clean"
-    ==> "InstallClient"
-    ==> "Build"
-    ==> "Docker"
-
-"Clean"
-    ==> "InstallClient"
-    ==> "Build"
-    ==> "Bundle"
 
 "Clean"
     ==> "InstallClient"
