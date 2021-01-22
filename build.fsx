@@ -24,7 +24,6 @@ let clientPublicPath = Path.combine clientPath "public"
 let deployDir = Path.getFullName "./deploy"
 let bundleDir = Path.getFullName "./bundle"
 
-
 let npm args workingDir =
     let npmPath =
         match ProcessUtils.tryFindFileOnPath "npm" with
@@ -120,8 +119,8 @@ Target.create "Bundle" (fun _ ->
     Shell.copyDir (Path.combine serverBundleDir ".ebextensions") "./aws/.ebextensions" FileFilter.allFiles
     zipDir serverBundleDir (Path.combine bundleDir "openquiz-api.zip")
 
-    // Shell.copyDir clientBundleDir clientPublicPath FileFilter.allFiles
-    // Shell.copyDir clientBundleDir clientDeployPath FileFilter.allFiles
+    Shell.copyDir clientBundleDir clientPublicPath FileFilter.allFiles
+    Shell.copyDir clientBundleDir clientDeployPath FileFilter.allFiles
     // zipDir clientBundleDir (Path.combine bundleDir "openquiz-static.zip")
     )
 
@@ -144,6 +143,12 @@ Target.create "Deploy" (fun _ ->
 )
 
 open Fake.Core.TargetOperators
+
+"Clean"
+    ==> "InstallClient"
+    ==> "Build"
+    ==> "Bundle"
+    ==> "DevEnv"
 
 "Clean"
     ==> "InstallClient"

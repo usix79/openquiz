@@ -78,19 +78,28 @@ let serilogConfig = {
 let appRouterWithLogging env = SerilogAdapter.Enable(appRouter env, serilogConfig)
 
 let buildEnvironment envName logger (cfg:IConfiguration) =
+    let overrides = cfg.GetSection("Overrides")
+    let getValue name =
+        match overrides.[name] with
+        | null -> cfg.[name]
+        | txt -> txt
+
     let configurer = {
         new Env.IConfigurer with
-        member _.DynamoTablePrefix = "OpenQuiz-" + envName
-        member _.JwtSecret = cfg.["GwtSecret"]
-        member _.UserPoolClientId = cfg.["UserPoolClientId"]
-        member _.LoginUrl = cfg.["LoginUrl"]
-        member _.AppUrl = cfg.["AppUrl"]
-        member _.BucketName = cfg.["BucketName"]
-        member _.BucketUrl = cfg.["BucketUrl"]
+        member _.DynamoTablePrefix =
+            match overrides.["DynamoPrefix"] with
+            | null -> "OpenQuiz-" + envName
+            | txt -> txt
+        member _.JwtSecret = getValue "GwtSecret"
+        member _.UserPoolClientId = getValue "UserPoolClientId"
+        member _.LoginUrl = getValue  "LoginUrl"
+        member _.AppUrl = getValue "AppUrl"
+        member _.BucketName = getValue "BucketName"
+        member _.BucketUrl = getValue "BucketUrl"
         member _.AppSyncCfg = {
-            Endpoint = cfg.["AppsyncEndpoint"]
-            Region = cfg.["AppsyncRegion"]
-            ApiKey = cfg.["AppsyncApiKey"]
+            Endpoint = getValue "AppsyncEndpoint"
+            Region = getValue "AppsyncRegion"
+            ApiKey = getValue "AppsyncApiKey"
         }
     }
 
