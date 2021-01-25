@@ -25,6 +25,7 @@
     },
     "dependencies": {
         "aws-amplify": "^3.3.14",
+        "aws-cdk": "^1.86.0",
         "react-flatpickr": "^3.10.6",
         "react-player": "^2.8.1"
     }

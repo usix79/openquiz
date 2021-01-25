@@ -129,8 +129,8 @@ Target.create "DevEnv" (fun _ ->
     let globalId = getOrCreateRandomParam "/OpenQuiz/GlobalId"
     printfn "OpenQuiz GlobalId: %s" globalId
     let args = (sprintf " -c globalId=%s OpenQuiz-Development" globalId)
-    runTool "cdk" ("synth" + args) __SOURCE_DIRECTORY__
-    runTool "cdk" ("deploy" + args) __SOURCE_DIRECTORY__
+    runTool "npx" ("cdk synth" + args) __SOURCE_DIRECTORY__
+    runTool "npx" ("cdk deploy" + args) __SOURCE_DIRECTORY__
 )
 
 Target.create "Deploy" (fun _ ->
@@ -138,8 +138,8 @@ Target.create "Deploy" (fun _ ->
     let globalId = getOrCreateRandomParam "/OpenQuiz/GlobalId"
     printfn "OpenQuiz GlobalId: %s" globalId
     let args = (sprintf " -c globalId=%s OpenQuiz-Production" globalId)
-    runTool "cdk" ("synth" + args) __SOURCE_DIRECTORY__
-    runTool "cdk" ("deploy" + args) __SOURCE_DIRECTORY__
+    runTool "npx" ("cdk synth" + args) __SOURCE_DIRECTORY__
+    runTool "npx" ("cdk deploy" + args) __SOURCE_DIRECTORY__
 )
 
 open Fake.Core.TargetOperators
@@ -150,11 +150,11 @@ open Fake.Core.TargetOperators
     ==> "Bundle"
     ==> "DevEnv"
 
-// "Clean"
-//     ==> "InstallClient"
-//     ==> "Build"
-//     ==> "Bundle"
-//     ==> "Deploy"
+"Clean"
+    ==> "InstallClient"
+    ==> "Build"
+    ==> "Bundle"
+    ==> "Deploy"
 
 "Clean"
     ==> "InstallClient"
