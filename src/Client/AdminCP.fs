@@ -311,7 +311,7 @@ let cmtTextArea dispatch key txt isReadOnly =
     div [Class "field"][
         label [Class "label"][str "Comment"]
         div [Class "control"][
-            textarea [Class "textarea"; Disabled isReadOnly; MaxLength 512.0; valueOrDefault txt; OnChange (fun ev -> dispatch <| UpdateQwComment (key,ev.Value) )][]
+            textarea [Class "textarea"; Disabled isReadOnly; MaxLength 1024.0; valueOrDefault txt; OnChange (fun ev -> dispatch <| UpdateQwComment (key,ev.Value) )][]
         ]
     ]
 

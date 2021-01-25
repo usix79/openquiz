@@ -527,7 +527,7 @@ let awCell dispatch (key:PkgQwKey) (answer:SlipAnswer) isLoading =
 
 let cmntCell dispatch settings (key:PkgQwKey) txt (media:Shared.MediaDsc option)  isLoading =
     td[] [
-        textarea [Class "textarea"; valueOrDefault txt; MaxLength 512.0; OnChange (fun ev -> QwCommentChanged (key.Key,ev.Value) |> dispatch)][]
+        textarea [Class "textarea"; valueOrDefault txt; MaxLength 1024.0; OnChange (fun ev -> QwCommentChanged (key.Key,ev.Value) |> dispatch)][]
         br[]
         yield! MainTemplates.mediaArea key isLoading (AnswerMediaChanged >> dispatch) (fun _ -> AnswerMediaClear key.Key |> dispatch) settings.MediaHost media "Clear"
 
