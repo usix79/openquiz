@@ -53,7 +53,7 @@ let view (dispatch : Msg -> unit) (settings:Settings) (model : Model) (l10n : L1
                     | None -> ()
                 ]
 
-                a [Href "/login"; Class "button thickbox"; Style [Margin "5px"]; Target "_self"] [
+                a [Href "/api/login"; Class "button thickbox"; Style [Margin "5px"]; Target "_self"] [
                     str l10n.Procceed
                 ]
             ]
