@@ -260,6 +260,7 @@ type QuizDescriptor = {
     Status : QuizStatus
     WelcomeText : string
     FarewellText : string
+    RegText : string
     InfoText : string
     ImgKey : string
     WithPremoderation : bool
@@ -297,6 +298,7 @@ module Quizzes =
                 Status = Setup
                 WelcomeText = ""
                 FarewellText = ""
+                RegText = ""
                 InfoText = ""
                 WithPremoderation = false
                 ListenToken = Common.generateRandomToken()

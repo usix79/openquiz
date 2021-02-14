@@ -219,10 +219,7 @@ module Main =
             StartTime = quiz.StartTime
             Name = quiz.Name
             Status = quizStatus quiz.Status
-            Description =
-                match quiz.Status with
-                | Setup | Live -> quiz.WelcomeText
-                | Finished -> quiz.FarewellText
+            Description = quiz.RegText
             Information =
                 match team with
                 | Some team when team.Status = Admitted -> quiz.InfoText
@@ -252,6 +249,7 @@ module Main =
             RegToken = quiz.Dsc.RegToken
             WelcomeText = quiz.Dsc.WelcomeText
             FarewellText = quiz.Dsc.FarewellText
+            RegText = quiz.Dsc.RegText
             InfoText = quiz.Dsc.InfoText
             WithPremoderation = quiz.Dsc.WithPremoderation
             EventPage = quiz.Dsc.EventPage
@@ -431,10 +429,7 @@ module Reg =
             StartTime = quiz.StartTime
             Name = quiz.Name
             Status = quizStatus quiz.Status
-            Description =
-                match quiz.Status with
-                | Setup | Live -> quiz.WelcomeText
-                | Finished -> quiz.FarewellText
+            Description = quiz.RegText
             ImgKey = quiz.ImgKey
             EventPage = quiz.EventPage
         }

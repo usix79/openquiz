@@ -400,6 +400,7 @@ module MainModels =
         RegToken : string
         WelcomeText : string
         FarewellText : string
+        RegText : string
         InfoText : string
         WithPremoderation : bool
         EventPage : string
