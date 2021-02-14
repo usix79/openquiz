@@ -482,6 +482,7 @@ module Infra =
                 nextTour = x.Wrap adminApi.nextTour
                 nextQuestion = x.Wrap adminApi.nextQuestion
                 nextQuestionPart = x.Wrap adminApi.nextQuestionPart
+                showMedia = x.Wrap adminApi.showMedia
                 showQuestion = x.Wrap adminApi.showQuestion
                 getAnswers = x.Wrap adminApi.getAnswers
                 updateResults = x.Wrap adminApi.updateResults

@@ -587,7 +587,8 @@ module Quizzes =
         let TourStatus = "Status"
         let TourQwIdx = "QwIdx"
         let TourQwPartIdx = "QwPartIdx"
-        let TourIsQuestionDisplayed = "IsMediaDisplayed"
+        let TourIsMediaDisplayed = "IsMediaDisplayed"
+        let TourIsQuestionDisplayed = "IsQuestionDisplayed"
         let TourStartTime = "StartTime"
         let TourSlip = "Slip"
         let Version = "Version"
@@ -632,9 +633,9 @@ module Quizzes =
 
     let getDescriptor env = key >> getItemProjection' env dscFields tableName dscReader
 
-    let private tourBuilder name seconds status qwIdx qwPartIdx isQuestionDisplayed startTime slip : Domain.QuizTour =
+    let private tourBuilder name seconds status qwIdx qwPartIdx isMediaDisplayed isQuestionDisplayed startTime slip : Domain.QuizTour =
         {Name = name; Seconds = seconds; Status = status |> Option.defaultValue Domain.Announcing;
-            QwIdx = qwIdx; QwPartIdx = qwPartIdx; IsQuestionDisplayed = isQuestionDisplayed; StartTime = startTime; Slip = slip}
+            QwIdx = qwIdx; QwPartIdx = qwPartIdx; IsMediaDisplayed = isMediaDisplayed; IsQuestionDisplayed = isQuestionDisplayed; StartTime = startTime; Slip = slip}
 
     let private slipChoice =
         function
@@ -648,6 +649,7 @@ module Quizzes =
         <*> (req Fields.TourStatus A.string >- P.enum<Domain.QuizTourStatus>)
         <*> (optDef Fields.TourQwIdx "0" A.number >-> P.int)
         <*> (optDef Fields.TourQwPartIdx "0" A.number >-> P.int)
+        <*> (optDef Fields.TourIsMediaDisplayed false A.bool)
         <*> (optDef Fields.TourIsQuestionDisplayed false A.bool)
         <*> (opt Fields.TourStartTime (A.nullOr A.string) ??>-> P.dateTime)
         <*> (choice Fields.TourSlip A.docMap slipChoice)
@@ -699,6 +701,8 @@ module Quizzes =
                         Attr (Fields.TourQwPartIdx, ScalarInt32 tour.QwPartIdx)
                         if tour.IsQuestionDisplayed then
                             Attr (Fields.TourIsQuestionDisplayed, ScalarBool tour.IsQuestionDisplayed)
+                        if tour.IsMediaDisplayed then
+                            Attr (Fields.TourIsMediaDisplayed, ScalarBool tour.IsMediaDisplayed)
                     ]
             ])
 

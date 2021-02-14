@@ -1,5 +1,8 @@
 # Release Notes
 
+## 1.15.0 - 2021-02-14
+* Added registration message for the registration page
+
 ## 1.14.0 - 2020-12-01
 * Single quiz question is diplayed before countdown
 * Mixlr player starts automatically (on desktop)

@@ -35,6 +35,7 @@ type Msg =
     | UpdateQwEOT of key:QwKey * bool
     | NextQw
     | NextQwPart
+    | DisplayMedia
     | DisplayQw
     | Start
     | Tick
@@ -90,7 +91,7 @@ let setSlipIdx txt model =
             |> updateCard (fun q -> {q with PackageSlipIdx = if id <> -1 then Some id else None})
             |> (fun model ->
                     match pkg.GetSlip id with
-                    | Some slip -> model |> updateTour (fun q -> {q with Slip = slip; QwIdx = 0; QwPartIdx = 0; IsQuestionDisplayed = false; Name = if slip.Caption <> "" then slip.Caption else q.Name})
+                    | Some slip -> model |> updateTour (fun q -> {q with Slip = slip; QwIdx = 0; QwPartIdx = 0; IsMediaDisplayed = false;  IsQuestionDisplayed = false; Name = if slip.Caption <> "" then slip.Caption else q.Name})
                     | None -> model
             )
         | None -> model
@@ -161,6 +162,7 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | UpdateQwEOT (key,v) -> cm |> updateSlip key (fun slip -> {slip with EndOfTour = v}) |> noCmd
     | NextQw -> cm |> loading |> apiCmd api.nextQuestion cm.Quiz.Value QuizCardResp Exn
     | NextQwPart -> cm |> loading |> apiCmd api.nextQuestionPart cm.Quiz.Value QuizCardResp Exn
+    | DisplayMedia -> cm |> loading |> apiCmd api.showMedia cm.Quiz.Value QuizCardResp Exn
     | DisplayQw -> cm |> loading |> apiCmd api.showQuestion cm.Quiz.Value QuizCardResp Exn
     | Start -> cm |> loading |> apiCmd api.startCountDown cm.Quiz.Value QuizCardResp Exn
     | Tick -> cm |> noCmd |> scheduleTick
@@ -432,9 +434,10 @@ let qwView (dispatch : Msg -> unit) (user:AdminUser) (settings:Settings) (tour :
             button [Class "button is-large is-fullwidth"; Disabled isLoading; OnClick (fun _ -> dispatch msg)][str caption]
 
         match tour.Status, tour.SecondsLeft (serverTime timeDiff) with
+        | Announcing, _  when tour.NeedToDisplayMedia -> ctrlBtn DisplayMedia "Show Media"
         | Announcing, _  when tour.NeedToDisplayQuestion -> ctrlBtn DisplayQw "Show Question"
         | Announcing, _  when tour.IsReadyForCountdown -> ctrlBtn Start "Start Countdown"
-        | Announcing, _  when not tour.IsLastPart -> ctrlBtn NextQwPart (sprintf "Show Question Part %i" (tour.QwPartIdx + 1))
+        | Announcing, _  when tour.IsSingleMultipart -> ctrlBtn NextQwPart (sprintf "Show Question Part %i" (tour.QwPartIdx + 1))
         | Announcing, _  -> ctrlBtn NextQw (sprintf "Show Question %i" (tour.QwIdx + 1))
         | Countdown, sec when sec > 0 -> ctrlBtn Pause "Reset Countdown"
         | Countdown, _ -> ctrlBtn Settle "Show answer"

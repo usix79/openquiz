@@ -463,6 +463,7 @@ module AdminModels =
         Status : TourStatus
         QwIdx : int
         QwPartIdx : int
+        IsMediaDisplayed : bool
         IsQuestionDisplayed : bool
         Slip : Slip
         StartTime : System.DateTime option
@@ -490,11 +491,20 @@ module AdminModels =
             | Single slip -> x.QwPartIdx >= slip.LastPartIdx
             | Multiple _ -> x.QwIdx > x.Slip.LastQwIdx
 
-        member x.NeedToDisplayQuestion =
+        member x.NeedToDisplayMedia =
             match x.Slip with
-            | Single slip -> not x.IsQuestionDisplayed
+            | Single slip -> slip.QuestionMedia.IsSome && not x.IsMediaDisplayed
             | Multiple _ -> false
 
+        member x.IsSingleMultipart =
+            match x.Slip with
+            | Single slip -> slip.LastPartIdx > 0
+            | Multiple _ -> false
+
+        member x.NeedToDisplayQuestion =
+            match x.Slip with
+            | Single slip -> slip.LastPartIdx = 0 && not x.NeedToDisplayMedia && not x.IsQuestionDisplayed
+            | Multiple _ -> false
 
 
     type QuizControlCard = {
@@ -693,6 +703,7 @@ type IAdminApi = {
     nextTour : REQ<unit> -> ARESP<AdminModels.QuizControlCard>
     nextQuestion : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     nextQuestionPart : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
+    showMedia : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     showQuestion : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     getAnswers : REQ<AdminModels.Range option> -> ARESP<AdminModels.AnswersBundle>
     updateResults : REQ<{|TeamId: int; QwKey: QwKey; Res: decimal option |} list> -> ARESP<unit>

@@ -232,6 +232,7 @@ type QuizTour = {
     StartTime : DateTime option
     QwIdx : int
     QwPartIdx : int
+    IsMediaDisplayed : bool
     IsQuestionDisplayed : bool
     Slip : Slip
 } with
@@ -365,6 +366,7 @@ module Quizzes =
                 Slip = slip
                 QwIdx = 0
                 QwPartIdx = 0
+                IsMediaDisplayed = false
                 IsQuestionDisplayed = false
                 StartTime = None }
                 :: quiz.Tours}
@@ -403,6 +405,9 @@ module Quizzes =
 
     let nextQuestionPart (quiz:Quiz) =
         quiz |> updateCurrentTour (fun tour -> tour.NextQwPart ()) |> Ok
+
+    let showMedia (quiz:Quiz) =
+        quiz |> updateCurrentTour (fun tour -> {tour with IsMediaDisplayed = true}) |> Ok
 
     let showQuestion (quiz:Quiz) =
         quiz |> updateCurrentTour (fun tour -> {tour with IsQuestionDisplayed = true}) |> Ok
