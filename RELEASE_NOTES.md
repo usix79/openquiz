@@ -2,6 +2,7 @@
 
 ## 1.15.0 - 2021-02-14
 * Added registration message for the registration page
+* Separated displaying media and question's text
 
 ## 1.14.0 - 2020-12-01
 * Single quiz question is diplayed before countdown
