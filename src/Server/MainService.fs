@@ -157,7 +157,7 @@ let registerTeam env expId username name quizId req =
                 )
             | None -> createTeam env exp quiz teamName
             |> AR.map (fun (team:Domain.Team) -> Main.quizRegRecord quiz (Some team.Dsc))))
-    |> AR.side (fun qr -> PublishResults qr.QuizId |> (env :> IPublisher).Publish |> AR.retn)
+    |> AR.side (fun qr -> PublishResults qr.QuizId |> (env :> IAgency).PublisherAgent |> AR.retn)
 
 let private createTeam env exp quiz teamName  =
 

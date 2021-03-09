@@ -110,13 +110,16 @@ let buildEnvironment envName logger (cfg:IConfiguration) =
     }
 
     let publisherAgent = Agents.publisherAgent publisherEnv
+    let answersAgent = Agents.answersAgent publisherEnv
 
     { new Env.IAppEnv with
         member _.Logger = logger
         member _.Configurer = configurer
-        member _.Publish cmd =
+        member _.PublisherAgent cmd =
             printfn "PUBLISH: %A" cmd
             publisherAgent.Post cmd
+        member _.AnswersAgent cmd =
+            answersAgent.Post cmd
     }
 
 [<EntryPoint>]

@@ -147,6 +147,8 @@ module AsyncResult =
 type PublisherCommand =
     | PublishResults of quizId : int
 
+type AnswersCommand =
+    | RegisterAnswer of logic : Async<Result<unit,(int*int*string)>>
 
 let ofOption error = function Some s -> Ok s | None -> Error error
 

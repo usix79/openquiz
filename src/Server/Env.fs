@@ -19,8 +19,9 @@ type IConfigurer =
 [<Interface>] type ICfg = abstract Configurer: IConfigurer
 
 [<Interface>]
-type IPublisher =
-    abstract Publish: PublisherCommand -> unit
+type IAgency =
+    abstract PublisherAgent: PublisherCommand -> unit
+    abstract AnswersAgent: AnswersCommand -> unit
 
 type IPublisherEnv =
     inherit ILog
@@ -29,4 +30,4 @@ type IPublisherEnv =
 type IAppEnv =
     inherit ILog
     inherit ICfg
-    inherit IPublisher
+    inherit IAgency

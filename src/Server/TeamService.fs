@@ -54,26 +54,31 @@ let takeActiveSession env (sessionId:int) (teamKey:Domain.TeamKey) req =
         |> AsyncResult.map (fun quiz -> Teams.quizCard quiz team))
 
 let answers env team req =
+    let now = DateTime.UtcNow
+
     let logic (team:Domain.Team) =
-        let now = DateTime.UtcNow
         req
         |> Map.toList
         |> List.fold (fun team (qwKey,(aw,jpd)) ->
             team |> Result.bind (Domain.Teams.registerAnswer (qwKeyToDomain qwKey) aw jpd now)) (Ok team)
 
     match team.Status with
-    | Domain.Admitted -> Ok ()
+    | Domain.Admitted ->
+        // send answer to the answers agent, do not wait for result
+        (Data2.Teams.update env team.Key logic)
+        |> Async.map (function Ok _ -> Ok () | Error txt -> Error (team.Key.QuizId, team.Key.TeamId,txt))
+        |> RegisterAnswer
+        |> (env :> IAgency).AnswersAgent
+
+        Ok ()
     | _ -> Error "Team's status does not suppose sending answers"
     |> AsyncResult.fromResult
-    |> AsyncResult.next (Data2.Teams.update env team.Key logic)
-    |> AsyncResult.map ignore
 
 let getHistory env team _ =
     Data2.Quizzes.get env team.QuizId
     |> AsyncResult.bind (fun quiz ->
         Data2.Teams.get env team.Key
         |> AsyncResult.map (fun team -> Teams.quizHistory quiz team))
-
 
 let vote env team req =
     let logic (team:Domain.Team) =
@@ -85,5 +90,5 @@ let vote env team req =
         | _ -> Error "vote not applied"
 
     Data2.Teams.update env team.Key logic
-    |> AsyncResult.side (fun _ -> PublishResults team.QuizId |> (env:>IPublisher).Publish |> AsyncResult.retn)
+    |> AsyncResult.side (fun _ -> PublishResults team.QuizId |> (env:>IAgency).PublisherAgent |> AsyncResult.retn)
     |> AsyncResult.map ignore

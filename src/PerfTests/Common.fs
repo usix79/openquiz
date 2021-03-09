@@ -59,7 +59,7 @@ let serverTime timeDiff =
     System.DateTime.UtcNow.Add timeDiff
 
 let createProxy<'TProxy> server =
-    let routes = sprintf "%s/app/api/%s/%s" server
+    let routes = sprintf "%s/api/%s/%s" server
     Proxy.create<'TProxy> routes
 
 let apiCall

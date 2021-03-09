@@ -76,7 +76,7 @@ let createTeam env quiz req =
     |> AR.bind (fun teamsInQuiz ->
         Data2.Teams.create env quiz.QuizId (creator teamsInQuiz)
         |> AR.map (fun team -> {|Record = Admin.teamRecord team.Dsc|}))
-    |> AR.side (fun _ -> PublishResults quiz.QuizId |> (env :> IPublisher).Publish |> AR.retn)
+    |> AR.side (fun _ -> PublishResults quiz.QuizId |> (env :> IAgency).PublisherAgent |> AR.retn)
 
 let createTeamBatch env quiz req =
 
@@ -106,7 +106,7 @@ let updateTeamCard env quiz req =
 
     Data2.Teams.update env {QuizId = quiz.QuizId; TeamId = req.TeamId} logic
     |> AR.map (fun team -> Admin.teamRecord team.Dsc)
-    |> AR.side (fun _ -> PublishResults quiz.QuizId |> env.Publish |> AR.retn)
+    |> AR.side (fun _ -> PublishResults quiz.QuizId |> env.PublisherAgent |> AR.retn)
 
 let changeTeamStatus env quiz req =
     let logic (team : Domain.Team) =
@@ -220,7 +220,7 @@ let settleTour env quiz _ =
     Data2.Quizzes.update env quiz.QuizId Domain.Quizzes.settle
     |> AR.side (settleAnswers env)
     |> AR.map Admin.quizCard
-    |> AR.side (fun _ -> PublishResults quiz.QuizId |> env.Publish |> AR.retn)
+    |> AR.side (fun _ -> PublishResults quiz.QuizId |> env.PublisherAgent |> AR.retn)
 
 type SettleItem = {
     Idx : Domain.QwKey
@@ -297,7 +297,7 @@ let updateResults env quiz req  =
     |> List.map (fun r -> Data2.Teams.update env {QuizId = quiz.QuizId; TeamId = r.TeamId} (logic (qwKeyToDomain r.QwKey) r.Res))
     |> Async.Sequential
     |> Async.map (fun _ -> Ok ())
-    |> AR.side (fun _ -> PublishResults quiz.QuizId |> env.Publish |> AR.retn)
+    |> AR.side (fun _ -> PublishResults quiz.QuizId |> env.PublisherAgent |> AR.retn)
 
 let getListenToken env quiz _ =
     quiz.ListenToken |> AR.retn
