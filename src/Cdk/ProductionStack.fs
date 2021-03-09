@@ -91,11 +91,12 @@ type ProductionStack(scope:Construct, id, props, globalId) as this =
                 SourceBundle = CfnApplicationVersion.SourceBundleProperty(S3Bucket = apiBundle.S3BucketName, S3Key = apiBundle.S3ObjectKey)
             ))
 
-    let cnamePrefix = sprintf "openquiz-%s-%s" (env.ToLower()) globalId
+    let version = 2
+    let cnamePrefix = sprintf "openquiz-%s-%s-v%d" (env.ToLower()) globalId version
     let appEnv =
         CfnEnvironment(this, "ApiAppEnv",
             CfnEnvironmentProps(
-                EnvironmentName = apiApp.ApplicationName + "-Single",
+                EnvironmentName = apiApp.ApplicationName + "-SingleV" + (version.ToString()),
                 ApplicationName = apiApp.ApplicationName,
                 SolutionStackName = "64bit Amazon Linux 2 v2.1.3 running .NET Core",
                 OptionSettings =  optionSettingProperties,
