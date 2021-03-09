@@ -230,6 +230,7 @@ module Main =
                 | _ -> ""
             ImgKey = quiz.ImgKey
             EventPage = quiz.EventPage
+            ListenToken = quiz.ListenToken
             Comp = team |> Option.map expertCompetition
         }
 

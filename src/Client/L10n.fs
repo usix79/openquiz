@@ -57,6 +57,7 @@ type RegL10n = {
     Rejected : string
     Edit : string
     Enter : string
+    LinkForAudience : string
     TeamName : string
 }
 
@@ -118,5 +119,6 @@ let regL10n lang = {
     Rejected = l10n lang "rejected" "отклонено" "відхилено" "uğrsuz" "қайтариш"
     Edit = l10n lang "Edit" "Изменить" "Змінити" "Redaktə edin" "таҳрирлаш"
     Enter = l10n lang "Enter" "Войти в" "Увійти в" "Redaktə edin" "Кириш"
+    LinkForAudience = l10n lang "for audience" "для зрителей" "для глядачів" "izləyicilər üçün" "муҳлисслар"
     TeamName = l10n lang "Team Name" "Имя команды" "Ім'я команди" "Komanda adı" "Жамоанинг номи"
 }

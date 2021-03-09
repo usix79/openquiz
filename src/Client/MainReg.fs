@@ -194,13 +194,18 @@ let quizView (dispatch : Msg -> unit) (settings:Settings) (quiz : QuizRegRecord)
         ]
 
         p [] (splitByLines quiz.Description)
+
         if quiz.EventPage <> "" then
             a[Href quiz.EventPage][str l10n.Details]
+
         if quiz.Information <> "" then
             br[]
             div [Class "notification is-info"][
                 p [] (splitByLines quiz.Information)
             ]
+
+        a[Href <| urlForAud quiz.QuizId quiz.ListenToken][str l10n.LinkForAudience]
+
     ]
 
     div [Style [Width "320px"; Display DisplayOptions.InlineBlock]] [

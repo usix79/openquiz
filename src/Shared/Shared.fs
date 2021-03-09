@@ -379,6 +379,7 @@ module MainModels =
         Information : string
         ImgKey : string
         EventPage : string
+        ListenToken : string
         Comp : ExpertCompetition option
     }
 
