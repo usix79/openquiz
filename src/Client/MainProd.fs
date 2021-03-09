@@ -88,7 +88,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : M
             div [Class "container"][
                 nav [Class "navbar is-transparent is-spaced"; Role "navigation"; AriaLabel "dropdown navigation"] [
                     div [Class "navbar-brand"] [
-                        a [Href "/app/"; Class "navbar-item navbar-logo"; Style [MarginRight "auto"]] [
+                        a [Href "/app/index.html"; Class "navbar-item navbar-logo"; Style [MarginRight "auto"]] [
                             figure [Class "image is-64x64"][
                                 img [Src "/logo.png"; Alt "logo"; Style [Height "64px"; Width "64px"; MaxHeight "64px"]]
                             ]
