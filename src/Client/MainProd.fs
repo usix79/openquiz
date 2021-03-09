@@ -18,6 +18,7 @@ type Msg =
     | SwitchToQuizzes
     | SwitchToQuestions
     | SwitchToSettings
+    | SwitchToDonations
     | Exn of exn
     | DeleteError of string
 
@@ -25,6 +26,7 @@ type Area =
     | Quizzes of MainProdQuizzes.Model
     | Questions of MainProdQuestions.Model
     | Settings of MainProdSettings.Model
+    | Donations
 
 type Model = {
     Area : Area
@@ -53,6 +55,8 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | SwitchToSettings, _ ->
         let subModel,subCmd = MainProdSettings.init api user
         {cm with Area = Settings subModel}, Cmd.map Msg.Settings subCmd
+    | SwitchToDonations, _ ->
+        {cm with Area = Donations}, Cmd.none
     | Msg.Quizzes subMsg, Quizzes subModel ->
         let subModel,subCmd = MainProdQuizzes.update api user subMsg subModel
         {cm with Area = Quizzes subModel}, Cmd.map Msg.Quizzes subCmd
@@ -73,6 +77,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : M
     let isQuizzesActive = match model.Area with Quizzes _ -> true | _ -> false
     let isQuestionsActive = match model.Area with Questions _ -> true | _ -> false
     let isSettingsActive = match model.Area with Settings _ -> true | _ -> false
+    let isDonationsActive = match model.Area with Donations _ -> true | _ -> false
     let liClasses isActive =
         match isActive with
         | true -> classList ["has-background-light", true; "has-text-grey-dark", true]
@@ -88,18 +93,6 @@ let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : M
                                 img [Src "/logo.png"; Alt "logo"; Style [Height "64px"; Width "64px"; MaxHeight "64px"]]
                             ]
                         ]
-
-//                         let donateHtml = """
-// <form action="https://www.paypal.com/donate" method="post" target="_top">
-// <input type="hidden" name="hosted_button_id" value="MD3QKYNY98KHU" />
-// <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" border="0" name="submit" title="Donate if you want to appreciate work open-quiz author did" alt="Donate" />
-// <img alt="" border="0" src="https://www.paypal.com/en_UA/i/scr/pixel.gif" width="1" height="1" />
-// </form>
-// """
-//                         div [Class "navbar-item"][
-//                             div [Style[MarginTop "5px"]; DangerouslySetInnerHTML {__html = donateHtml}] []
-//                             div [] [str "if you want to appreciate work open-quiz author did"]
-//                         ]
 
                         a [Class "navbar-item is-paddingleft is-hidden-desktop"][str user.Name]
 
@@ -150,6 +143,7 @@ let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : M
                                 li [][a [isQuizzesActive |> liClasses; OnClick (fun _ -> dispatch SwitchToQuizzes)][str "Quizzes"]]
                                 li [][a [isQuestionsActive |> liClasses; OnClick (fun _ -> dispatch SwitchToQuestions)][str "Questions"]]
                                 li [][a [isSettingsActive |> liClasses; OnClick (fun _ -> dispatch SwitchToSettings)][str "Settings"]]
+                                li [][a [isDonationsActive |> liClasses; OnClick (fun _ -> dispatch SwitchToDonations)][div [Style [Color "orange"; FontWeight "bold"]] [str "Thanks"]]]
                             ]
                         ]
                     ]
@@ -158,6 +152,19 @@ let view (dispatch : Msg -> unit) (user:MainUser) (settings:Settings) (model : M
                         | Quizzes subModel -> MainProdQuizzes.view (Msg.Quizzes >> dispatch) user settings subModel
                         | Questions subModel -> MainProdQuestions.view (Msg.Questions >> dispatch) user settings subModel
                         | Settings subModel -> MainProdSettings.view (Msg.Settings >> dispatch) user settings subModel
+                        | Donations ->
+                            div[][
+                                div[Class "subtitle"][
+                                    str "If you want to appreciate work open-quiz author did, you may send him "
+                                    a [Style [TextDecoration "underline"]; Href "https://www.amazon.com/s?rh=n%3A15382616011%2Cp_n_format_browse-bin%3A2740964011&qid=1615299401&rnid=2740963011&ref=lp_15382616011_nr_p_n_format_browse-bin_0"] [str "Amazon's eGift Card"]
+                                    str "."
+                                ]
+                                div [][str "Here is video-instruction"]
+                                video [Controls true; AutoPlay true; Style [Width "800px"]] [
+                                    source [Src <| Infra.urlForMedia settings.MediaHost "amazon-thx.mov"; Type "video/mp4"]
+                                ]
+                            ]
+
                     ]
                 ]
             ]
