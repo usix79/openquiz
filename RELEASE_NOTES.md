@@ -1,5 +1,10 @@
 # Release Notes
 
+## 1.16.0 - 2021-03-09
+* Improved reliability of receiving mass-answers
+* Added link for audience to the registration page
+* Added 'Thanks' page with instruction how say 'thanks' to open-quiz author ;)
+
 ## 1.15.0 - 2021-02-14
 * Added registration message for the registration page
 * Separated displaying media and question's text
