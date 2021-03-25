@@ -180,7 +180,7 @@ let playTitle mediaHost quizImg mixlr url =
         | None ->
             match mixlr with
             | Some mixlrUserId ->
-                let src = sprintf "https://mixlr.com/users/%i/embed?autoplay=true" mixlrUserId
+                let src = sprintf "https://mixlr.com/users/%i/embed" mixlrUserId
                 iframe[Src src; Style[Width "100%"; Height "180px"]; Scrolling "no"; FrameBorder "no"; MarginHeight 0.0; MarginWidth 0.0][]
             | None ->
                 br []
