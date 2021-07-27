@@ -548,7 +548,8 @@ module Teams =
             let awText = if awText.Length <= 256 then awText else awText.Substring(0, 256)
 
             match team.Answers.TryFind qwIndex with
-            | None ->
+            | Some aw when aw.Text <> "" -> Error <| "Answer is alredy registered: " + aw.Text
+            | None | Some _ -> // if answer is exists but Text is empty, allow reset the answer
                 Ok {team with
                         Answers = team.Answers.Add (
                                     qwIndex,
@@ -559,12 +560,25 @@ module Teams =
                                     IsAutoResult = false;
                                     UpdateTime = Some now;
                                     Vote = None})}
-            | Some aw -> Error <| "Answer is alredy registered: " + aw.Text
 
     let updateResult qwIdx res now (team:Team) =
         team |> updateAnswer qwIdx (fun aw ->
             {aw with Result = res; IsAutoResult = false; UpdateTime = Some now}, true
         )
+
+    let setResultWithoutAnswer qwIdx res now (team:Team) =
+        match team.GetAnswer qwIdx with
+        | Some _ -> team, false
+        | None ->
+            let aw = {  Text = ""
+                        Jeopardy = false
+                        RecieveTime = now;
+                        Result = res;
+                        IsAutoResult = false;
+                        UpdateTime = Some now;
+                        Vote = None }
+
+            {team with Answers = team.Answers.Add(qwIdx, aw)}, true
 
 type TeamDetail = {
     Result : decimal option

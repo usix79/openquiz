@@ -203,9 +203,6 @@ let quizView (dispatch : Msg -> unit) (settings:Settings) (quiz : QuizRegRecord)
             div [Class "notification is-info"][
                 p [] (splitByLines quiz.Information)
             ]
-
-        a[Href <| urlForAud quiz.QuizId quiz.ListenToken][str l10n.LinkForAudience]
-
     ]
 
     div [Style [Width "320px"; Display DisplayOptions.InlineBlock]] [

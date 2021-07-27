@@ -708,6 +708,7 @@ type IAdminApi = {
     showQuestion : REQ<AdminModels.QuizControlCard> -> ARESP<AdminModels.QuizControlCard>
     getAnswers : REQ<AdminModels.Range option> -> ARESP<AdminModels.AnswersBundle>
     updateResults : REQ<{|TeamId: int; QwKey: QwKey; Res: decimal option |} list> -> ARESP<unit>
+    updateResultsWithoutAnswer : REQ<{|TeamId: int; QwKey: QwKey; Res: decimal option |} list> -> ARESP<unit>
     getListenToken : REQ<unit> -> ARESP<string>
 }
 

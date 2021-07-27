@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.17.0 - 2021-07-27
+* Added the ability to set points for teams that didn't submit an answer
+* Removed link for audience to the registration page
+
 ## 1.16.0 - 2021-03-09
 * Improved reliability of receiving mass-answers
 * Added link for audience to the registration page

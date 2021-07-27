@@ -486,6 +486,7 @@ module Infra =
                 showQuestion = x.Wrap adminApi.showQuestion
                 getAnswers = x.Wrap adminApi.getAnswers
                 updateResults = x.Wrap adminApi.updateResults
+                updateResultsWithoutAnswer = x.Wrap adminApi.updateResultsWithoutAnswer
                 getListenToken = x.Wrap adminApi.getListenToken
             }
 

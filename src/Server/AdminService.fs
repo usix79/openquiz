@@ -54,6 +54,7 @@ let api env (context:HttpContext) : IAdminApi =
         showQuestion = ex "showQuestion" <| showQuestion env
         getAnswers = ex "getAnswers" <| getAnswers env
         updateResults = ex "updateResults" <| updateResults env
+        updateResultsWithoutAnswer = ex "updateResultsWithoutAnswer" <| updateResultsWithoutAnswer env
         getListenToken = ex "getListenToken" <| getListenToken env
         changeStreamUrl = ex  "changeStreamUrl" <| changeStreamUrl env
     }
@@ -299,9 +300,20 @@ let updateResults env quiz req  =
     |> Async.map (fun _ -> Ok ())
     |> AR.side (fun _ -> PublishResults quiz.QuizId |> env.PublisherAgent |> AR.retn)
 
+let updateResultsWithoutAnswer env quiz req  =
+    let logic qwKey res team =
+        team
+        |> Domain.Teams.setResultWithoutAnswer qwKey res DateTime.UtcNow
+        |> (function team,true -> Ok team | _,false -> Error "Nothing to change")
+
+    req
+    |> List.map (fun r -> Data2.Teams.update env { QuizId = quiz.QuizId; TeamId = r.TeamId } (logic (qwKeyToDomain r.QwKey) r.Res))
+    |> Async.Sequential
+    |> Async.map (fun _ -> Ok ())
+    |> AR.side (fun _ -> PublishResults quiz.QuizId |> env.PublisherAgent |> AR.retn)
+
 let getListenToken env quiz _ =
     quiz.ListenToken |> AR.retn
-
 
 let changeStreamUrl env quiz url =
     let logic (quiz:Domain.Quiz) =

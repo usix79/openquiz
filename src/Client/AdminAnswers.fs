@@ -18,16 +18,18 @@ type Msg =
     | DeleteError of string
     | Exn of exn
     | SelectQuestion of QwKey
+    | ToggleShowAllTeams
     | SelectRange of Range option
     | ResultChanged of teamId:int*key:QwKey*res:string
+    | ResultWithoutAnswer of teamId:int*key:QwKey*res:string
     | ResultsUpdated of RESP<unit>
-
 
 type Model = {
     Bundle : AnswersBundle option
     Errors : Map<string, string>
     IsLoading : bool
-    CurrentQuestion : {|Key:QwKey; LastReview:DateTime|} option
+    CurrentQuestion : {| Key:QwKey; LastReview:DateTime |} option
+    ShowAllTeams : bool
     TimeDiff: TimeSpan
     LastReviews : Map<QwKey, DateTime>
     SessionStart : DateTime
@@ -108,12 +110,41 @@ let setResults (api:IAdminApi) (teamId:int) (key:QwKey) (v :string) (model:Model
                 answersToResult
                 |> List.map (fun (teamId,_) -> {|QwKey = key; Res = res; TeamId = teamId|})
 
-            {model with
-                Bundle = Some <| bundle.UpdateAnswers key answersToUpdate
-            }
+            { model with Bundle = Some <| bundle.UpdateAnswers key answersToUpdate }
             |> loading
             |> apiCmd api.updateResults answersToSend ResultsUpdated Exn
         | None -> model |> noCmd
+    | None -> model |> noCmd
+
+let setResultWithoutAnswer (api:IAdminApi) (teamId:int) (key:QwKey) (v :string) (model:Model) =
+    let res =
+        match System.Decimal.TryParse v with
+        | (true,value) -> Some value
+        | _ -> None
+
+    match model.Bundle with
+    | Some bundle ->
+        let aw = {  Txt = ""
+                    Jpd = false
+                    RT = DateTime.UtcNow
+                    Res = res
+                    IsA = false
+                    UT = None }
+
+        let answersToResult = [teamId, aw]
+
+        let answersToUpdate =
+            answersToResult
+            |> List.map (fun (teamId,aw) -> teamId, {aw with Res = res; IsA = false; UT = Some <| serverTime model.TimeDiff })
+            |> Map.ofList
+
+        let answersToSend =
+            answersToResult
+            |> List.map (fun (teamId,_) -> {|QwKey = key; Res = res; TeamId = teamId|})
+
+        { model with Bundle = Some <| bundle.UpdateAnswers key answersToUpdate }
+        |> loading
+        |> apiCmd api.updateResultsWithoutAnswer answersToSend ResultsUpdated Exn
     | None -> model |> noCmd
 
 let rangeFromHashQuery () =
@@ -155,6 +186,7 @@ let init (api:IAdminApi) user : Model*Cmd<Msg> =
         TimeDiff = TimeSpan.Zero
         LastReviews = lastReviews
         CurrentQuestion = None
+        ShowAllTeams = false
         SessionStart = sessionStart
         Range = range
 
@@ -164,8 +196,10 @@ let update (api:IAdminApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     match msg with
     | GetAnswersResp {Value = Ok res; ST = st } -> {cm with Bundle = Some res; TimeDiff = timeDiff st} |> editing |> noCmd
     | SelectQuestion key -> cm |> selectQuestion key |> noCmd
+    | ToggleShowAllTeams -> {cm with ShowAllTeams = not cm.ShowAllTeams} |> noCmd
     | SelectRange range -> cm |> setRange api range
     | ResultChanged (teamId, key, v) -> cm |> setResults api teamId key v
+    | ResultWithoutAnswer (teamId, key, v) -> cm |> setResultWithoutAnswer api teamId key v
     | ResultsUpdated {Value = Ok _} -> cm |> editing |> noCmd
     | DeleteError id -> cm |> delError id |> noCmd
     | Exn ex -> cm |> addError ex.Message |> editing |> noCmd
@@ -188,7 +222,7 @@ let view (dispatch : Msg -> unit) (user:AdminUser) (model : Model) =
                 match model.CurrentQuestion with
                 | Some cq ->
                     match bundle.GetQw cq.Key with
-                    | Some qw ->  yield! answersTable dispatch bundle qw cq
+                    | Some qw ->  yield! answersTable dispatch bundle qw cq model.ShowAllTeams
                     | None -> ()
                 | _ -> ()
             | _ -> ()
@@ -226,13 +260,18 @@ let menuView dispatch (bundle:AnswersBundle) model =
         ]
     ]
 
-let answersTable dispatch  (bundle:AnswersBundle) (qw:QuestionRecord)  cq = [
+let answersTable dispatch  (bundle:AnswersBundle) (qw:QuestionRecord)  cq showAllTeams = [
     h5[Class "title is-5"] [str <| sprintf "Question: %s  \"%s\"" qw.Nm qw.Ann]
     if qw.Awr <> "" then
         p [Class "content"][
             b[][str "Answer(s): "]
             p [] (splitByLines qw.Awr)
         ]
+
+    label [Class "checkbox"][
+        input [Type "checkbox"; Checked showAllTeams; OnChange (fun _ -> dispatch ToggleShowAllTeams)]
+        str " show all teams"
+    ]
 
     table [Class "table is-hoverable is-fullwidth"][
         thead [ ] [
@@ -247,12 +286,13 @@ let answersTable dispatch  (bundle:AnswersBundle) (qw:QuestionRecord)  cq = [
         let answers =
             bundle.Teams
             |> List.map (fun team -> team, team.Awrs.TryGetValue qw.Key)
-            |> List.filter (fun (_, (found,aw)) -> found)
-            |> List.map (fun (team, (found, aw)) -> team, aw)
+            |> List.filter (fun (_, (found, _)) -> showAllTeams || found )
             |> List.sortBy (fun (team, _) -> team.Id)
 
         tbody [] [
-            for team, aw in answers -> answersRow dispatch team qw aw cq.LastReview
+            for team, (found, aw) in answers do
+                if found then yield answersRow dispatch team qw aw cq.LastReview
+                else yield noAnswersRow dispatch team qw
         ]
     ]
 ]
@@ -308,6 +348,23 @@ let answersRow dispatch team (qw:QuestionRecord) (aw:Answer) (lastReview:DateTim
         match timeSpent with
         | Some seconds -> td [] [ span [classList ["has-text-danger", ((int)seconds > (qw.Sec + 20))]][str (int(seconds).ToString())]]
         | None -> td[][]
+   ]
+
+let noAnswersRow dispatch team (qw:QuestionRecord) =
+
+    tr [ ][
+        td [] [span [] [str (team.Id.ToString())]]
+        td [] [span [] [str team.Nm]]
+        td [] [span [ Style [FontStyle "italic"]] [str "== no answer =="]]
+        td [] [
+            div [] [
+                input [
+                    Class "input is-small"; Type "number"; Style [ Width "50px" ]
+                    OnChange (fun ev -> dispatch (ResultWithoutAnswer (team.Id, qw.Key, ev.Value)))]
+            ]
+        ]
+
+        td[][]
    ]
 
 let paginator dispatch (bundle:AnswersBundle) (range: Range option) =
