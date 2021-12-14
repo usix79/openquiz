@@ -101,7 +101,10 @@ let setResults (api:IAdminApi) (teamId:int) (key:QwKey) (v :string) (model:Model
     | Some bundle ->
         match bundle.GetAw teamId key with
         | Some aw ->
-            let answersToResult = bundle.FindAnswers key aw.Txt aw.Jpd
+            let answersToResult =
+                if aw.Txt <> ""
+                then bundle.FindAnswers key aw.Txt aw.Jpd
+                else [teamId, aw]
             let answersToUpdate =
                 answersToResult
                 |> List.map (fun (teamId,aw) -> teamId, {aw with Res = res; IsA = false; UT = Some <| serverTime model.TimeDiff })
