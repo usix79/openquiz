@@ -9,7 +9,7 @@ open Env
 module AR = AsyncResult
 
 let private uploadFile env (quiz:Domain.Quiz) results =
-    let key = Aws.getResultsKey quiz.Dsc.QuizId quiz.Dsc.ListenToken
+    let key = Aws.getResultsKey quiz.Dsc.QuizId quiz.Dsc.ResultsToken
     let body =
         JsonConvert.SerializeObject(results, Common.fableConverter)
         |> Text.UTF8Encoding.UTF8.GetBytes

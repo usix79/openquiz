@@ -286,7 +286,7 @@ let loginAdminUser env secret quizId token =
                     QuizId = quiz.QuizId
                     QuizName = quiz.Name
                     QuizImg = quiz.ImgKey
-                    ListenToken = quiz.ListenToken
+                    ResultsToken = quiz.ResultsToken
                     ContentHost = env.Configurer.BucketUrl }
             loginResp env secret claims user
         else Error "Wrong entry token" |> AR.fromResult)

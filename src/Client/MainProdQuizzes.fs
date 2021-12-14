@@ -159,38 +159,38 @@ let update (api:IMainApi) user (msg : Msg) (cm : Model) : Model * Cmd<Msg> =
     | _ -> cm |> noCmd
 
 let view (dispatch : Msg -> unit) (user:MainUser) (appSettings:Settings) (model : Model) =
-    div[][
-        nav [Class "level"][
-            div [Class "level-left"][
+    div[] [
+        nav [Class "level"] [
+            div [Class "level-left"] [
 
             ]
-            div [Class "level-right"][
-                p [Class "level-item"][
-                    button [Class "button is-dark"; OnClick (fun _ -> dispatch CreateQuiz)][str "Create New Quiz"]
+            div [Class "level-right"] [
+                p [Class "level-item"] [
+                    button [Class "button is-dark"; OnClick (fun _ -> dispatch CreateQuiz)] [str "Create New Quiz"]
                 ]
             ]
         ]
 
         MainTemplates.errors dispatch DeleteError model.Errors
 
-        table [Class "table is-fullwidth is-hoverable"][
-            thead[][
-                tr[][
-                    th [Style[Width "30px"]][str ""]
-                    th [Style[Width "120px"]][str "Start Time"]
-                    th [][str "Name"]
-                    th [Style[Width "30px"]][str "Status"]
-                    th [Style[Width "30px"]][str "Admin"]
+        table [Class "table is-fullwidth is-hoverable"] [
+            thead[] [
+                tr[] [
+                    th [Style[Width "30px"]] [str ""]
+                    th [Style[Width "120px"]] [str "Start Time"]
+                    th [] [str "Name"]
+                    th [Style[Width "30px"]] [str "Status"]
+                    th [Style[Width "30px"]] [str "Admin"]
                 ]
             ]
-            tbody [][
+            tbody [] [
                 for quiz in model.Quizzes |> List.sortBy (fun q -> q.QuizId) |> List.rev do
                     let hasCard = match model.Card with Some card when card.QuizId = quiz.QuizId -> true | _ -> false
                     let isLoading = match model.CardIsLoading with Some id when id = quiz.QuizId -> true | _ -> false
 
-                    tr[][
+                    tr[] [
                         th [] [
-                            button [classList ["button", true; "is-small", true; "is-loading", isLoading]; OnClick (fun _ -> dispatch <| ToggleCard quiz.QuizId)][
+                            button [classList ["button", true; "is-small", true; "is-loading", isLoading]; OnClick (fun _ -> dispatch <| ToggleCard quiz.QuizId)] [
                                 str <| if hasCard then "-" else "+"
                             ]
                         ]
@@ -198,15 +198,15 @@ let view (dispatch : Msg -> unit) (user:MainUser) (appSettings:Settings) (model 
                         td [] [str quiz.Name]
                         td [] [str <| quiz.Status.ToString()]
                         td [] [
-                                a [urlForAdmin quiz.QuizId quiz.AdminToken |> Href; Target "_blank"][
+                                a [urlForAdmin quiz.QuizId quiz.AdminToken |> Href; Target "_blank"] [
                                     str "link"
-                                    span [Class "icon"][Fa.i [Fa.Solid.ExternalLinkAlt][]]
+                                    span [Class "icon"] [Fa.i [Fa.Solid.ExternalLinkAlt] []]
                                 ]
                         ]
                     ]
                     if hasCard then
-                        tr [][
-                            th [][]
+                        tr [] [
+                            th [] []
                             td [ColSpan 5] [ card dispatch appSettings model.Card.Value model.Form isLoading]
                         ]
             ]
@@ -214,23 +214,23 @@ let view (dispatch : Msg -> unit) (user:MainUser) (appSettings:Settings) (model 
     ]
 
 let card (dispatch : Msg -> unit) (appSettings:Settings) (card : MainModels.QuizProdCard) (form : DeleteForm option) isLoading =
-    div[][
-        div [Class "columns"][
-            div [Class "column"][
-                div [Class "field"][
-                    label [Class "label"][str "Quiz Name"; span [Class "has-text-danger"][str "*"]]
+    div[] [
+        div [Class "columns"] [
+            div [Class "column"] [
+                div [Class "field"] [
+                    label [Class "label"] [str "Quiz Name"; span [Class "has-text-danger"] [str "*"]]
                     let error = validateName card.Name
-                    div [Class "control"][
+                    div [Class "control"] [
                         input [classList ["input", true; "is-danger", error <> ""]; Type "text"; Placeholder "BIZZ QUIZZ #3"; MaxLength 128.0;
                             valueOrDefault card.Name;
                             OnChange (fun ev -> dispatch <| UpdateName ev.Value)]
 
                     ]
-                    p [Class "help is-danger"][str error]
+                    p [Class "help is-danger"] [str error]
                 ]
-                div [Class "field is-grouped"][
-                    div [Class "control"][
-                        label [Class "label"][str "Start Time"; span [Class "has-text-danger"][str "*"]]
+                div [Class "field is-grouped"] [
+                    div [Class "control"] [
+                        label [Class "label"] [str "Start Time"; span [Class "has-text-danger"] [str "*"]]
                         let error = validateStartTime card.StartTime
                         let className = "input" + if error <> "" then " is-danger" else ""
                         let opts =  [ Flatpickr.ClassName className; Flatpickr.EnableTimePicker true; Flatpickr.TimeTwentyFour true;
@@ -238,48 +238,48 @@ let card (dispatch : Msg -> unit) (appSettings:Settings) (card : MainModels.Quiz
                         let opts =  match card.StartTime with Some dt -> (Flatpickr.Value dt) :: opts | _ -> opts
                         Flatpickr.flatpickr opts
 
-                        p [Class "help is-danger"][str error]
+                        p [Class "help is-danger"] [str error]
                     ]
                 ]
 
-                div [Class "field"][
-                    label [Class "label"][str "Welcome Message"]
-                    div [Class "control"][
+                div [Class "field"] [
+                    label [Class "label"] [str "Welcome Message"]
+                    div [Class "control"] [
                         textarea [Class "textarea"; Placeholder "Describe your quiz"; MaxLength 512.0;
                             valueOrDefault card.WelcomeText;
-                            OnChange (fun ev -> dispatch <| UpdateWelcomeTxt ev.Value )][]
+                            OnChange (fun ev -> dispatch <| UpdateWelcomeTxt ev.Value )] []
                     ]
                 ]
-                div [Class "field"][
-                    label [Class "label"][str "Farewell Message"]
-                    div [Class "control"][
+                div [Class "field"] [
+                    label [Class "label"] [str "Farewell Message"]
+                    div [Class "control"] [
                         textarea [Class "textarea"; Placeholder "Say goodbye to your audience"; MaxLength 512.0;
                             valueOrDefault card.FarewellText;
-                            OnChange (fun ev -> dispatch <| UpdateFarewellTxt ev.Value )][]
+                            OnChange (fun ev -> dispatch <| UpdateFarewellTxt ev.Value )] []
                     ]
                 ]
-                div [Class "field"][
-                    label [Class "label"][str "Registration Message"]
-                    div [Class "control"][
+                div [Class "field"] [
+                    label [Class "label"] [str "Registration Message"]
+                    div [Class "control"] [
                         textarea [Class "textarea"; Placeholder "Instruction for registration"; MaxLength 512.0;
                             valueOrDefault card.RegText;
-                            OnChange (fun ev -> dispatch <| UpdateRegTxt ev.Value )][]
+                            OnChange (fun ev -> dispatch <| UpdateRegTxt ev.Value )] []
                     ]
                 ]
-                div [Class "field"][
-                    label [Class "label"][str "Information for the registered teams"]
-                    div [Class "control"][
+                div [Class "field"] [
+                    label [Class "label"] [str "Information for the registered teams"]
+                    div [Class "control"] [
                         textarea [Class "textarea"; Placeholder "private zoom link"; MaxLength 512.0;
                             valueOrDefault card.InfoText;
-                            OnChange (fun ev -> dispatch <| UpdateInfoTxt ev.Value )][]
+                            OnChange (fun ev -> dispatch <| UpdateInfoTxt ev.Value )] []
                     ]
                 ]
             ]
-            div [Class "column"][
+            div [Class "column"] [
 
-                div [Class "field"][
-                    label [Class "label"][str "Event Page"]
-                    div [Class "control"][
+                div [Class "field"] [
+                    label [Class "label"] [str "Event Page"]
+                    div [Class "control"] [
                         input [Class "input"; Type "text"; Placeholder "Link to facebook event or telegram"; MaxLength 128.0;
                             valueOrDefault card.EventPage;
                             OnChange (fun ev -> dispatch <| UpdateEventPage ev.Value)]
@@ -287,46 +287,46 @@ let card (dispatch : Msg -> unit) (appSettings:Settings) (card : MainModels.Quiz
                     ]
                 ]
 
-                div [Class "field"][
-                    label [Class "label"][str "Mixlr User Id"]
-                    div [Class "control"][
+                div [Class "field"] [
+                    label [Class "label"] [str "Mixlr User Id"]
+                    div [Class "control"] [
                         input [Class "input"; Type "number"; Placeholder ""; MaxLength 128.0;
                             valueOrDefault card.MixlrCode;
                             OnChange (fun ev -> dispatch <| UpdateMixlrCode ev.Value)]
 
                     ]
-                    small[][
+                    small[] [
                         str "https://mixlr.com/users/"
-                        span [Class "has-text-danger"][str "THISID"]
+                        span [Class "has-text-danger"] [str "THISID"]
                         str "/embed from "
-                        a[Href "https://mixlr.com/settings/embed/"][str "https://mixlr.com/settings/embed/"]
+                        a[Href "https://mixlr.com/settings/embed/"] [str "https://mixlr.com/settings/embed/"]
                     ]
                 ]
 
-                div [Class "field"][
-                    label [Class "label"][str "Quiz picture (128x128) 128K size max"]
+                div [Class "field"] [
+                    label [Class "label"] [str "Quiz picture (128x128) 128K size max"]
 
                     yield! MainTemplates.imgArea128 card.QuizId isLoading (QuizImgChanged>>dispatch) (QuizImgClear>>dispatch) appSettings.MediaHost card.ImgKey "/logo256.png" "Reset to default"
                 ]
 
-                div [Class "field"][
-                    label [Class "label"][str "Application links"]
-                    div [Class "content"][
+                div [Class "field"] [
+                    label [Class "label"] [str "Application links"]
+                    div [Class "content"] [
                         let link caption href =
-                            li[][str caption; str " "; a [Href href; Target "_blank"][
-                                    str "link"; span [Class "icon"][Fa.i [Fa.Solid.ExternalLinkAlt][]]]]
+                            li [] [str caption; str " "; a [Href href; Target "_blank"] [
+                                    str "link"; span [Class "icon"] [Fa.i [Fa.Solid.ExternalLinkAlt] []]]]
 
-                        ul[][
+                        ul [] [
                             urlForAdmin card.QuizId card.AdminToken |> link "Admin"
                             urlForReg card.QuizId card.RegToken |> link "Registration"
                             urlForAud card.QuizId card.ListenToken |> link "Audience"
-                            urlForResults card.QuizId card.Name card.ImgKey card.ListenToken appSettings.MediaHost |> link "Results Page"
+                            urlForResults card.QuizId card.Name card.ImgKey card.ResultsToken appSettings.MediaHost |> link "Results Page"
                         ]
                     ]
                 ]
-                div [Class "field"][
-                    div [Class "control"][
-                        label [Class "checkbox"][
+                div [Class "field"] [
+                    div [Class "control"] [
+                        label [Class "checkbox"] [
                             input [Type "checkbox"; Checked card.WithPremoderation; OnChange (fun ev -> dispatch <| UpdateIsPremoderated ev.Checked)]
                             str " registration is moderated"
                         ]
@@ -339,19 +339,19 @@ let card (dispatch : Msg -> unit) (appSettings:Settings) (card : MainModels.Quiz
             MainTemplates.deleteForm dispatch "Type name of the Quiz to confirm" card.Name fm.ConfirmText fm.IsSending fm.FormError
                 ToggleDeleteForm DeleteFormUpdateText (DeleteQuiz card.QuizId)
         | None ->
-            nav [Class "level"][
-                div [Class "level-left"][
-                    div [Class "field is-grouped"][
-                        div [Class "control"][
+            nav [Class "level"] [
+                div [Class "level-left"] [
+                    div [Class "field is-grouped"] [
+                        div [Class "control"] [
                             let hasErrors = not (validate card |> List.isEmpty)
                             button [Class "button is-dark "; Disabled hasErrors; OnClick (fun _ -> dispatch SubmitCard)] [ str "Submit"]
                         ]
-                        div [Class "control"][
+                        div [Class "control"] [
                             button [Class "button"; OnClick (fun _ -> dispatch CancelCard)] [ str "Cancel"]
                         ]
                     ]
                 ]
-                div [Class "level-right"][
+                div [Class "level-right"] [
                     button [Class "button is-danger "; OnClick (fun _ -> dispatch ToggleDeleteForm)] [ str "Delete"]
                 ]
             ]

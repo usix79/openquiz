@@ -577,6 +577,7 @@ module Quizzes =
         let AdminToken = "AdminToken"
         let RegToken = "RegToken"
         let ListenToken = "ListenToken"
+        let ResultsToken = "ResultsToken"
         let PkgId = "PkgId"
         let PkgQwIdx = "PkgQwIdx"
         let EventPage = "EventPage"
@@ -598,15 +599,15 @@ module Quizzes =
 
     let private dscFields = [
         Fields.Id; Fields.Producer; Fields.StartTime; Fields.Name; Fields.Status; Fields.WelcomeText; Fields.FarewellText; Fields.RegText; Fields.InfoText;
-        Fields.ImgKey;  Fields.WithPremoderation; Fields.AdminToken; Fields.RegToken; Fields.ListenToken;
+        Fields.ImgKey;  Fields.WithPremoderation; Fields.AdminToken; Fields.RegToken; Fields.ListenToken; Fields.ResultsToken;
         Fields.PkgId; Fields.PkgQwIdx; Fields.EventPage; Fields.MixlrCode; Fields.StreamUrl]
 
     let private dscBuilder id producer startTime name status wlcmText frwlText regText infoText
-        imgKey withPremoderation adminToken regToken listenToken pkgId pkgQwIdx
+        imgKey withPremoderation adminToken regToken listenToken resultsToken pkgId pkgQwIdx
         evtPage mixlrCode streamUrl: Domain.QuizDescriptor =
         {QuizId = id; Producer = producer; StartTime = startTime; Name = name; Status = status |> Option.defaultValue Domain.Setup;
          WelcomeText = wlcmText; FarewellText = frwlText; RegText = regText; InfoText = infoText; ImgKey = imgKey; WithPremoderation = withPremoderation;
-         AdminToken = adminToken; RegToken = regToken; ListenToken = listenToken;
+         AdminToken = adminToken; RegToken = regToken; ListenToken = listenToken; ResultsToken = resultsToken;
          PkgId = pkgId; PkgSlipIdx = pkgQwIdx; EventPage = evtPage; MixlrCode = mixlrCode; StreamUrl = streamUrl}
 
     let private dscReader =
@@ -625,6 +626,7 @@ module Quizzes =
         <*> (optDef Fields.AdminToken "" A.string)
         <*> (optDef Fields.RegToken "" A.string)
         <*> (optDef Fields.ListenToken "" A.string)
+        <*> (optFirstDef [Fields.ResultsToken; Fields.ListenToken] "" A.string)
         <*> (opt Fields.PkgId (A.nullOr A.number) ??>-> P.int)
         <*> (opt Fields.PkgQwIdx (A.nullOr A.number) ??>-> P.int)
         <*> (optDef Fields.EventPage "" A.string)
@@ -683,6 +685,7 @@ module Quizzes =
             yield! BuildAttr.string Fields.AdminToken item.Dsc.AdminToken
             yield! BuildAttr.string Fields.RegToken item.Dsc.RegToken
             yield! BuildAttr.string Fields.ListenToken item.Dsc.ListenToken
+            yield! BuildAttr.string Fields.ResultsToken item.Dsc.ResultsToken
             yield! BuildAttr.optional Fields.PkgId ScalarInt32 item.Dsc.PkgId
             yield! BuildAttr.optional Fields.PkgQwIdx ScalarInt32 item.Dsc.PkgSlipIdx
             yield! BuildAttr.string Fields.EventPage item.Dsc.EventPage

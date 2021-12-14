@@ -1,5 +1,11 @@
 # Release Notes
 
+## 1.18.0 - 2021-12-14
+* Max size of a mediafile is 8Mb
+* External links to a mediafile are supported
+* Quizz aoudience page and results page have different access tokens
+* Trailing '==' are removed from urls
+
 ## 1.17.0 - 2021-07-27
 * Added the ability to set points for teams that didn't submit an answer
 * Removed link for audience to the registration page

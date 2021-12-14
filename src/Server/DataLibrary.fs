@@ -424,6 +424,17 @@ module Read =
     let optDef key defValue typ =
         AttrReader(Map.tryFind key >> Option.map typ >> Option.defaultValue defValue >> Ok)
 
+    let optFirstDef keys defValue typ =
+        let rec tryFindFirst (keys:string list) map =
+            match keys with
+            | [] -> None
+            | head::tail ->
+                match Map.tryFind head map with
+                | Some value -> Some value
+                | None -> tryFindFirst tail map
+
+        AttrReader(tryFindFirst keys >> Option.map typ >> Option.defaultValue defValue >> Ok)
+
     let choice key typ f =
         fun m ->
             let ch = m |> Map.tryFind key |> Option.map typ

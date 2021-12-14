@@ -250,6 +250,7 @@ module Main =
             Name = quiz.Dsc.Name
             ImgKey = quiz.Dsc.ImgKey
             ListenToken = quiz.Dsc.ListenToken
+            ResultsToken = quiz.Dsc.ResultsToken
             AdminToken = quiz.Dsc.AdminToken
             RegToken = quiz.Dsc.RegToken
             WelcomeText = quiz.Dsc.WelcomeText
@@ -393,6 +394,7 @@ module Teams =
                 | _ -> Map.empty
 
             LT = quiz.Dsc.ListenToken
+            RT = quiz.Dsc.ResultsToken
             Mxlr = quiz.Dsc.MixlrCode
             Url = quiz.Dsc.StreamUrl
             V = quiz.Version

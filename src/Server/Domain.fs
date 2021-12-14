@@ -266,6 +266,7 @@ type QuizDescriptor = {
     ImgKey : string
     WithPremoderation : bool
     ListenToken : string
+    ResultsToken : string
     AdminToken : string
     RegToken : string
     PkgId : int option
@@ -303,6 +304,7 @@ module Quizzes =
                 InfoText = ""
                 WithPremoderation = false
                 ListenToken = Common.generateRandomToken()
+                ResultsToken = Common.generateRandomToken()
                 AdminToken = Common.generateRandomToken()
                 RegToken = Common.generateRandomToken()
                 PkgId = None

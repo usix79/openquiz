@@ -228,15 +228,15 @@ let view (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) (model : M
     | false -> notActiveView dispatch user model.Error l10n
 
 let notActiveView (dispatch : Msg -> unit) (user:TeamUser) error l10n =
-    section [Class "hero is-danger is-medium is-fullheight"][
-        div [Class "hero-body"][
-            div [Class "container has-text-centered is-fluid"][
+    section [Class "hero is-danger is-medium is-fullheight"] [
+        div [Class "hero-body"] [
+            div [Class "container has-text-centered is-fluid"] [
                 p [Class "title"] [ str l10n.NotActive ]
                 p [ Class "title" ] [ str user.QuizName ]
                 p [ Class "subtitle" ] [ str user.TeamName ]
                 p [ Class "subtitle" ] [ str l10n.AnotherSession ]
                 a [Class "button is-large"; OnClick (fun _ -> dispatch (Reactivate)) ] [ str l10n.UseThisDevice ]
-                p [Class "help is-white"][ str error ]
+                p [Class "help is-white"] [ str error ]
             ]
         ]
     ]
@@ -258,20 +258,20 @@ let activeView (dispatch : Msg -> unit) (user:TeamUser) (settings:Settings) quiz
                 h4 [Class "subtitle is-4" ] [ str user.TeamName ]
 
                 match quiz.TS with
-                | New -> div [Class "notification is-white"][str l10n.WaitingForConfirmation]
+                | New -> div [Class "notification is-white"] [str l10n.WaitingForConfirmation]
                 | Admitted ->
-                    div[][
+                    div [] [
                         match model.ActiveTab with
                         | History -> yield historyView dispatch model l10n
                         | Question ->
                             match quiz.QS, model.Answers with
                             | Live, Some answers -> yield quiestionView dispatch settings quiz answers isCountdownActive isCountdownFinished l10n
                             | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg l10n.Common
-                        | Results -> yield MainTemplates.resultsViewEmb user.QuizId quiz.LT (Some user.TeamId) settings.MediaHost
+                        | Results -> yield MainTemplates.resultsViewEmb user.QuizId quiz.RT (Some user.TeamId) settings.MediaHost
                     ]
-                | Rejected -> div [Class "notification is-white"][span[Class "has-text-danger has-text-weight-bold"][str l10n.RegistrationHasBeenRejected]]
+                | Rejected -> div [Class "notification is-white"] [span [Class "has-text-danger has-text-weight-bold"] [str l10n.RegistrationHasBeenRejected]]
             ]
-            p [Class "help is-danger"][ str model.Error ]
+            p [Class "help is-danger"] [ str model.Error ]
             div [ Style [Height "66px"]] []
 
             if quiz.TS = Admitted then
@@ -291,7 +291,7 @@ let quiestionView (dispatch : Msg -> unit) (settings:Settings) quiz answers isCo
     ]
 
 let answerStatusIcon status txt =
-    span [Class "icon is-large is-right has-text-black"][
+    span [Class "icon is-large is-right has-text-black"] [
         Fa.i [ match status with
                 | Input -> Fa.Solid.Question
                 | Sending -> Fa.Solid.Spinner
@@ -302,23 +302,23 @@ let answerStatusIcon status txt =
     ]
 
 let jeopardyControl dispatch jpd readOnly (l10n:L10n.TeamL10n)=
-    p [Class "control"][
+    p [Class "control"] [
         a [classList ["button", true; "has-text-grey-light", not jpd; "has-text-danger", jpd];
-         Title l10n.Jeopardy; ReadOnly readOnly; OnClick (fun _ -> dispatch <| ToggleJeopardy 0)][Fa.i [ Fa.Solid.Paw] [str <| " " + l10n.Jeopardy ]]
+         Title l10n.Jeopardy; ReadOnly readOnly; OnClick (fun _ -> dispatch <| ToggleJeopardy 0)] [Fa.i [ Fa.Solid.Paw] [str <| " " + l10n.Jeopardy ]]
     ]
 
 let awArea dispatch aw jpd status withChoice readOnly l10n =
-    div [Class "control has-icons-right"][
+    div [Class "control has-icons-right"] [
         if withChoice then jeopardyControl dispatch jpd readOnly l10n
 
         textarea [ Class "textarea"; MaxLength 64.0;
             ReadOnly readOnly; valueOrDefault aw;
-            OnChange (fun ev -> dispatch <| UpdateAnswer (0,ev.Value) )][]
+            OnChange (fun ev -> dispatch <| UpdateAnswer (0,ev.Value) )] []
         answerStatusIcon status aw
     ]
 
 let singleQwView dispatch (settings:Settings) tour slip answers isCountdownActive isCountdownFinished (l10n:L10n.TeamL10n) =
-    div[][
+    div [] [
         MainTemplates.singleTourInfo settings.MediaHost tour.Name slip l10n.Common
 
         let (txt,jpd) = answers.Get 0
@@ -327,25 +327,25 @@ let singleQwView dispatch (settings:Settings) tour slip answers isCountdownActiv
         | X3 -> ()
         | QW slip ->
             if isCountdownActive || isCountdownFinished then
-                label [Class "label"][str l10n.YourAnswer]
+                label [Class "label"] [str l10n.YourAnswer]
                 match slip.Choices with
                 | None ->
                     awArea dispatch txt jpd answers.Status slip.Ch isCountdownFinished l10n
                 | Some list ->
                     if slip.Ch then jeopardyControl dispatch jpd isCountdownFinished l10n
-                    br[]
-                    div [Class "columns is-centered"][
-                        div [Class "column is-half mx-3"][
-                            ul[][
+                    br []
+                    div [Class "columns is-centered"] [
+                        div [Class "column is-half mx-3"] [
+                            ul [] [
                                 for ch in list do
-                                    li [][
-                                        div [Class "control has-icons-left has-icons-right"][
-                                            a [classList ["button", true; "is-fullwidth", true; "is-info", txt = ch]; OnClick (fun _ -> dispatch <| UpdateAnswer (0, ch) )][str ch]
+                                    li [] [
+                                        div [Class "control has-icons-left has-icons-right"] [
+                                            a [classList ["button", true; "is-fullwidth", true; "is-info", txt = ch]; OnClick (fun _ -> dispatch <| UpdateAnswer (0, ch) )] [str ch]
                                             if txt = ch then
                                                 answerStatusIcon answers.Status txt
 
                                         ]
-                                        br[]
+                                        br []
                                     ]
                             ]
                         ]
@@ -354,22 +354,22 @@ let singleQwView dispatch (settings:Settings) tour slip answers isCountdownActiv
         | AW slip ->
             match slip.Aw with
             | OpenAnswer _ ->
-                label [Class "label"][str l10n.YourAnswer]
+                label [Class "label"] [str l10n.YourAnswer]
                 awArea dispatch txt jpd answers.Status slip.Ch true l10n
             | ChoiceAnswer list ->
                 if slip.Ch then jeopardyControl dispatch jpd true l10n
                 br[]
-                div [Class "columns is-centered"][
-                    div [Class "column is-half mx-3"][
-                        ul[][
+                div [Class "columns is-centered"] [
+                    div [Class "column is-half mx-3"] [
+                        ul[] [
                             for ch in list do
-                                li [][
-                                    div [Class "control has-icons-left has-icons-right"][
+                                li [] [
+                                    div [Class "control has-icons-left has-icons-right"] [
                                         a [classList ["button", true; "is-fullwidth", true;
-                                            "is-success", ch.IsCorrect && txt = ch.Text; "is-danger", (not ch.IsCorrect) && txt = ch.Text]][str ch.Text]
+                                            "is-success", ch.IsCorrect && txt = ch.Text; "is-danger", (not ch.IsCorrect) && txt = ch.Text]] [str ch.Text]
 
                                         if ch.IsCorrect then
-                                            span [Class "icon is-large is-left has-text-black"][
+                                            span [Class "icon is-large is-left has-text-black"] [
                                                 Fa.i [Fa.Regular.Grin] [ ]
                                             ]
 
@@ -384,14 +384,14 @@ let singleQwView dispatch (settings:Settings) tour slip answers isCountdownActiv
     ]
 
 let awInput dispatch idx aw jpd status withChoice readOnly (l10n:L10n.TeamL10n) =
-    div [Style [MaxWidth "320px"; Display DisplayOptions.InlineBlock]][
-        div [Class "field has-addons"][
+    div [Style [MaxWidth "320px"; Display DisplayOptions.InlineBlock]] [
+        div [Class "field has-addons"] [
             if (withChoice) then
-                p [Class "control"][
+                p [Class "control"] [
                     a [classList ["button", true; "has-text-grey-light", not jpd; "has-text-danger", jpd];
-                     Title l10n.Jeopardy; ReadOnly readOnly; OnClick (fun _ -> dispatch <| ToggleJeopardy idx)][Fa.i [ Fa.Solid.Paw] [ ]]
+                     Title l10n.Jeopardy; ReadOnly readOnly; OnClick (fun _ -> dispatch <| ToggleJeopardy idx)] [Fa.i [ Fa.Solid.Paw] [ ]]
                 ]
-            p [Class "control has-icons-right"][
+            p [Class "control has-icons-right"] [
                 input [Class "input"; Type "text"; MaxLength 64.0; Placeholder l10n.YourAnswer;
                     ReadOnly readOnly; valueOrDefault aw; OnChange (fun ev -> dispatch <| UpdateAnswer (idx,ev.Value) )]
 
@@ -401,7 +401,7 @@ let awInput dispatch idx aw jpd status withChoice readOnly (l10n:L10n.TeamL10n) 
     ]
 
 let multipleQwView dispatch settings tour name slips answers isCountdownFinished l10n =
-    div [][
+    div [] [
         h5 [Class "subtitle is-5"] [str name]
         for (idx,slip) in slips |> List.indexed do
             let (aw, jpd) = answers.Get idx
@@ -417,7 +417,7 @@ let multipleQwView dispatch settings tour name slips answers isCountdownFinished
             | AW slip ->
                 p [Class "has-text-weight-semibold"] [str <| sprintf "%s %s.%i" l10n.Question tour.Name (idx + 1)]
                 awInput dispatch idx aw jpd answers.Status slip.Ch isCountdownFinished l10n
-                p [Class "has-text-weight-light is-family-secondary is-size-6"][
+                p [Class "has-text-weight-light is-family-secondary is-size-6"] [
                     str <| l10n.CorrectAnswer + ": "
                     str (slip.Aw.ToRawString().Split('\n').[0])
                 ]
@@ -429,7 +429,7 @@ let multipleQwView dispatch settings tour name slips answers isCountdownFinished
     ]
 
 let historyView dispatch model l10n =
-    table [Class "table is-hoverable is-fullwidth"][
+    table [Class "table is-hoverable is-fullwidth"] [
         thead [ ] [
             tr [ ] [
                 th [Style [Width "30px"] ] [ str "#" ]
@@ -447,10 +447,10 @@ let historyView dispatch model l10n =
                     | Some _ -> ["has-text-danger", true]
                     | None -> []
 
-                tr [ ][
-                    td [] [p [classList modifiers][str aw.QwName]]
-                    td [Style [TextAlign TextAlignOptions.Left]] [p [classList modifiers][
-                        if aw.AwJpd then Fa.i [Fa.Solid.Paw; Fa.PullRight][]
+                tr [ ] [
+                    td [] [p [classList modifiers] [str aw.QwName]]
+                    td [Style [TextAlign TextAlignOptions.Left]] [p [classList modifiers] [
+                        if aw.AwJpd then Fa.i [Fa.Solid.Paw; Fa.PullRight] []
                         str (defaultArg aw.AwTxt "")]
                     ]
                     td [] [
@@ -459,7 +459,7 @@ let historyView dispatch model l10n =
                             | Some d when d > 0m -> (sprintf "+%M" d)
                             | Some d -> d.ToString()
                             | None -> ""
-                        p [classList modifiers][str txt]
+                        p [classList modifiers] [str txt]
                     ]
                     td [] [
                         if aw.AnswerReceived then
@@ -467,22 +467,22 @@ let historyView dispatch model l10n =
                             let isDownSelected = aw.Vote |> Option.defaultValue true |> not
                             button [
                                     Class "button is-small is-white"
-                                    OnClick (fun _ -> Vote (aw.QwKey, if isUpSelected then None else Some true) |> dispatch)][
-                                span [Class <| "icon " + if isUpSelected then "has-text-success" else "has-text-grey"][Fa.i [Fa.Regular.ThumbsUp][]]
+                                    OnClick (fun _ -> Vote (aw.QwKey, if isUpSelected then None else Some true) |> dispatch)] [
+                                span [Class <| "icon " + if isUpSelected then "has-text-success" else "has-text-grey"] [Fa.i [Fa.Regular.ThumbsUp] []]
                             ]
                             button [
                                     Class "button is-small is-white";
-                                    OnClick (fun _ -> Vote (aw.QwKey, if isDownSelected then None else Some false) |> dispatch)][
-                                span [Class <| "icon " + if isDownSelected then "has-text-danger" else "has-text-grey"][Fa.i [Fa.Regular.ThumbsDown][]]
+                                    OnClick (fun _ -> Vote (aw.QwKey, if isDownSelected then None else Some false) |> dispatch)] [
+                                span [Class <| "icon " + if isDownSelected then "has-text-danger" else "has-text-grey"] [Fa.i [Fa.Regular.ThumbsDown] []]
                             ]
                     ]
                 ]
 
                 if aw.QwAw <> "" then
-                    tr [ ][
+                    tr [ ] [
                         td [] []
                         td [ColSpan 3; Style [TextAlign TextAlignOptions.Left]] [
-                            span [Class "is-italic has-text-weight-light is-family-secondary is-size-7"][
+                            span [Class "is-italic has-text-weight-light is-family-secondary is-size-7"] [
                                 str <| l10n.CorrectAnswer + ": "
                                 str (aw.QwAw.Split('\n').[0])
                             ]

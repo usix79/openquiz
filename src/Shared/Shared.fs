@@ -68,7 +68,7 @@ type AdminUser = {
     QuizId : int
     QuizName : string
     QuizImg : string
-    ListenToken : string
+    ResultsToken : string
     ContentHost : string
 }
 
@@ -397,6 +397,7 @@ module MainModels =
         Name : string
         ImgKey : string
         ListenToken : string
+        ResultsToken : string
         AdminToken : string
         RegToken : string
         WelcomeText : string
@@ -589,6 +590,7 @@ module TeamModels =
         TC : TourCard option
         Aw : Map<int,(string*bool)>
         LT : string
+        RT : string
         Mxlr : int option
         Url : string option
         V : int
@@ -642,8 +644,8 @@ module Infra =
     let s3KeyForMedia key =
         sprintf "%s/%s" prefix key
 
-    let urlForMedia mediaHost key =
-        sprintf "%s/%s/%s" mediaHost prefix key
+    let urlForMedia mediaHost (key:string) =
+        if key.Contains(".") then key else sprintf "%s/%s/%s" mediaHost prefix key
 
     let urlForMediaOrDefault mediaHost key defaultKey=
         urlForMedia mediaHost (if key <> "" then key else defaultKey)

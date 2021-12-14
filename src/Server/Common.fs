@@ -28,6 +28,7 @@ let generateRandomToken() =
     generateRandomToken'()
         .Replace("/", "_")
         .Replace("+", "-")
+        .TrimEnd('=')
 
 let tryParseInt32 (str:string) =
     match System.Int32.TryParse(str) with
