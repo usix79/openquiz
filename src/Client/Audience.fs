@@ -124,10 +124,10 @@ let quizView (dispatch : Msg -> unit) settings (model:Model) (quizId:int) (quiz:
                             | MS (name,slips) -> yield multipleQwView settings tour name slips l10n
                         | None -> ()
                     | _ -> yield MainTemplates.playQuiz quiz.QS quiz.Msg l10n.Common
-                | Results -> yield MainTemplates.resultsViewEmb  quizId quiz.LT None settings.MediaHost
+                | Results -> yield MainTemplates.resultsViewEmb  quizId quiz.RT None settings.MediaHost
 
             ]
-            p [Class "help is-danger"][ str model.Error ]
+            p [Class "help is-danger"] [ str model.Error ]
             div [ Style [Height "66px"]] []
         ]
 
@@ -135,7 +135,7 @@ let quizView (dispatch : Msg -> unit) settings (model:Model) (quizId:int) (quiz:
     ]
 
 let singleQwView (settings:Settings) tour (slip:Shared.SingleSlipCard) l10n =
-    div[][
+    div [] [
         MainTemplates.singleTourInfo settings.MediaHost tour.Name slip l10n.Common
 
         match slip with
@@ -145,13 +145,13 @@ let singleQwView (settings:Settings) tour (slip:Shared.SingleSlipCard) l10n =
             | None -> ()
             | Some list ->
                 br[]
-                div [Class "columns is-centered"][
-                    div [Class "column is-half mx-3"][
-                        ul[][
+                div [Class "columns is-centered"] [
+                    div [Class "column is-half mx-3"] [
+                        ul[] [
                             for ch in list do
-                                li [][
-                                    div [Class "control has-icons-left has-icons-right"][
-                                        a [Class "button is-fullwidth"][str ch]
+                                li [] [
+                                    div [Class "control has-icons-left has-icons-right"] [
+                                        a [Class "button is-fullwidth"] [str ch]
                                     ]
                                     br[]
                                 ]
@@ -164,16 +164,16 @@ let singleQwView (settings:Settings) tour (slip:Shared.SingleSlipCard) l10n =
             | OpenAnswer _ -> ()
             | ChoiceAnswer list ->
                 br[]
-                div [Class "columns is-centered"][
-                    div [Class "column is-half mx-3"][
-                        ul[][
+                div [Class "columns is-centered"] [
+                    div [Class "column is-half mx-3"] [
+                        ul[] [
                             for ch in list do
-                                li [][
-                                    div [Class "control has-icons-left"][
-                                        a [Class "button is-fullwidth"][str ch.Text]
+                                li [] [
+                                    div [Class "control has-icons-left"] [
+                                        a [Class "button is-fullwidth"] [str ch.Text]
 
                                         if ch.IsCorrect then
-                                            span [Class "icon is-large is-left has-text-black"][
+                                            span [Class "icon is-large is-left has-text-black"] [
                                                 Fa.i [Fa.Regular.Grin] [ ]
                                             ]
                                     ]
@@ -185,7 +185,7 @@ let singleQwView (settings:Settings) tour (slip:Shared.SingleSlipCard) l10n =
     ]
 
 let multipleQwView (settings:Settings) tour name slips l10n =
-    div [][
+    div [] [
         h5 [Class "subtitle is-5"] [str name]
         for (idx,slip) in slips |> List.indexed do
             match slip with
@@ -198,7 +198,7 @@ let multipleQwView (settings:Settings) tour name slips l10n =
 
             | AW slip ->
                 p [Class "has-text-weight-semibold"] [str <| sprintf "%s %s.%i" l10n.Question tour.Name (idx + 1)]
-                p [Class "has-text-weight-light is-family-secondary is-size-6"][
+                p [Class "has-text-weight-light is-family-secondary is-size-6"] [
                     str <| l10n.CorrectAnswer + ": "
                     str (slip.Aw.ToRawString().Split('\n').[0])
                 ]
@@ -210,7 +210,7 @@ let multipleQwView (settings:Settings) tour name slips l10n =
     ]
 
 let historyView dispatch model l10n =
-    table [Class "table is-hoverable is-fullwidth"][
+    table [Class "table is-hoverable is-fullwidth"] [
         thead [ ] [
             tr [ ] [
                 th [Style [Width "30px"] ] [ str "#" ]
@@ -222,10 +222,10 @@ let historyView dispatch model l10n =
         tbody [ ] [
             for aw in model.History |> List.rev do
 
-                tr [ ][
-                    td [] [p [][str aw.QwName]]
+                tr [ ] [
+                    td [] [p [] [str aw.QwName]]
                     td [] [
-                        p [Class "is-italic"][ str (aw.QwAw.Split('\n').[0])]
+                        p [Class "is-italic"] [ str (aw.QwAw.Split('\n').[0])]
                     ]
                     td [] [ ]
                 ]

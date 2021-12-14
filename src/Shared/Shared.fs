@@ -620,6 +620,7 @@ module AudModels =
         Fwl : string
         TC : TourCard option
         LT : string
+        RT : string
         Mxlr : int option
         Url : string option
         V : int
@@ -653,8 +654,8 @@ module Infra =
     let urlForMediaImgSafe mediaHost key =
         urlForMedia mediaHost (if key <> "" then key else defaultMediaImg256)
 
-    let defaultMediaImg256 = "logo256.png"
-    let defaultMediaImg = "logo.png"
+    let defaultMediaImg256 = "/logo256.png"
+    let defaultMediaImg = "/logo.png"
 
 
 

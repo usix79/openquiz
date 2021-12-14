@@ -457,6 +457,7 @@ module Audience =
                 | Some qw when quiz.Dsc.Status = Live -> Some <| tourCard quiz.CurrentTourIndex qw
                 | _ -> None
             LT = quiz.Dsc.ListenToken
+            RT = quiz.Dsc.ResultsToken
             Mxlr = quiz.Dsc.MixlrCode
             Url = quiz.Dsc.StreamUrl
             V = quiz.Version
