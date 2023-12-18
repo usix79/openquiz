@@ -1,108 +1,1965 @@
 <html>
-    <head>
-        <meta content="text/html; charset=UTF-8" http-equiv="content-type">
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="description" content="Free service for producing online quizzes.">
-        <meta name="keywords"
-            content="quiz, quizzes, www, online quizzes, free quizzes, quizzes service, quizzes platform, квиз, чгк, что где когда, программа для чгк, онлайн-чгк, вопросы чгк, платформа для квизов, обработка ответов чгк">
-        <meta name="author" content="Serhii Sabirov">
-        <meta property="og:type" content="website">
-        <meta property="og:title" content="Open Quiz">
-        <meta property="og:description" content="Free service for producing online quizzes.">
-        <meta property="og:image" content="https://www.open-quiz.com/logo-card.png">
-        <meta property="og:url" content="https://www.open-quiz.com">
-        <meta property="og:site_name" content="Open Quiz">
-        <meta name="twitter:image:alt" content="Open Quiz Logo">
-        <meta property="fb:app_id" content="538011207113822" />
-        <title>Open Quiz</title>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.8.0/css/bulma.min.css">
-        <link rel="icon" href="favicon.png" sizes="32x32" type="image/png">
 
-        <style type="text/css">ol.lst-kix_v200j9rrmfq5-3{list-style-type:none}.lst-kix_u55wq1eprzs4-0>li:before{content:"\0025cf  "}ol.lst-kix_v200j9rrmfq5-4{list-style-type:none}ol.lst-kix_v200j9rrmfq5-5{list-style-type:none}ol.lst-kix_v200j9rrmfq5-6{list-style-type:none}.lst-kix_u55wq1eprzs4-2>li:before{content:"\0025a0  "}ol.lst-kix_v200j9rrmfq5-0{list-style-type:none}ol.lst-kix_v200j9rrmfq5-1{list-style-type:none}.lst-kix_u55wq1eprzs4-3>li:before{content:"\0025cf  "}ol.lst-kix_v200j9rrmfq5-2{list-style-type:none}ol.lst-kix_v200j9rrmfq5-7{list-style-type:none}ol.lst-kix_v200j9rrmfq5-8{list-style-type:none}ul.lst-kix_80i1aog082ia-8{list-style-type:none}.lst-kix_u55wq1eprzs4-1>li:before{content:"\0025cb  "}ul.lst-kix_80i1aog082ia-6{list-style-type:none}.lst-kix_u55wq1eprzs4-8>li:before{content:"\0025a0  "}ul.lst-kix_80i1aog082ia-7{list-style-type:none}ul.lst-kix_80i1aog082ia-4{list-style-type:none}ul.lst-kix_80i1aog082ia-5{list-style-type:none}ul.lst-kix_80i1aog082ia-2{list-style-type:none}.lst-kix_u55wq1eprzs4-6>li:before{content:"\0025cf  "}ul.lst-kix_80i1aog082ia-3{list-style-type:none}ul.lst-kix_80i1aog082ia-0{list-style-type:none}.lst-kix_u55wq1eprzs4-7>li:before{content:"\0025cb  "}ul.lst-kix_80i1aog082ia-1{list-style-type:none}.lst-kix_u55wq1eprzs4-4>li:before{content:"\0025cb  "}.lst-kix_u55wq1eprzs4-5>li:before{content:"\0025a0  "}.lst-kix_ixctali3daeq-1>li{counter-increment:lst-ctn-kix_ixctali3daeq-1}ol.lst-kix_ixctali3daeq-6.start{counter-reset:lst-ctn-kix_ixctali3daeq-6 0}.lst-kix_80i1aog082ia-7>li:before{content:"\0025cb  "}.lst-kix_80i1aog082ia-8>li:before{content:"\0025a0  "}.lst-kix_v200j9rrmfq5-1>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-1}ol.lst-kix_stlthlqvwps6-5.start{counter-reset:lst-ctn-kix_stlthlqvwps6-5 0}.lst-kix_v200j9rrmfq5-8>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-8}ol.lst-kix_ixctali3daeq-1.start{counter-reset:lst-ctn-kix_ixctali3daeq-1 0}.lst-kix_odfwaah4vgxt-6>li:before{content:"\0025cf  "}ol.lst-kix_v200j9rrmfq5-4.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-4 0}.lst-kix_v200j9rrmfq5-4>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-4}.lst-kix_odfwaah4vgxt-0>li:before{content:"\0025cf  "}.lst-kix_odfwaah4vgxt-8>li:before{content:"\0025a0  "}.lst-kix_stlthlqvwps6-2>li{counter-increment:lst-ctn-kix_stlthlqvwps6-2}.lst-kix_odfwaah4vgxt-2>li:before{content:"\0025a0  "}ol.lst-kix_stlthlqvwps6-8.start{counter-reset:lst-ctn-kix_stlthlqvwps6-8 0}.lst-kix_odfwaah4vgxt-4>li:before{content:"\0025cb  "}ol.lst-kix_mg1w4twwuh06-0.start{counter-reset:lst-ctn-kix_mg1w4twwuh06-0 0}.lst-kix_uwdzswms202y-8>li:before{content:"\0025a0  "}.lst-kix_2j7lekxqnkpt-3>li:before{content:"\0025cf  "}.lst-kix_2j7lekxqnkpt-5>li:before{content:"\0025a0  "}.lst-kix_2j7lekxqnkpt-7>li:before{content:"\0025cb  "}ol.lst-kix_v200j9rrmfq5-2.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-2 0}.lst-kix_xvzjmbyy0we4-1>li:before{content:"\0025cb  "}.lst-kix_dudpda2stflo-1>li:before{content:"\0025cb  "}.lst-kix_80i1aog082ia-6>li:before{content:"\0025cf  "}.lst-kix_dudpda2stflo-3>li:before{content:"\0025cf  "}.lst-kix_80i1aog082ia-4>li:before{content:"\0025cb  "}.lst-kix_xvzjmbyy0we4-7>li:before{content:"\0025cb  "}.lst-kix_80i1aog082ia-2>li:before{content:"\0025a0  "}.lst-kix_dudpda2stflo-7>li:before{content:"\0025cb  "}.lst-kix_xvzjmbyy0we4-5>li:before{content:"\0025a0  "}.lst-kix_dudpda2stflo-5>li:before{content:"\0025a0  "}.lst-kix_r4w1dj9n68ox-4>li:before{content:"\0025cb  "}.lst-kix_r4w1dj9n68ox-8>li:before{content:"\0025a0  "}.lst-kix_ixctali3daeq-7>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-7,lower-latin) ". "}.lst-kix_xvzjmbyy0we4-3>li:before{content:"\0025cf  "}.lst-kix_80i1aog082ia-0>li:before{content:"\0025cf  "}.lst-kix_r4w1dj9n68ox-6>li:before{content:"\0025cf  "}.lst-kix_ixctali3daeq-1>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-1,lower-latin) ". "}.lst-kix_r4w1dj9n68ox-0>li:before{content:"\0025cf  "}.lst-kix_ixctali3daeq-3>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-3,decimal) ". "}.lst-kix_ixctali3daeq-2>li{counter-increment:lst-ctn-kix_ixctali3daeq-2}.lst-kix_ixctali3daeq-8>li{counter-increment:lst-ctn-kix_ixctali3daeq-8}.lst-kix_stlthlqvwps6-3>li{counter-increment:lst-ctn-kix_stlthlqvwps6-3}.lst-kix_2j7lekxqnkpt-1>li:before{content:"\0025cb  "}.lst-kix_r4w1dj9n68ox-2>li:before{content:"\0025a0  "}.lst-kix_ixctali3daeq-5>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-5,lower-roman) ". "}ul.lst-kix_2j7lekxqnkpt-3{list-style-type:none}.lst-kix_d233mkpjizqz-8>li:before{content:"\0025a0  "}ul.lst-kix_2j7lekxqnkpt-2{list-style-type:none}ul.lst-kix_2j7lekxqnkpt-1{list-style-type:none}ul.lst-kix_2j7lekxqnkpt-0{list-style-type:none}.lst-kix_d233mkpjizqz-4>li:before{content:"\0025cb  "}.lst-kix_d233mkpjizqz-5>li:before{content:"\0025a0  "}ul.lst-kix_2j7lekxqnkpt-8{list-style-type:none}ul.lst-kix_2j7lekxqnkpt-7{list-style-type:none}ul.lst-kix_2j7lekxqnkpt-6{list-style-type:none}ul.lst-kix_2j7lekxqnkpt-5{list-style-type:none}ul.lst-kix_2j7lekxqnkpt-4{list-style-type:none}.lst-kix_jjw0mj9bl986-3>li:before{content:"\0025cf  "}.lst-kix_jjw0mj9bl986-4>li:before{content:"\0025cb  "}.lst-kix_stlthlqvwps6-7>li{counter-increment:lst-ctn-kix_stlthlqvwps6-7}ol.lst-kix_v200j9rrmfq5-5.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-5 0}.lst-kix_jjw0mj9bl986-0>li:before{content:"\0025cf  "}.lst-kix_irqb6ojtjg93-0>li:before{content:"\0025cf  "}.lst-kix_uwdzswms202y-6>li:before{content:"\0025cf  "}.lst-kix_irqb6ojtjg93-4>li:before{content:"\0025cb  "}.lst-kix_v200j9rrmfq5-6>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-6,decimal) ". "}ol.lst-kix_v200j9rrmfq5-6.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-6 0}.lst-kix_uwdzswms202y-5>li:before{content:"\0025a0  "}.lst-kix_v200j9rrmfq5-5>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-5,lower-roman) ". "}.lst-kix_uwdzswms202y-2>li:before{content:"\0025a0  "}.lst-kix_v200j9rrmfq5-2>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-2,lower-roman) ". "}.lst-kix_irqb6ojtjg93-3>li:before{content:"\0025cf  "}.lst-kix_uwdzswms202y-1>li:before{content:"\0025cb  "}.lst-kix_v200j9rrmfq5-1>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-1,lower-latin) ". "}.lst-kix_irqb6ojtjg93-8>li:before{content:"\0025a0  "}.lst-kix_stlthlqvwps6-5>li{counter-increment:lst-ctn-kix_stlthlqvwps6-5}.lst-kix_irqb6ojtjg93-7>li:before{content:"\0025cb  "}.lst-kix_ixctali3daeq-0>li{counter-increment:lst-ctn-kix_ixctali3daeq-0}ul.lst-kix_7i8jafwfr1xc-4{list-style-type:none}.lst-kix_4csw9e9n5p3y-6>li:before{content:"\0025cf  "}ul.lst-kix_7i8jafwfr1xc-3{list-style-type:none}ul.lst-kix_7i8jafwfr1xc-6{list-style-type:none}.lst-kix_4csw9e9n5p3y-7>li:before{content:"\0025cb  "}ul.lst-kix_7i8jafwfr1xc-5{list-style-type:none}ul.lst-kix_7i8jafwfr1xc-0{list-style-type:none}.lst-kix_mg1w4twwuh06-2>li:before{content:"\0025a0  "}ul.lst-kix_7i8jafwfr1xc-2{list-style-type:none}ul.lst-kix_7i8jafwfr1xc-1{list-style-type:none}.lst-kix_d233mkpjizqz-0>li:before{content:"\0025cf  "}.lst-kix_d233mkpjizqz-1>li:before{content:"\0025cb  "}.lst-kix_4csw9e9n5p3y-3>li:before{content:"\0025cf  "}.lst-kix_mg1w4twwuh06-7>li:before{content:"\0025cb  "}ul.lst-kix_7i8jafwfr1xc-8{list-style-type:none}ul.lst-kix_7i8jafwfr1xc-7{list-style-type:none}.lst-kix_v200j9rrmfq5-5>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-5}.lst-kix_v200j9rrmfq5-2>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-2}.lst-kix_mg1w4twwuh06-6>li:before{content:"\0025cf  "}.lst-kix_mg1w4twwuh06-3>li:before{content:"\0025cf  "}.lst-kix_7i8jafwfr1xc-3>li:before{content:"\0025cf  "}.lst-kix_odfwaah4vgxt-5>li:before{content:"\0025a0  "}.lst-kix_odfwaah4vgxt-1>li:before{content:"\0025cb  "}ol.lst-kix_v200j9rrmfq5-7.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-7 0}.lst-kix_9jetks4mgv9w-4>li:before{content:"\0025cb  "}.lst-kix_9jetks4mgv9w-8>li:before{content:"\0025a0  "}.lst-kix_stlthlqvwps6-5>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-5,lower-roman) ". "}.lst-kix_7i8jafwfr1xc-7>li:before{content:"\0025cb  "}.lst-kix_v200j9rrmfq5-7>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-7}.lst-kix_2j7lekxqnkpt-6>li:before{content:"\0025cf  "}ul.lst-kix_odfwaah4vgxt-2{list-style-type:none}ul.lst-kix_odfwaah4vgxt-3{list-style-type:none}.lst-kix_dudpda2stflo-0>li:before{content:"\0025cf  "}ul.lst-kix_odfwaah4vgxt-4{list-style-type:none}ul.lst-kix_odfwaah4vgxt-5{list-style-type:none}ul.lst-kix_odfwaah4vgxt-6{list-style-type:none}ul.lst-kix_odfwaah4vgxt-7{list-style-type:none}ul.lst-kix_odfwaah4vgxt-8{list-style-type:none}.lst-kix_dudpda2stflo-4>li:before{content:"\0025cb  "}.lst-kix_80i1aog082ia-5>li:before{content:"\0025a0  "}.lst-kix_dudpda2stflo-8>li:before{content:"\0025a0  "}.lst-kix_xvzjmbyy0we4-6>li:before{content:"\0025cf  "}.lst-kix_v200j9rrmfq5-0>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-0}.lst-kix_r4w1dj9n68ox-5>li:before{content:"\0025a0  "}.lst-kix_ixctali3daeq-6>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-6,decimal) ". "}.lst-kix_xvzjmbyy0we4-2>li:before{content:"\0025a0  "}.lst-kix_9jetks4mgv9w-0>li:before{content:"\0025cf  "}.lst-kix_80i1aog082ia-1>li:before{content:"\0025cb  "}.lst-kix_jjw0mj9bl986-7>li:before{content:"\0025cb  "}ul.lst-kix_odfwaah4vgxt-0{list-style-type:none}ul.lst-kix_odfwaah4vgxt-1{list-style-type:none}.lst-kix_r4w1dj9n68ox-1>li:before{content:"\0025cb  "}.lst-kix_ixctali3daeq-2>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-2,lower-roman) ". "}.lst-kix_2j7lekxqnkpt-2>li:before{content:"\0025a0  "}.lst-kix_stlthlqvwps6-0>li{counter-increment:lst-ctn-kix_stlthlqvwps6-0}.lst-kix_ixctali3daeq-5>li{counter-increment:lst-ctn-kix_ixctali3daeq-5}ol.lst-kix_stlthlqvwps6-4.start{counter-reset:lst-ctn-kix_stlthlqvwps6-4 0}.lst-kix_stlthlqvwps6-8>li{counter-increment:lst-ctn-kix_stlthlqvwps6-8}ol.lst-kix_ixctali3daeq-0.start{counter-reset:lst-ctn-kix_ixctali3daeq-0 0}.lst-kix_ixctali3daeq-3>li{counter-increment:lst-ctn-kix_ixctali3daeq-3}ul.lst-kix_9jetks4mgv9w-0{list-style-type:none}ul.lst-kix_9jetks4mgv9w-1{list-style-type:none}ul.lst-kix_9jetks4mgv9w-2{list-style-type:none}ol.lst-kix_v200j9rrmfq5-8.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-8 0}ul.lst-kix_9jetks4mgv9w-7{list-style-type:none}ul.lst-kix_9jetks4mgv9w-8{list-style-type:none}ul.lst-kix_9jetks4mgv9w-3{list-style-type:none}ul.lst-kix_9jetks4mgv9w-4{list-style-type:none}ul.lst-kix_9jetks4mgv9w-5{list-style-type:none}ul.lst-kix_9jetks4mgv9w-6{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-0{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-2{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-1{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-4{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-3{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-6{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-5{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-8{list-style-type:none}ul.lst-kix_r4w1dj9n68ox-7{list-style-type:none}.lst-kix_stlthlqvwps6-1>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-1,lower-latin) ". "}.lst-kix_stlthlqvwps6-0>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-0,decimal) ". "}.lst-kix_lf90vqm16i4x-6>li:before{content:"\0025cf  "}.lst-kix_lf90vqm16i4x-5>li:before{content:"\0025a0  "}.lst-kix_lf90vqm16i4x-2>li:before{content:"\0025a0  "}.lst-kix_lf90vqm16i4x-3>li:before{content:"\0025cf  "}.lst-kix_lf90vqm16i4x-4>li:before{content:"\0025cb  "}.lst-kix_lf90vqm16i4x-1>li:before{content:"\0025cb  "}ul.lst-kix_uwdzswms202y-0{list-style-type:none}ul.lst-kix_uwdzswms202y-1{list-style-type:none}ul.lst-kix_uwdzswms202y-2{list-style-type:none}ul.lst-kix_uwdzswms202y-3{list-style-type:none}ul.lst-kix_uwdzswms202y-4{list-style-type:none}ul.lst-kix_uwdzswms202y-5{list-style-type:none}ul.lst-kix_uwdzswms202y-6{list-style-type:none}ul.lst-kix_uwdzswms202y-7{list-style-type:none}.lst-kix_lf90vqm16i4x-0>li:before{content:"\0025cf  "}ul.lst-kix_uwdzswms202y-8{list-style-type:none}.lst-kix_7i8jafwfr1xc-2>li:before{content:"\0025a0  "}ol.lst-kix_v200j9rrmfq5-1.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-1 0}.lst-kix_7i8jafwfr1xc-4>li:before{content:"\0025cb  "}.lst-kix_4csw9e9n5p3y-2>li:before{content:"\0025a0  "}.lst-kix_7i8jafwfr1xc-0>li:before{content:"\0025cf  "}.lst-kix_4csw9e9n5p3y-0>li:before{content:"\0025cf  "}.lst-kix_v200j9rrmfq5-3>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-3}.lst-kix_lf90vqm16i4x-7>li:before{content:"\0025cb  "}.lst-kix_stlthlqvwps6-4>li{counter-increment:lst-ctn-kix_stlthlqvwps6-4}.lst-kix_ixctali3daeq-7>li{counter-increment:lst-ctn-kix_ixctali3daeq-7}ul.lst-kix_4csw9e9n5p3y-3{list-style-type:none}ul.lst-kix_4csw9e9n5p3y-2{list-style-type:none}ul.lst-kix_4csw9e9n5p3y-1{list-style-type:none}.lst-kix_9jetks4mgv9w-5>li:before{content:"\0025a0  "}ul.lst-kix_4csw9e9n5p3y-0{list-style-type:none}ul.lst-kix_4csw9e9n5p3y-7{list-style-type:none}ul.lst-kix_4csw9e9n5p3y-6{list-style-type:none}ul.lst-kix_4csw9e9n5p3y-5{list-style-type:none}ul.lst-kix_4csw9e9n5p3y-4{list-style-type:none}.lst-kix_stlthlqvwps6-2>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-2,lower-roman) ". "}.lst-kix_9jetks4mgv9w-7>li:before{content:"\0025cb  "}ul.lst-kix_4csw9e9n5p3y-8{list-style-type:none}.lst-kix_stlthlqvwps6-4>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-4,lower-latin) ". "}.lst-kix_7i8jafwfr1xc-6>li:before{content:"\0025cf  "}.lst-kix_stlthlqvwps6-8>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-8,lower-roman) ". "}.lst-kix_7i8jafwfr1xc-8>li:before{content:"\0025a0  "}.lst-kix_stlthlqvwps6-6>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-6,decimal) ". "}.lst-kix_v200j9rrmfq5-8>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-8,lower-roman) ". "}ul.lst-kix_dudpda2stflo-8{list-style-type:none}ul.lst-kix_dudpda2stflo-7{list-style-type:none}ul.lst-kix_dudpda2stflo-6{list-style-type:none}ul.lst-kix_dudpda2stflo-5{list-style-type:none}ul.lst-kix_dudpda2stflo-4{list-style-type:none}ul.lst-kix_dudpda2stflo-3{list-style-type:none}ul.lst-kix_dudpda2stflo-2{list-style-type:none}ul.lst-kix_dudpda2stflo-1{list-style-type:none}ul.lst-kix_dudpda2stflo-0{list-style-type:none}ol.lst-kix_ixctali3daeq-5{list-style-type:none}ol.lst-kix_ixctali3daeq-6{list-style-type:none}ol.lst-kix_ixctali3daeq-7{list-style-type:none}ol.lst-kix_ixctali3daeq-8{list-style-type:none}ol.lst-kix_ixctali3daeq-1{list-style-type:none}ol.lst-kix_ixctali3daeq-2{list-style-type:none}ol.lst-kix_ixctali3daeq-3{list-style-type:none}ol.lst-kix_ixctali3daeq-4{list-style-type:none}ol.lst-kix_ixctali3daeq-0{list-style-type:none}.lst-kix_9jetks4mgv9w-3>li:before{content:"\0025cf  "}.lst-kix_9jetks4mgv9w-1>li:before{content:"\0025cb  "}.lst-kix_jjw0mj9bl986-6>li:before{content:"\0025cf  "}.lst-kix_jjw0mj9bl986-8>li:before{content:"\0025a0  "}ol.lst-kix_stlthlqvwps6-3{list-style-type:none}ol.lst-kix_stlthlqvwps6-4{list-style-type:none}ol.lst-kix_stlthlqvwps6-1{list-style-type:none}ol.lst-kix_v200j9rrmfq5-3.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-3 0}ol.lst-kix_stlthlqvwps6-2{list-style-type:none}ol.lst-kix_stlthlqvwps6-7{list-style-type:none}ol.lst-kix_stlthlqvwps6-8{list-style-type:none}ol.lst-kix_stlthlqvwps6-5{list-style-type:none}ol.lst-kix_stlthlqvwps6-6{list-style-type:none}ol.lst-kix_stlthlqvwps6-0{list-style-type:none}.lst-kix_mg1w4twwuh06-0>li{counter-increment:lst-ctn-kix_mg1w4twwuh06-0}ol.lst-kix_ixctali3daeq-3.start{counter-reset:lst-ctn-kix_ixctali3daeq-3 0}.lst-kix_d233mkpjizqz-3>li:before{content:"\0025cf  "}.lst-kix_jjw0mj9bl986-5>li:before{content:"\0025a0  "}.lst-kix_d233mkpjizqz-7>li:before{content:"\0025cb  "}.lst-kix_d233mkpjizqz-6>li:before{content:"\0025cf  "}.lst-kix_ixctali3daeq-4>li{counter-increment:lst-ctn-kix_ixctali3daeq-4}.lst-kix_jjw0mj9bl986-1>li:before{content:"\0025cb  "}.lst-kix_jjw0mj9bl986-2>li:before{content:"\0025a0  "}ol.lst-kix_stlthlqvwps6-7.start{counter-reset:lst-ctn-kix_stlthlqvwps6-7 0}ol.lst-kix_stlthlqvwps6-1.start{counter-reset:lst-ctn-kix_stlthlqvwps6-1 0}ul.lst-kix_d233mkpjizqz-7{list-style-type:none}ul.lst-kix_d233mkpjizqz-8{list-style-type:none}ul.lst-kix_d233mkpjizqz-5{list-style-type:none}ul.lst-kix_d233mkpjizqz-6{list-style-type:none}ul.lst-kix_d233mkpjizqz-3{list-style-type:none}ul.lst-kix_d233mkpjizqz-4{list-style-type:none}ul.lst-kix_d233mkpjizqz-1{list-style-type:none}ul.lst-kix_d233mkpjizqz-2{list-style-type:none}ul.lst-kix_d233mkpjizqz-0{list-style-type:none}.lst-kix_uwdzswms202y-4>li:before{content:"\0025cb  "}.lst-kix_irqb6ojtjg93-2>li:before{content:"\0025a0  "}.lst-kix_irqb6ojtjg93-1>li:before{content:"\0025cb  "}.lst-kix_irqb6ojtjg93-5>li:before{content:"\0025a0  "}.lst-kix_v200j9rrmfq5-4>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-4,lower-latin) ". "}ol.lst-kix_stlthlqvwps6-6.start{counter-reset:lst-ctn-kix_stlthlqvwps6-6 0}.lst-kix_uwdzswms202y-3>li:before{content:"\0025cf  "}.lst-kix_v200j9rrmfq5-3>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-3,decimal) ". "}ul.lst-kix_irqb6ojtjg93-5{list-style-type:none}ul.lst-kix_irqb6ojtjg93-6{list-style-type:none}ul.lst-kix_irqb6ojtjg93-7{list-style-type:none}ol.lst-kix_ixctali3daeq-2.start{counter-reset:lst-ctn-kix_ixctali3daeq-2 0}ul.lst-kix_irqb6ojtjg93-8{list-style-type:none}.lst-kix_v200j9rrmfq5-0>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-0,decimal) ". "}.lst-kix_ixctali3daeq-6>li{counter-increment:lst-ctn-kix_ixctali3daeq-6}ol.lst-kix_ixctali3daeq-8.start{counter-reset:lst-ctn-kix_ixctali3daeq-8 0}.lst-kix_uwdzswms202y-0>li:before{content:"\0025cf  "}ul.lst-kix_irqb6ojtjg93-0{list-style-type:none}.lst-kix_irqb6ojtjg93-6>li:before{content:"\0025cf  "}ul.lst-kix_irqb6ojtjg93-1{list-style-type:none}ul.lst-kix_irqb6ojtjg93-2{list-style-type:none}ul.lst-kix_irqb6ojtjg93-3{list-style-type:none}ul.lst-kix_irqb6ojtjg93-4{list-style-type:none}.lst-kix_mg1w4twwuh06-1>li:before{content:"\0025cb  "}.lst-kix_4csw9e9n5p3y-5>li:before{content:"\0025a0  "}ol.lst-kix_v200j9rrmfq5-0.start{counter-reset:lst-ctn-kix_v200j9rrmfq5-0 0}.lst-kix_d233mkpjizqz-2>li:before{content:"\0025a0  "}.lst-kix_4csw9e9n5p3y-4>li:before{content:"\0025cb  "}.lst-kix_mg1w4twwuh06-0>li:before{content:"" counter(lst-ctn-kix_mg1w4twwuh06-0,decimal) ". "}.lst-kix_mg1w4twwuh06-8>li:before{content:"\0025a0  "}ol.lst-kix_mg1w4twwuh06-0{list-style-type:none}.lst-kix_mg1w4twwuh06-5>li:before{content:"\0025a0  "}.lst-kix_4csw9e9n5p3y-8>li:before{content:"\0025a0  "}.lst-kix_mg1w4twwuh06-4>li:before{content:"\0025cb  "}ul.lst-kix_u55wq1eprzs4-8{list-style-type:none}.lst-kix_odfwaah4vgxt-7>li:before{content:"\0025cb  "}ul.lst-kix_u55wq1eprzs4-7{list-style-type:none}.lst-kix_7i8jafwfr1xc-1>li:before{content:"\0025cb  "}ul.lst-kix_jjw0mj9bl986-8{list-style-type:none}ul.lst-kix_u55wq1eprzs4-4{list-style-type:none}ul.lst-kix_jjw0mj9bl986-7{list-style-type:none}ul.lst-kix_u55wq1eprzs4-3{list-style-type:none}ul.lst-kix_u55wq1eprzs4-6{list-style-type:none}ul.lst-kix_u55wq1eprzs4-5{list-style-type:none}ul.lst-kix_u55wq1eprzs4-0{list-style-type:none}.lst-kix_7i8jafwfr1xc-5>li:before{content:"\0025a0  "}ul.lst-kix_u55wq1eprzs4-2{list-style-type:none}ul.lst-kix_u55wq1eprzs4-1{list-style-type:none}ol.lst-kix_ixctali3daeq-7.start{counter-reset:lst-ctn-kix_ixctali3daeq-7 0}ul.lst-kix_mg1w4twwuh06-4{list-style-type:none}ul.lst-kix_mg1w4twwuh06-5{list-style-type:none}ul.lst-kix_mg1w4twwuh06-6{list-style-type:none}ul.lst-kix_mg1w4twwuh06-7{list-style-type:none}ul.lst-kix_mg1w4twwuh06-1{list-style-type:none}ul.lst-kix_mg1w4twwuh06-2{list-style-type:none}ul.lst-kix_mg1w4twwuh06-3{list-style-type:none}ul.lst-kix_jjw0mj9bl986-4{list-style-type:none}.lst-kix_odfwaah4vgxt-3>li:before{content:"\0025cf  "}ul.lst-kix_jjw0mj9bl986-3{list-style-type:none}ul.lst-kix_jjw0mj9bl986-6{list-style-type:none}.lst-kix_4csw9e9n5p3y-1>li:before{content:"\0025cb  "}ul.lst-kix_jjw0mj9bl986-5{list-style-type:none}.lst-kix_lf90vqm16i4x-8>li:before{content:"\0025a0  "}ul.lst-kix_jjw0mj9bl986-0{list-style-type:none}ol.lst-kix_stlthlqvwps6-0.start{counter-reset:lst-ctn-kix_stlthlqvwps6-0 0}ul.lst-kix_jjw0mj9bl986-2{list-style-type:none}ul.lst-kix_jjw0mj9bl986-1{list-style-type:none}.lst-kix_stlthlqvwps6-1>li{counter-increment:lst-ctn-kix_stlthlqvwps6-1}.lst-kix_9jetks4mgv9w-6>li:before{content:"\0025cf  "}ul.lst-kix_xvzjmbyy0we4-2{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-3{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-0{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-1{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-6{list-style-type:none}ul.lst-kix_mg1w4twwuh06-8{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-7{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-4{list-style-type:none}ul.lst-kix_xvzjmbyy0we4-5{list-style-type:none}ul.lst-kix_lf90vqm16i4x-6{list-style-type:none}ul.lst-kix_lf90vqm16i4x-7{list-style-type:none}.lst-kix_stlthlqvwps6-3>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-3,decimal) ". "}ul.lst-kix_lf90vqm16i4x-8{list-style-type:none}ul.lst-kix_lf90vqm16i4x-2{list-style-type:none}ul.lst-kix_lf90vqm16i4x-3{list-style-type:none}ul.lst-kix_lf90vqm16i4x-4{list-style-type:none}ul.lst-kix_lf90vqm16i4x-5{list-style-type:none}.lst-kix_stlthlqvwps6-7>li:before{content:"" counter(lst-ctn-kix_stlthlqvwps6-7,lower-latin) ". "}ul.lst-kix_lf90vqm16i4x-0{list-style-type:none}ul.lst-kix_lf90vqm16i4x-1{list-style-type:none}.lst-kix_uwdzswms202y-7>li:before{content:"\0025cb  "}.lst-kix_v200j9rrmfq5-7>li:before{content:"" counter(lst-ctn-kix_v200j9rrmfq5-7,lower-latin) ". "}ol.lst-kix_ixctali3daeq-5.start{counter-reset:lst-ctn-kix_ixctali3daeq-5 0}.lst-kix_2j7lekxqnkpt-4>li:before{content:"\0025cb  "}ol.lst-kix_stlthlqvwps6-2.start{counter-reset:lst-ctn-kix_stlthlqvwps6-2 0}.lst-kix_ixctali3daeq-0>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-0,decimal) ". "}.lst-kix_xvzjmbyy0we4-0>li:before{content:"\0025cf  "}ul.lst-kix_xvzjmbyy0we4-8{list-style-type:none}.lst-kix_dudpda2stflo-2>li:before{content:"\0025a0  "}.lst-kix_v200j9rrmfq5-6>li{counter-increment:lst-ctn-kix_v200j9rrmfq5-6}.lst-kix_9jetks4mgv9w-2>li:before{content:"\0025a0  "}.lst-kix_2j7lekxqnkpt-8>li:before{content:"\0025a0  "}.lst-kix_r4w1dj9n68ox-7>li:before{content:"\0025cb  "}.lst-kix_ixctali3daeq-8>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-8,lower-roman) ". "}.lst-kix_80i1aog082ia-3>li:before{content:"\0025cf  "}.lst-kix_xvzjmbyy0we4-8>li:before{content:"\0025a0  "}ol.lst-kix_ixctali3daeq-4.start{counter-reset:lst-ctn-kix_ixctali3daeq-4 0}.lst-kix_dudpda2stflo-6>li:before{content:"\0025cf  "}ol.lst-kix_stlthlqvwps6-3.start{counter-reset:lst-ctn-kix_stlthlqvwps6-3 0}.lst-kix_xvzjmbyy0we4-4>li:before{content:"\0025cb  "}.lst-kix_stlthlqvwps6-6>li{counter-increment:lst-ctn-kix_stlthlqvwps6-6}.lst-kix_r4w1dj9n68ox-3>li:before{content:"\0025cf  "}.lst-kix_ixctali3daeq-4>li:before{content:"" counter(lst-ctn-kix_ixctali3daeq-4,lower-latin) ". "}.lst-kix_2j7lekxqnkpt-0>li:before{content:"\0025cf  "}ol{margin:0;padding:0}table td,table th{padding:0}.c0{margin-left:36pt;padding-top:0pt;padding-left:0pt;padding-bottom:0pt;line-height:1.15;orphans:2;widows:2;text-align:left}.c13{color:#000000;font-weight:400;text-decoration:none;vertical-align:baseline;font-size:26pt;font-family:"Arial";font-style:normal}.c14{padding-top:0pt;padding-bottom:3pt;line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}.c2{color:#000000;font-weight:400;text-decoration:none;vertical-align:baseline;font-size:11pt;font-family:"Arial";font-style:normal}.c10{padding-top:18pt;padding-bottom:6pt;line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}.c9{color:#000000;font-weight:400;text-decoration:none;vertical-align:baseline;font-size:16pt;font-family:"Arial";font-style:normal}.c1{padding-top:0pt;padding-bottom:0pt;line-height:1.15;orphans:2;widows:2;text-align:left;height:11pt}.c11{padding-top:20pt;padding-bottom:6pt;line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}.c12{color:#000000;font-weight:400;text-decoration:none;vertical-align:baseline;font-size:11pt;font-family:"Arial";font-style:italic}.c5{color:#000000;font-weight:400;text-decoration:none;vertical-align:baseline;font-size:20pt;font-family:"Arial";font-style:normal}.c3{padding-top:0pt;padding-bottom:0pt;line-height:1.15;orphans:2;widows:2;text-align:left}.c7{color:#000000;text-decoration:none;vertical-align:baseline;font-size:11pt;font-family:"Arial";font-style:normal}.c8{background-color:#ffffff;max-width:468pt;padding:72pt 72pt 72pt 72pt}.c6{padding:0;margin:0}.c4{font-weight:700}.title{padding-top:0pt;color:#000000;font-size:26pt;padding-bottom:3pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}.subtitle{padding-top:0pt;color:#666666;font-size:15pt;padding-bottom:16pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}li{color:#000000;font-size:11pt;font-family:"Arial"}p{margin:0;color:#000000;font-size:11pt;font-family:"Arial"}h1{padding-top:20pt;color:#000000;font-size:20pt;padding-bottom:6pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}h2{padding-top:18pt;color:#000000;font-size:16pt;padding-bottom:6pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}h3{padding-top:16pt;color:#434343;font-size:14pt;padding-bottom:4pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}h4{padding-top:14pt;color:#666666;font-size:12pt;padding-bottom:4pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}h5{padding-top:12pt;color:#666666;font-size:11pt;padding-bottom:4pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;orphans:2;widows:2;text-align:left}h6{padding-top:12pt;color:#666666;font-size:11pt;padding-bottom:4pt;font-family:"Arial";line-height:1.15;page-break-after:avoid;font-style:italic;orphans:2;widows:2;text-align:left}</style>
-    </head>
-    <body>
-        <div id="fb-root"></div>
-        <script async defer crossorigin="anonymous"
-            src="https://connect.facebook.net/en_GB/sdk.js#xfbml=1&autoLogAppEvents=1&version=v6.0&appId=538011207113822"></script>
-        <section class="hero is-shadowless is-fullheight">
-            <div class="hero-head">
-                <div class="container">
-                    <nav class="navbar is-transparent is-spaced">
-                        <div class="navbar-brand"><a href="/" class="navbar-item navbar-logo" style="margin-right: auto;">
-                                <figure class="image is-128x128"><img src="/logo.png" alt="logo"
-                                        style="height: 128px; width: 128px; max-height: 128px"></figure>
-                            </a><a href="/login" class="navbar-item button thickbox is-uppercase is-hidden-desktop"
-                                style="margin: 20px" target="_self">Login</a></div>
-                        <div class="navbar-menu">
-                            <div class="navbar-end">
-                                <div class="navbar-item is-hidden-touch"><a href="/login"
-                                        class="button thickbox is-uppercase" target="_self">Login To Production Area</a></div>
-                            </div>
+<head>
+    <meta content="text/html; charset=UTF-8" http-equiv="content-type">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Free service for rolling online quizzes.">
+    <meta name="keywords"
+        content="quiz, quizzes, www, online quizzes, free quizzes, quizzes service, quizzes platform, квиз, чгк, что где когда, программа для чгк, онлайн-чгк, вопросы чгк, платформа для квизов, обработка ответов чгк">
+    <meta name="author" content="Serhii Sabirov">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Open Quiz">
+    <meta property="og:description" content="Free service for rolling online quizzes.">
+    <meta property="og:image" content="https://www.open-quiz.com/logo-card.png">
+    <meta property="og:url" content="https://www.open-quiz.com">
+    <meta property="og:site_name" content="Open Quiz">
+    <meta name="twitter:image:alt" content="Open Quiz Logo">
+    <meta property="fb:app_id" content="538011207113822" />
+    <title>Open Quiz</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.8.0/css/bulma.min.css">
+    <link rel="icon" href="favicon.png" sizes="32x32" type="image/png">
+
+    <style type="text/css">
+        ol.lst-kix_v200j9rrmfq5-3 {
+            list-style-type: none
+        }
+
+        .lst-kix_u55wq1eprzs4-0>li:before {
+            content: "\0025cf  "
+        }
+
+        ol.lst-kix_v200j9rrmfq5-4 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_v200j9rrmfq5-5 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_v200j9rrmfq5-6 {
+            list-style-type: none
+        }
+
+        .lst-kix_u55wq1eprzs4-2>li:before {
+            content: "\0025a0  "
+        }
+
+        ol.lst-kix_v200j9rrmfq5-0 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_v200j9rrmfq5-1 {
+            list-style-type: none
+        }
+
+        .lst-kix_u55wq1eprzs4-3>li:before {
+            content: "\0025cf  "
+        }
+
+        ol.lst-kix_v200j9rrmfq5-2 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_v200j9rrmfq5-7 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_v200j9rrmfq5-8 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_80i1aog082ia-8 {
+            list-style-type: none
+        }
+
+        .lst-kix_u55wq1eprzs4-1>li:before {
+            content: "\0025cb  "
+        }
+
+        ul.lst-kix_80i1aog082ia-6 {
+            list-style-type: none
+        }
+
+        .lst-kix_u55wq1eprzs4-8>li:before {
+            content: "\0025a0  "
+        }
+
+        ul.lst-kix_80i1aog082ia-7 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_80i1aog082ia-4 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_80i1aog082ia-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_80i1aog082ia-2 {
+            list-style-type: none
+        }
+
+        .lst-kix_u55wq1eprzs4-6>li:before {
+            content: "\0025cf  "
+        }
+
+        ul.lst-kix_80i1aog082ia-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_80i1aog082ia-0 {
+            list-style-type: none
+        }
+
+        .lst-kix_u55wq1eprzs4-7>li:before {
+            content: "\0025cb  "
+        }
+
+        ul.lst-kix_80i1aog082ia-1 {
+            list-style-type: none
+        }
+
+        .lst-kix_u55wq1eprzs4-4>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_u55wq1eprzs4-5>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_ixctali3daeq-1>li {
+            counter-increment: lst-ctn-kix_ixctali3daeq-1
+        }
+
+        ol.lst-kix_ixctali3daeq-6.start {
+            counter-reset: lst-ctn-kix_ixctali3daeq-6 0
+        }
+
+        .lst-kix_80i1aog082ia-7>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_80i1aog082ia-8>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_v200j9rrmfq5-1>li {
+            counter-increment: lst-ctn-kix_v200j9rrmfq5-1
+        }
+
+        ol.lst-kix_stlthlqvwps6-5.start {
+            counter-reset: lst-ctn-kix_stlthlqvwps6-5 0
+        }
+
+        .lst-kix_v200j9rrmfq5-8>li {
+            counter-increment: lst-ctn-kix_v200j9rrmfq5-8
+        }
+
+        ol.lst-kix_ixctali3daeq-1.start {
+            counter-reset: lst-ctn-kix_ixctali3daeq-1 0
+        }
+
+        .lst-kix_odfwaah4vgxt-6>li:before {
+            content: "\0025cf  "
+        }
+
+        ol.lst-kix_v200j9rrmfq5-4.start {
+            counter-reset: lst-ctn-kix_v200j9rrmfq5-4 0
+        }
+
+        .lst-kix_v200j9rrmfq5-4>li {
+            counter-increment: lst-ctn-kix_v200j9rrmfq5-4
+        }
+
+        .lst-kix_odfwaah4vgxt-0>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_odfwaah4vgxt-8>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_stlthlqvwps6-2>li {
+            counter-increment: lst-ctn-kix_stlthlqvwps6-2
+        }
+
+        .lst-kix_odfwaah4vgxt-2>li:before {
+            content: "\0025a0  "
+        }
+
+        ol.lst-kix_stlthlqvwps6-8.start {
+            counter-reset: lst-ctn-kix_stlthlqvwps6-8 0
+        }
+
+        .lst-kix_odfwaah4vgxt-4>li:before {
+            content: "\0025cb  "
+        }
+
+        ol.lst-kix_mg1w4twwuh06-0.start {
+            counter-reset: lst-ctn-kix_mg1w4twwuh06-0 0
+        }
+
+        .lst-kix_uwdzswms202y-8>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_2j7lekxqnkpt-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_2j7lekxqnkpt-5>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_2j7lekxqnkpt-7>li:before {
+            content: "\0025cb  "
+        }
+
+        ol.lst-kix_v200j9rrmfq5-2.start {
+            counter-reset: lst-ctn-kix_v200j9rrmfq5-2 0
+        }
+
+        .lst-kix_xvzjmbyy0we4-1>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_dudpda2stflo-1>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_80i1aog082ia-6>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_dudpda2stflo-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_80i1aog082ia-4>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_xvzjmbyy0we4-7>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_80i1aog082ia-2>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_dudpda2stflo-7>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_xvzjmbyy0we4-5>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_dudpda2stflo-5>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_r4w1dj9n68ox-4>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_r4w1dj9n68ox-8>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_ixctali3daeq-7>li:before {
+            content: "" counter(lst-ctn-kix_ixctali3daeq-7, lower-latin) ". "
+        }
+
+        .lst-kix_xvzjmbyy0we4-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_80i1aog082ia-0>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_r4w1dj9n68ox-6>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_ixctali3daeq-1>li:before {
+            content: "" counter(lst-ctn-kix_ixctali3daeq-1, lower-latin) ". "
+        }
+
+        .lst-kix_r4w1dj9n68ox-0>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_ixctali3daeq-3>li:before {
+            content: "" counter(lst-ctn-kix_ixctali3daeq-3, decimal) ". "
+        }
+
+        .lst-kix_ixctali3daeq-2>li {
+            counter-increment: lst-ctn-kix_ixctali3daeq-2
+        }
+
+        .lst-kix_ixctali3daeq-8>li {
+            counter-increment: lst-ctn-kix_ixctali3daeq-8
+        }
+
+        .lst-kix_stlthlqvwps6-3>li {
+            counter-increment: lst-ctn-kix_stlthlqvwps6-3
+        }
+
+        .lst-kix_2j7lekxqnkpt-1>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_r4w1dj9n68ox-2>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_ixctali3daeq-5>li:before {
+            content: "" counter(lst-ctn-kix_ixctali3daeq-5, lower-roman) ". "
+        }
+
+        ul.lst-kix_2j7lekxqnkpt-3 {
+            list-style-type: none
+        }
+
+        .lst-kix_d233mkpjizqz-8>li:before {
+            content: "\0025a0  "
+        }
+
+        ul.lst-kix_2j7lekxqnkpt-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_2j7lekxqnkpt-1 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_2j7lekxqnkpt-0 {
+            list-style-type: none
+        }
+
+        .lst-kix_d233mkpjizqz-4>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_d233mkpjizqz-5>li:before {
+            content: "\0025a0  "
+        }
+
+        ul.lst-kix_2j7lekxqnkpt-8 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_2j7lekxqnkpt-7 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_2j7lekxqnkpt-6 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_2j7lekxqnkpt-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_2j7lekxqnkpt-4 {
+            list-style-type: none
+        }
+
+        .lst-kix_jjw0mj9bl986-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_jjw0mj9bl986-4>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_stlthlqvwps6-7>li {
+            counter-increment: lst-ctn-kix_stlthlqvwps6-7
+        }
+
+        ol.lst-kix_v200j9rrmfq5-5.start {
+            counter-reset: lst-ctn-kix_v200j9rrmfq5-5 0
+        }
+
+        .lst-kix_jjw0mj9bl986-0>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_irqb6ojtjg93-0>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_uwdzswms202y-6>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_irqb6ojtjg93-4>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_v200j9rrmfq5-6>li:before {
+            content: "" counter(lst-ctn-kix_v200j9rrmfq5-6, decimal) ". "
+        }
+
+        ol.lst-kix_v200j9rrmfq5-6.start {
+            counter-reset: lst-ctn-kix_v200j9rrmfq5-6 0
+        }
+
+        .lst-kix_uwdzswms202y-5>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_v200j9rrmfq5-5>li:before {
+            content: "" counter(lst-ctn-kix_v200j9rrmfq5-5, lower-roman) ". "
+        }
+
+        .lst-kix_uwdzswms202y-2>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_v200j9rrmfq5-2>li:before {
+            content: "" counter(lst-ctn-kix_v200j9rrmfq5-2, lower-roman) ". "
+        }
+
+        .lst-kix_irqb6ojtjg93-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_uwdzswms202y-1>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_v200j9rrmfq5-1>li:before {
+            content: "" counter(lst-ctn-kix_v200j9rrmfq5-1, lower-latin) ". "
+        }
+
+        .lst-kix_irqb6ojtjg93-8>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_stlthlqvwps6-5>li {
+            counter-increment: lst-ctn-kix_stlthlqvwps6-5
+        }
+
+        .lst-kix_irqb6ojtjg93-7>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_ixctali3daeq-0>li {
+            counter-increment: lst-ctn-kix_ixctali3daeq-0
+        }
+
+        ul.lst-kix_7i8jafwfr1xc-4 {
+            list-style-type: none
+        }
+
+        .lst-kix_4csw9e9n5p3y-6>li:before {
+            content: "\0025cf  "
+        }
+
+        ul.lst-kix_7i8jafwfr1xc-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_7i8jafwfr1xc-6 {
+            list-style-type: none
+        }
+
+        .lst-kix_4csw9e9n5p3y-7>li:before {
+            content: "\0025cb  "
+        }
+
+        ul.lst-kix_7i8jafwfr1xc-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_7i8jafwfr1xc-0 {
+            list-style-type: none
+        }
+
+        .lst-kix_mg1w4twwuh06-2>li:before {
+            content: "\0025a0  "
+        }
+
+        ul.lst-kix_7i8jafwfr1xc-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_7i8jafwfr1xc-1 {
+            list-style-type: none
+        }
+
+        .lst-kix_d233mkpjizqz-0>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_d233mkpjizqz-1>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_4csw9e9n5p3y-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_mg1w4twwuh06-7>li:before {
+            content: "\0025cb  "
+        }
+
+        ul.lst-kix_7i8jafwfr1xc-8 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_7i8jafwfr1xc-7 {
+            list-style-type: none
+        }
+
+        .lst-kix_v200j9rrmfq5-5>li {
+            counter-increment: lst-ctn-kix_v200j9rrmfq5-5
+        }
+
+        .lst-kix_v200j9rrmfq5-2>li {
+            counter-increment: lst-ctn-kix_v200j9rrmfq5-2
+        }
+
+        .lst-kix_mg1w4twwuh06-6>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_mg1w4twwuh06-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_7i8jafwfr1xc-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_odfwaah4vgxt-5>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_odfwaah4vgxt-1>li:before {
+            content: "\0025cb  "
+        }
+
+        ol.lst-kix_v200j9rrmfq5-7.start {
+            counter-reset: lst-ctn-kix_v200j9rrmfq5-7 0
+        }
+
+        .lst-kix_9jetks4mgv9w-4>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_9jetks4mgv9w-8>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_stlthlqvwps6-5>li:before {
+            content: "" counter(lst-ctn-kix_stlthlqvwps6-5, lower-roman) ". "
+        }
+
+        .lst-kix_7i8jafwfr1xc-7>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_v200j9rrmfq5-7>li {
+            counter-increment: lst-ctn-kix_v200j9rrmfq5-7
+        }
+
+        .lst-kix_2j7lekxqnkpt-6>li:before {
+            content: "\0025cf  "
+        }
+
+        ul.lst-kix_odfwaah4vgxt-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_odfwaah4vgxt-3 {
+            list-style-type: none
+        }
+
+        .lst-kix_dudpda2stflo-0>li:before {
+            content: "\0025cf  "
+        }
+
+        ul.lst-kix_odfwaah4vgxt-4 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_odfwaah4vgxt-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_odfwaah4vgxt-6 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_odfwaah4vgxt-7 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_odfwaah4vgxt-8 {
+            list-style-type: none
+        }
+
+        .lst-kix_dudpda2stflo-4>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_80i1aog082ia-5>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_dudpda2stflo-8>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_xvzjmbyy0we4-6>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_v200j9rrmfq5-0>li {
+            counter-increment: lst-ctn-kix_v200j9rrmfq5-0
+        }
+
+        .lst-kix_r4w1dj9n68ox-5>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_ixctali3daeq-6>li:before {
+            content: "" counter(lst-ctn-kix_ixctali3daeq-6, decimal) ". "
+        }
+
+        .lst-kix_xvzjmbyy0we4-2>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_9jetks4mgv9w-0>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_80i1aog082ia-1>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_jjw0mj9bl986-7>li:before {
+            content: "\0025cb  "
+        }
+
+        ul.lst-kix_odfwaah4vgxt-0 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_odfwaah4vgxt-1 {
+            list-style-type: none
+        }
+
+        .lst-kix_r4w1dj9n68ox-1>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_ixctali3daeq-2>li:before {
+            content: "" counter(lst-ctn-kix_ixctali3daeq-2, lower-roman) ". "
+        }
+
+        .lst-kix_2j7lekxqnkpt-2>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_stlthlqvwps6-0>li {
+            counter-increment: lst-ctn-kix_stlthlqvwps6-0
+        }
+
+        .lst-kix_ixctali3daeq-5>li {
+            counter-increment: lst-ctn-kix_ixctali3daeq-5
+        }
+
+        ol.lst-kix_stlthlqvwps6-4.start {
+            counter-reset: lst-ctn-kix_stlthlqvwps6-4 0
+        }
+
+        .lst-kix_stlthlqvwps6-8>li {
+            counter-increment: lst-ctn-kix_stlthlqvwps6-8
+        }
+
+        ol.lst-kix_ixctali3daeq-0.start {
+            counter-reset: lst-ctn-kix_ixctali3daeq-0 0
+        }
+
+        .lst-kix_ixctali3daeq-3>li {
+            counter-increment: lst-ctn-kix_ixctali3daeq-3
+        }
+
+        ul.lst-kix_9jetks4mgv9w-0 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_9jetks4mgv9w-1 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_9jetks4mgv9w-2 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_v200j9rrmfq5-8.start {
+            counter-reset: lst-ctn-kix_v200j9rrmfq5-8 0
+        }
+
+        ul.lst-kix_9jetks4mgv9w-7 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_9jetks4mgv9w-8 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_9jetks4mgv9w-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_9jetks4mgv9w-4 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_9jetks4mgv9w-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_9jetks4mgv9w-6 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_r4w1dj9n68ox-0 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_r4w1dj9n68ox-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_r4w1dj9n68ox-1 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_r4w1dj9n68ox-4 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_r4w1dj9n68ox-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_r4w1dj9n68ox-6 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_r4w1dj9n68ox-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_r4w1dj9n68ox-8 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_r4w1dj9n68ox-7 {
+            list-style-type: none
+        }
+
+        .lst-kix_stlthlqvwps6-1>li:before {
+            content: "" counter(lst-ctn-kix_stlthlqvwps6-1, lower-latin) ". "
+        }
+
+        .lst-kix_stlthlqvwps6-0>li:before {
+            content: "" counter(lst-ctn-kix_stlthlqvwps6-0, decimal) ". "
+        }
+
+        .lst-kix_lf90vqm16i4x-6>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_lf90vqm16i4x-5>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_lf90vqm16i4x-2>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_lf90vqm16i4x-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_lf90vqm16i4x-4>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_lf90vqm16i4x-1>li:before {
+            content: "\0025cb  "
+        }
+
+        ul.lst-kix_uwdzswms202y-0 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_uwdzswms202y-1 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_uwdzswms202y-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_uwdzswms202y-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_uwdzswms202y-4 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_uwdzswms202y-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_uwdzswms202y-6 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_uwdzswms202y-7 {
+            list-style-type: none
+        }
+
+        .lst-kix_lf90vqm16i4x-0>li:before {
+            content: "\0025cf  "
+        }
+
+        ul.lst-kix_uwdzswms202y-8 {
+            list-style-type: none
+        }
+
+        .lst-kix_7i8jafwfr1xc-2>li:before {
+            content: "\0025a0  "
+        }
+
+        ol.lst-kix_v200j9rrmfq5-1.start {
+            counter-reset: lst-ctn-kix_v200j9rrmfq5-1 0
+        }
+
+        .lst-kix_7i8jafwfr1xc-4>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_4csw9e9n5p3y-2>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_7i8jafwfr1xc-0>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_4csw9e9n5p3y-0>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_v200j9rrmfq5-3>li {
+            counter-increment: lst-ctn-kix_v200j9rrmfq5-3
+        }
+
+        .lst-kix_lf90vqm16i4x-7>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_stlthlqvwps6-4>li {
+            counter-increment: lst-ctn-kix_stlthlqvwps6-4
+        }
+
+        .lst-kix_ixctali3daeq-7>li {
+            counter-increment: lst-ctn-kix_ixctali3daeq-7
+        }
+
+        ul.lst-kix_4csw9e9n5p3y-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_4csw9e9n5p3y-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_4csw9e9n5p3y-1 {
+            list-style-type: none
+        }
+
+        .lst-kix_9jetks4mgv9w-5>li:before {
+            content: "\0025a0  "
+        }
+
+        ul.lst-kix_4csw9e9n5p3y-0 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_4csw9e9n5p3y-7 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_4csw9e9n5p3y-6 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_4csw9e9n5p3y-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_4csw9e9n5p3y-4 {
+            list-style-type: none
+        }
+
+        .lst-kix_stlthlqvwps6-2>li:before {
+            content: "" counter(lst-ctn-kix_stlthlqvwps6-2, lower-roman) ". "
+        }
+
+        .lst-kix_9jetks4mgv9w-7>li:before {
+            content: "\0025cb  "
+        }
+
+        ul.lst-kix_4csw9e9n5p3y-8 {
+            list-style-type: none
+        }
+
+        .lst-kix_stlthlqvwps6-4>li:before {
+            content: "" counter(lst-ctn-kix_stlthlqvwps6-4, lower-latin) ". "
+        }
+
+        .lst-kix_7i8jafwfr1xc-6>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_stlthlqvwps6-8>li:before {
+            content: "" counter(lst-ctn-kix_stlthlqvwps6-8, lower-roman) ". "
+        }
+
+        .lst-kix_7i8jafwfr1xc-8>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_stlthlqvwps6-6>li:before {
+            content: "" counter(lst-ctn-kix_stlthlqvwps6-6, decimal) ". "
+        }
+
+        .lst-kix_v200j9rrmfq5-8>li:before {
+            content: "" counter(lst-ctn-kix_v200j9rrmfq5-8, lower-roman) ". "
+        }
+
+        ul.lst-kix_dudpda2stflo-8 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_dudpda2stflo-7 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_dudpda2stflo-6 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_dudpda2stflo-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_dudpda2stflo-4 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_dudpda2stflo-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_dudpda2stflo-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_dudpda2stflo-1 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_dudpda2stflo-0 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_ixctali3daeq-5 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_ixctali3daeq-6 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_ixctali3daeq-7 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_ixctali3daeq-8 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_ixctali3daeq-1 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_ixctali3daeq-2 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_ixctali3daeq-3 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_ixctali3daeq-4 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_ixctali3daeq-0 {
+            list-style-type: none
+        }
+
+        .lst-kix_9jetks4mgv9w-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_9jetks4mgv9w-1>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_jjw0mj9bl986-6>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_jjw0mj9bl986-8>li:before {
+            content: "\0025a0  "
+        }
+
+        ol.lst-kix_stlthlqvwps6-3 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_stlthlqvwps6-4 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_stlthlqvwps6-1 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_v200j9rrmfq5-3.start {
+            counter-reset: lst-ctn-kix_v200j9rrmfq5-3 0
+        }
+
+        ol.lst-kix_stlthlqvwps6-2 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_stlthlqvwps6-7 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_stlthlqvwps6-8 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_stlthlqvwps6-5 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_stlthlqvwps6-6 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_stlthlqvwps6-0 {
+            list-style-type: none
+        }
+
+        .lst-kix_mg1w4twwuh06-0>li {
+            counter-increment: lst-ctn-kix_mg1w4twwuh06-0
+        }
+
+        ol.lst-kix_ixctali3daeq-3.start {
+            counter-reset: lst-ctn-kix_ixctali3daeq-3 0
+        }
+
+        .lst-kix_d233mkpjizqz-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_jjw0mj9bl986-5>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_d233mkpjizqz-7>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_d233mkpjizqz-6>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_ixctali3daeq-4>li {
+            counter-increment: lst-ctn-kix_ixctali3daeq-4
+        }
+
+        .lst-kix_jjw0mj9bl986-1>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_jjw0mj9bl986-2>li:before {
+            content: "\0025a0  "
+        }
+
+        ol.lst-kix_stlthlqvwps6-7.start {
+            counter-reset: lst-ctn-kix_stlthlqvwps6-7 0
+        }
+
+        ol.lst-kix_stlthlqvwps6-1.start {
+            counter-reset: lst-ctn-kix_stlthlqvwps6-1 0
+        }
+
+        ul.lst-kix_d233mkpjizqz-7 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_d233mkpjizqz-8 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_d233mkpjizqz-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_d233mkpjizqz-6 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_d233mkpjizqz-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_d233mkpjizqz-4 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_d233mkpjizqz-1 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_d233mkpjizqz-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_d233mkpjizqz-0 {
+            list-style-type: none
+        }
+
+        .lst-kix_uwdzswms202y-4>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_irqb6ojtjg93-2>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_irqb6ojtjg93-1>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_irqb6ojtjg93-5>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_v200j9rrmfq5-4>li:before {
+            content: "" counter(lst-ctn-kix_v200j9rrmfq5-4, lower-latin) ". "
+        }
+
+        ol.lst-kix_stlthlqvwps6-6.start {
+            counter-reset: lst-ctn-kix_stlthlqvwps6-6 0
+        }
+
+        .lst-kix_uwdzswms202y-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_v200j9rrmfq5-3>li:before {
+            content: "" counter(lst-ctn-kix_v200j9rrmfq5-3, decimal) ". "
+        }
+
+        ul.lst-kix_irqb6ojtjg93-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_irqb6ojtjg93-6 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_irqb6ojtjg93-7 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_ixctali3daeq-2.start {
+            counter-reset: lst-ctn-kix_ixctali3daeq-2 0
+        }
+
+        ul.lst-kix_irqb6ojtjg93-8 {
+            list-style-type: none
+        }
+
+        .lst-kix_v200j9rrmfq5-0>li:before {
+            content: "" counter(lst-ctn-kix_v200j9rrmfq5-0, decimal) ". "
+        }
+
+        .lst-kix_ixctali3daeq-6>li {
+            counter-increment: lst-ctn-kix_ixctali3daeq-6
+        }
+
+        ol.lst-kix_ixctali3daeq-8.start {
+            counter-reset: lst-ctn-kix_ixctali3daeq-8 0
+        }
+
+        .lst-kix_uwdzswms202y-0>li:before {
+            content: "\0025cf  "
+        }
+
+        ul.lst-kix_irqb6ojtjg93-0 {
+            list-style-type: none
+        }
+
+        .lst-kix_irqb6ojtjg93-6>li:before {
+            content: "\0025cf  "
+        }
+
+        ul.lst-kix_irqb6ojtjg93-1 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_irqb6ojtjg93-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_irqb6ojtjg93-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_irqb6ojtjg93-4 {
+            list-style-type: none
+        }
+
+        .lst-kix_mg1w4twwuh06-1>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_4csw9e9n5p3y-5>li:before {
+            content: "\0025a0  "
+        }
+
+        ol.lst-kix_v200j9rrmfq5-0.start {
+            counter-reset: lst-ctn-kix_v200j9rrmfq5-0 0
+        }
+
+        .lst-kix_d233mkpjizqz-2>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_4csw9e9n5p3y-4>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_mg1w4twwuh06-0>li:before {
+            content: "" counter(lst-ctn-kix_mg1w4twwuh06-0, decimal) ". "
+        }
+
+        .lst-kix_mg1w4twwuh06-8>li:before {
+            content: "\0025a0  "
+        }
+
+        ol.lst-kix_mg1w4twwuh06-0 {
+            list-style-type: none
+        }
+
+        .lst-kix_mg1w4twwuh06-5>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_4csw9e9n5p3y-8>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_mg1w4twwuh06-4>li:before {
+            content: "\0025cb  "
+        }
+
+        ul.lst-kix_u55wq1eprzs4-8 {
+            list-style-type: none
+        }
+
+        .lst-kix_odfwaah4vgxt-7>li:before {
+            content: "\0025cb  "
+        }
+
+        ul.lst-kix_u55wq1eprzs4-7 {
+            list-style-type: none
+        }
+
+        .lst-kix_7i8jafwfr1xc-1>li:before {
+            content: "\0025cb  "
+        }
+
+        ul.lst-kix_jjw0mj9bl986-8 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_u55wq1eprzs4-4 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_jjw0mj9bl986-7 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_u55wq1eprzs4-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_u55wq1eprzs4-6 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_u55wq1eprzs4-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_u55wq1eprzs4-0 {
+            list-style-type: none
+        }
+
+        .lst-kix_7i8jafwfr1xc-5>li:before {
+            content: "\0025a0  "
+        }
+
+        ul.lst-kix_u55wq1eprzs4-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_u55wq1eprzs4-1 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_ixctali3daeq-7.start {
+            counter-reset: lst-ctn-kix_ixctali3daeq-7 0
+        }
+
+        ul.lst-kix_mg1w4twwuh06-4 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_mg1w4twwuh06-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_mg1w4twwuh06-6 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_mg1w4twwuh06-7 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_mg1w4twwuh06-1 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_mg1w4twwuh06-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_mg1w4twwuh06-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_jjw0mj9bl986-4 {
+            list-style-type: none
+        }
+
+        .lst-kix_odfwaah4vgxt-3>li:before {
+            content: "\0025cf  "
+        }
+
+        ul.lst-kix_jjw0mj9bl986-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_jjw0mj9bl986-6 {
+            list-style-type: none
+        }
+
+        .lst-kix_4csw9e9n5p3y-1>li:before {
+            content: "\0025cb  "
+        }
+
+        ul.lst-kix_jjw0mj9bl986-5 {
+            list-style-type: none
+        }
+
+        .lst-kix_lf90vqm16i4x-8>li:before {
+            content: "\0025a0  "
+        }
+
+        ul.lst-kix_jjw0mj9bl986-0 {
+            list-style-type: none
+        }
+
+        ol.lst-kix_stlthlqvwps6-0.start {
+            counter-reset: lst-ctn-kix_stlthlqvwps6-0 0
+        }
+
+        ul.lst-kix_jjw0mj9bl986-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_jjw0mj9bl986-1 {
+            list-style-type: none
+        }
+
+        .lst-kix_stlthlqvwps6-1>li {
+            counter-increment: lst-ctn-kix_stlthlqvwps6-1
+        }
+
+        .lst-kix_9jetks4mgv9w-6>li:before {
+            content: "\0025cf  "
+        }
+
+        ul.lst-kix_xvzjmbyy0we4-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_xvzjmbyy0we4-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_xvzjmbyy0we4-0 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_xvzjmbyy0we4-1 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_xvzjmbyy0we4-6 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_mg1w4twwuh06-8 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_xvzjmbyy0we4-7 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_xvzjmbyy0we4-4 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_xvzjmbyy0we4-5 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_lf90vqm16i4x-6 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_lf90vqm16i4x-7 {
+            list-style-type: none
+        }
+
+        .lst-kix_stlthlqvwps6-3>li:before {
+            content: "" counter(lst-ctn-kix_stlthlqvwps6-3, decimal) ". "
+        }
+
+        ul.lst-kix_lf90vqm16i4x-8 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_lf90vqm16i4x-2 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_lf90vqm16i4x-3 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_lf90vqm16i4x-4 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_lf90vqm16i4x-5 {
+            list-style-type: none
+        }
+
+        .lst-kix_stlthlqvwps6-7>li:before {
+            content: "" counter(lst-ctn-kix_stlthlqvwps6-7, lower-latin) ". "
+        }
+
+        ul.lst-kix_lf90vqm16i4x-0 {
+            list-style-type: none
+        }
+
+        ul.lst-kix_lf90vqm16i4x-1 {
+            list-style-type: none
+        }
+
+        .lst-kix_uwdzswms202y-7>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_v200j9rrmfq5-7>li:before {
+            content: "" counter(lst-ctn-kix_v200j9rrmfq5-7, lower-latin) ". "
+        }
+
+        ol.lst-kix_ixctali3daeq-5.start {
+            counter-reset: lst-ctn-kix_ixctali3daeq-5 0
+        }
+
+        .lst-kix_2j7lekxqnkpt-4>li:before {
+            content: "\0025cb  "
+        }
+
+        ol.lst-kix_stlthlqvwps6-2.start {
+            counter-reset: lst-ctn-kix_stlthlqvwps6-2 0
+        }
+
+        .lst-kix_ixctali3daeq-0>li:before {
+            content: "" counter(lst-ctn-kix_ixctali3daeq-0, decimal) ". "
+        }
+
+        .lst-kix_xvzjmbyy0we4-0>li:before {
+            content: "\0025cf  "
+        }
+
+        ul.lst-kix_xvzjmbyy0we4-8 {
+            list-style-type: none
+        }
+
+        .lst-kix_dudpda2stflo-2>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_v200j9rrmfq5-6>li {
+            counter-increment: lst-ctn-kix_v200j9rrmfq5-6
+        }
+
+        .lst-kix_9jetks4mgv9w-2>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_2j7lekxqnkpt-8>li:before {
+            content: "\0025a0  "
+        }
+
+        .lst-kix_r4w1dj9n68ox-7>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_ixctali3daeq-8>li:before {
+            content: "" counter(lst-ctn-kix_ixctali3daeq-8, lower-roman) ". "
+        }
+
+        .lst-kix_80i1aog082ia-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_xvzjmbyy0we4-8>li:before {
+            content: "\0025a0  "
+        }
+
+        ol.lst-kix_ixctali3daeq-4.start {
+            counter-reset: lst-ctn-kix_ixctali3daeq-4 0
+        }
+
+        .lst-kix_dudpda2stflo-6>li:before {
+            content: "\0025cf  "
+        }
+
+        ol.lst-kix_stlthlqvwps6-3.start {
+            counter-reset: lst-ctn-kix_stlthlqvwps6-3 0
+        }
+
+        .lst-kix_xvzjmbyy0we4-4>li:before {
+            content: "\0025cb  "
+        }
+
+        .lst-kix_stlthlqvwps6-6>li {
+            counter-increment: lst-ctn-kix_stlthlqvwps6-6
+        }
+
+        .lst-kix_r4w1dj9n68ox-3>li:before {
+            content: "\0025cf  "
+        }
+
+        .lst-kix_ixctali3daeq-4>li:before {
+            content: "" counter(lst-ctn-kix_ixctali3daeq-4, lower-latin) ". "
+        }
+
+        .lst-kix_2j7lekxqnkpt-0>li:before {
+            content: "\0025cf  "
+        }
+
+        ol {
+            margin: 0;
+            padding: 0
+        }
+
+        table td,
+        table th {
+            padding: 0
+        }
+
+        .c0 {
+            margin-left: 36pt;
+            padding-top: 0pt;
+            padding-left: 0pt;
+            padding-bottom: 0pt;
+            line-height: 1.15;
+            orphans: 2;
+            widows: 2;
+            text-align: left
+        }
+
+        .c13 {
+            color: #000000;
+            font-weight: 400;
+            text-decoration: none;
+            vertical-align: baseline;
+            font-size: 26pt;
+            font-family: "Arial";
+            font-style: normal
+        }
+
+        .c14 {
+            padding-top: 0pt;
+            padding-bottom: 3pt;
+            line-height: 1.15;
+            page-break-after: avoid;
+            orphans: 2;
+            widows: 2;
+            text-align: left
+        }
+
+        .c2 {
+            color: #000000;
+            font-weight: 400;
+            text-decoration: none;
+            vertical-align: baseline;
+            font-size: 11pt;
+            font-family: "Arial";
+            font-style: normal
+        }
+
+        .c10 {
+            padding-top: 18pt;
+            padding-bottom: 6pt;
+            line-height: 1.15;
+            page-break-after: avoid;
+            orphans: 2;
+            widows: 2;
+            text-align: left
+        }
+
+        .c9 {
+            color: #000000;
+            font-weight: 400;
+            text-decoration: none;
+            vertical-align: baseline;
+            font-size: 16pt;
+            font-family: "Arial";
+            font-style: normal
+        }
+
+        .c1 {
+            padding-top: 0pt;
+            padding-bottom: 0pt;
+            line-height: 1.15;
+            orphans: 2;
+            widows: 2;
+            text-align: left;
+            height: 11pt
+        }
+
+        .c11 {
+            padding-top: 20pt;
+            padding-bottom: 6pt;
+            line-height: 1.15;
+            page-break-after: avoid;
+            orphans: 2;
+            widows: 2;
+            text-align: left
+        }
+
+        .c12 {
+            color: #000000;
+            font-weight: 400;
+            text-decoration: none;
+            vertical-align: baseline;
+            font-size: 11pt;
+            font-family: "Arial";
+            font-style: italic
+        }
+
+        .c5 {
+            color: #000000;
+            font-weight: 400;
+            text-decoration: none;
+            vertical-align: baseline;
+            font-size: 20pt;
+            font-family: "Arial";
+            font-style: normal
+        }
+
+        .c3 {
+            padding-top: 0pt;
+            padding-bottom: 0pt;
+            line-height: 1.15;
+            orphans: 2;
+            widows: 2;
+            text-align: left
+        }
+
+        .c7 {
+            color: #000000;
+            text-decoration: none;
+            vertical-align: baseline;
+            font-size: 11pt;
+            font-family: "Arial";
+            font-style: normal
+        }
+
+        .c8 {
+            background-color: #ffffff;
+            max-width: 468pt;
+            padding: 72pt 72pt 72pt 72pt
+        }
+
+        .c6 {
+            padding: 0;
+            margin: 0
+        }
+
+        .c4 {
+            font-weight: 700
+        }
+
+        .title {
+            padding-top: 0pt;
+            color: #000000;
+            font-size: 26pt;
+            padding-bottom: 3pt;
+            font-family: "Arial";
+            line-height: 1.15;
+            page-break-after: avoid;
+            orphans: 2;
+            widows: 2;
+            text-align: left
+        }
+
+        .subtitle {
+            padding-top: 0pt;
+            color: #666666;
+            font-size: 15pt;
+            padding-bottom: 16pt;
+            font-family: "Arial";
+            line-height: 1.15;
+            page-break-after: avoid;
+            orphans: 2;
+            widows: 2;
+            text-align: left
+        }
+
+        li {
+            color: #000000;
+            font-size: 11pt;
+            font-family: "Arial"
+        }
+
+        p {
+            margin: 0;
+            color: #000000;
+            font-size: 11pt;
+            font-family: "Arial"
+        }
+
+        h1 {
+            padding-top: 20pt;
+            color: #000000;
+            font-size: 20pt;
+            padding-bottom: 6pt;
+            font-family: "Arial";
+            line-height: 1.15;
+            page-break-after: avoid;
+            orphans: 2;
+            widows: 2;
+            text-align: left
+        }
+
+        h2 {
+            padding-top: 18pt;
+            color: #000000;
+            font-size: 16pt;
+            padding-bottom: 6pt;
+            font-family: "Arial";
+            line-height: 1.15;
+            page-break-after: avoid;
+            orphans: 2;
+            widows: 2;
+            text-align: left
+        }
+
+        h3 {
+            padding-top: 16pt;
+            color: #434343;
+            font-size: 14pt;
+            padding-bottom: 4pt;
+            font-family: "Arial";
+            line-height: 1.15;
+            page-break-after: avoid;
+            orphans: 2;
+            widows: 2;
+            text-align: left
+        }
+
+        h4 {
+            padding-top: 14pt;
+            color: #666666;
+            font-size: 12pt;
+            padding-bottom: 4pt;
+            font-family: "Arial";
+            line-height: 1.15;
+            page-break-after: avoid;
+            orphans: 2;
+            widows: 2;
+            text-align: left
+        }
+
+        h5 {
+            padding-top: 12pt;
+            color: #666666;
+            font-size: 11pt;
+            padding-bottom: 4pt;
+            font-family: "Arial";
+            line-height: 1.15;
+            page-break-after: avoid;
+            orphans: 2;
+            widows: 2;
+            text-align: left
+        }
+
+        h6 {
+            padding-top: 12pt;
+            color: #666666;
+            font-size: 11pt;
+            padding-bottom: 4pt;
+            font-family: "Arial";
+            line-height: 1.15;
+            page-break-after: avoid;
+            font-style: italic;
+            orphans: 2;
+            widows: 2;
+            text-align: left
+        }
+    </style>
+</head>
+
+<body>
+    <div id="fb-root"></div>
+    <script async defer crossorigin="anonymous"
+        src="https://connect.facebook.net/en_GB/sdk.js#xfbml=1&autoLogAppEvents=1&version=v6.0&appId=538011207113822"></script>
+    <section class="hero is-shadowless is-fullheight">
+        <div class="hero-head">
+            <div class="container">
+                <nav class="navbar is-transparent is-spaced">
+                    <div class="navbar-brand"><a href="/" class="navbar-item navbar-logo" style="margin-right: auto;">
+                            <figure class="image is-128x128"><img src="/logo.png" alt="logo"
+                                    style="height: 128px; width: 128px; max-height: 128px"></figure>
+                        </a><a href="/login" class="navbar-item button thickbox is-uppercase is-hidden-desktop"
+                            style="margin: 20px" target="_self">Login</a></div>
+                    <div class="navbar-menu">
+                        <div class="navbar-end">
+                            <div class="navbar-item is-hidden-touch"><a href="/login"
+                                    class="button thickbox is-uppercase" target="_self">Login To Creator Area</a></div>
                         </div>
-                        <div class="navber-item" style="display: flex; align-items: center; margin-left: 5px;">
-                            <div class="fb-like" data-href="https://www.open-quiz.com" data-width=""
-                                data-layout="button_count" data-action="like" data-size="large" data-share="true"
-                                data-colorscheme="light"></div>
-                        </div>
-                    </nav>
-                </div>
+                    </div>
+                    <div class="navber-item" style="display: flex; align-items: center; margin-left: 5px;">
+                        <div class="fb-like" data-href="https://www.open-quiz.com" data-width=""
+                            data-layout="button_count" data-action="like" data-size="large" data-share="true"
+                            data-colorscheme="light"></div>
+                    </div>
+                </nav>
             </div>
-            <div class="hero-body">
-                <div class="container" style="margin-bottom: auto">
-                    <div class="content">
+        </div>
+        <div class="hero-body">
+            <div class="container" style="margin-bottom: auto">
+                <div class="content">
 
-                        <h2>Open-Quiz User Manual</h2>
-
-
-                        <h2>1 Overview</h2>
+                    <h2>Open-Quiz User Manual</h2>
 
 
-                        <p>
+                    <h2>1 Overview</h2>
+
+
+                    <p>
                         Open-Quiz is a web platform for producing online quizzes.
                         It supports regulations of What Where When, and Trivia Quizzes with free form of answers.
                         Audio/video stream may be embeded into a quiz.
                         Media content is allowed (images, audio and video).
                         There are no limitations on the number of participants!
-                        </p>
-                        <p>
-                        Please login to the production area to start producing quizzes.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
+                        Please login to the creator area to start producing quizzes.
+                    </p>
+                    <p>
                         <a name="p2"></a>
-                        </p>
-                        <h2>2 Setup Quiz</h2>
+                    </p>
+                    <h2>2 Setup Quiz</h2>
 
 
-                        <p>
+                    <p>
                         Select “Quizzes” <strong>(1)</strong> on the left menu to open Quizzes Page
-                        </p>
-                        <p>
+                    </p>
+                    <p>
 
                         <img src="images/Quiz-User0.png" width="" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 2.1 Quizzes Page
-                        </p>
-                        <p>
-                        Here you can “Create New Quiz” <strong>(2)</strong> or open an existing quiz by clicking the “plus” sign in the table <strong>(3)</strong>.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
+                        Here you can “Create New Quiz” <strong>(2)</strong> or open an existing quiz by clicking the
+                        “plus” sign in the table <strong>(3)</strong>.
+                    </p>
+                    <p>
                         Quiz editing form will be opened.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
 
                         <img src="images/Quiz-User1.png" width="640px" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 2.2 Quiz Edit Form
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Here you set up:
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
                         <li><strong>Name</strong> of the quiz.
 
@@ -110,24 +1967,29 @@
 
                         <li><strong>Welcome Message</strong> - the message is displayed to users before the quiz starts.
 
-                        <li><strong>Farewell Message</strong> -  the message is displayed to users after the quiz finishes.
+                        <li><strong>Farewell Message</strong> - the message is displayed to users after the quiz
+                            finishes.
 
-                        <li><strong>Event Page</strong> - link to the external page with information about the quiz. It is displayed on the registration page.
+                        <li><strong>Event Page</strong> - link to the external page with information about the quiz. It
+                            is displayed on the registration page.
 
-                        <li><strong>Mixlr User Id</strong> - id of your Mixlr account. Keep it blank if you are not going to use Mixlr.
+                        <li><strong>Mixlr User Id</strong> - id of your Mixlr account. Keep it blank if you are not
+                            going to use Mixlr.
 
-                        <li><strong>Quiz picture</strong> - an image that users see during the quiz. Usually it is your logo.
+                        <li><strong>Quiz picture</strong> - an image that users see during the quiz. Usually it is your
+                            logo.
 
-                        <li><strong>Registration is moderated </strong>- this option prevents a team from participating in a quiz until you admit its registration.
+                        <li><strong>Registration is moderated </strong>- this option prevents a team from participating
+                            in a quiz until you admit its registration.
                         </li>
-                        </ul>
-                        <p>
+                    </ul>
+                    <p>
                         Don’t forget to click the “Submit” button to save changes.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         The Quiz Edit From also contains:
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
                         <li><strong>Admin link</strong> - link to the admin app for operating the quiz.
 
@@ -135,52 +1997,54 @@
 
                         <li><strong>Audience link</strong> - link to read-only view of the quiz.
                         </li>
-                        </ul>
-                        <p>
+                    </ul>
+                    <p>
                         <a name="p3"></a>
-                        </p>
-                        <h2>3 Managing Question’s Packages</h2>
+                    </p>
+                    <h2>3 Managing Question’s Packages</h2>
 
 
-                        <p>
+                    <p>
                         Select “Questions” <strong>(1)</strong> on the left menu to open Questions Page
-                        </p>
-                        <p>
+                    </p>
+                    <p>
 
                         <img src="images/Quiz-User2.png" width="640px" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 3.1 Questions Page
-                        </p>
-                        <p>
-                        Here you can “Create New Package” <strong>(2)</strong> or open an existing package by clicking the “plus” sign in the table <strong>(3)</strong>. Also you can “Aquire Package” <strong>(4)</strong> from another account.
-                        </p>
-                        <h3>3.1 Editing Packages</h3>
+                    </p>
+                    <p>
+                        Here you can “Create New Package” <strong>(2)</strong> or open an existing package by clicking
+                        the “plus” sign in the table <strong>(3)</strong>. Also you can “Aquire Package”
+                        <strong>(4)</strong> from another account.
+                    </p>
+                    <h3>3.1 Editing Packages</h3>
 
 
-                        <p>
+                    <p>
 
                         <img src="images/Quiz-User3.png" width="640px" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 3.2 Package Edit Form
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fields in the form:
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
                         <li><strong>Package Name</strong>
 
                         <li><strong>Transfer Token</strong> - used in acquiring scenarios.
                         </li>
-                        </ul>
-                        <p>
+                    </ul>
+                    <p>
                         A package consists of the slips. Supported slip kinds:
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
                         <li><strong>Single</strong> - one question, one answer.
 
@@ -188,198 +2052,224 @@
 
                         <li><strong>Blitz</strong> - three questions, followed by a single answer.
 
-                        <li><strong>Multiple</strong> - slip with a set of single questions, answers are collected at the same time.
+                        <li><strong>Multiple</strong> - slip with a set of single questions, answers are collected at
+                            the same time.
                         </li>
-                        </ul>
-                        <p>
-                        You may add a slip by clicking the corresponding button from the toolbar <strong>(1)</strong>. In case of <strong><em>multiple</em></strong> slip, which usually represents a whole quiz’ tour, you should specify the tour’s title and add particular questions with help of “Append Question To Slip” button (<strong>2</strong>). Be aware, slips and questions are sorted in reverse order (last are higher in the table <strong>(3)</strong>)
-                        </p>
-                        <p>
+                    </ul>
+                    <p>
+                        You may add a slip by clicking the corresponding button from the toolbar <strong>(1)</strong>.
+                        In case of <strong><em>multiple</em></strong> slip, which usually represents a whole quiz’ tour,
+                        you should specify the tour’s title and add particular questions with help of “Append Question
+                        To Slip” button (<strong>2</strong>). Be aware, slips and questions are sorted in reverse order
+                        (last are higher in the table <strong>(3)</strong>)
+                    </p>
+                    <p>
                         Each question has such fields:
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
-                        <li><strong>Question</strong> or <strong>List of Questions</strong> - text of the question, displayed to players during discussion.
+                        <li><strong>Question</strong> or <strong>List of Questions</strong> - text of the question,
+                            displayed to players during discussion.
 
-                        <li><strong>Question picture</strong> - graphical information, displayed to players during discussion.
+                        <li><strong>Question picture</strong> - graphical information, displayed to players during
+                            discussion.
 
-                        <li><strong>Answer</strong> - correct answer, used for automatic settling of the results, first answer is displayed to players after a question is settled.
+                        <li><strong>Answer</strong> - correct answer, used for automatic settling of the results, first
+                            answer is displayed to players after a question is settled.
 
-                        <li><strong>Comment</strong> - additional information regarding a question, displayed after the question is settled.
+                        <li><strong>Comment</strong> - additional information regarding a question, displayed after the
+                            question is settled.
 
                         <li><strong>Comment picture</strong> - graphical information, related to comment.
 
                         <li><strong>Points</strong> - default number of points a team gets is case of correct answer.
 
-                        <li><strong>Jeopardy points</strong> - points in case of answer with jeopardy (a team gets the points in case of correct answer and loses the points in case of wrong answer).
+                        <li><strong>Jeopardy points</strong> - points in case of answer with jeopardy (a team gets the
+                            points in case of correct answer and loses the points in case of wrong answer).
 
                         <li><strong>With choice flag</strong> - if checked, a team has a choice to play jeopardy or not.
                         </li>
-                        </ul>
-                        <p>
+                    </ul>
+                    <p>
                         Points, Jeopardy points and with choice flag specify three play modes:
-                        </p>
+                    </p>
 
-                        <table>
-                          <tr>
-                           <td>Points
-                           </td>
-                           <td>Jeopardy Points
-                           </td>
-                           <td>With Choice
-                           </td>
-                           <td>Play Mode
-                           </td>
-                          </tr>
-                          <tr>
-                           <td>N
-                           </td>
-                           <td>empty
-                           </td>
-                           <td>any
-                           </td>
-                           <td><strong>Regular</strong>. A team gets N points in case of the correct answer.
-                           </td>
-                          </tr>
-                          <tr>
-                           <td>any
-                           </td>
-                           <td>M
-                           </td>
-                           <td>no
-                           </td>
-                           <td><strong>Jeopardy</strong>. A team <span style="text-decoration:underline;">gets</span> M points in case of correct answer and <span style="text-decoration:underline;">loses</span> M points in case of wrong answer. Team’s points are <span style="text-decoration:underline;">not changed</span> if the answer is not provided.
-                           </td>
-                          </tr>
-                          <tr>
-                           <td>N
-                           </td>
-                           <td>M
-                           </td>
-                           <td>yes
-                           </td>
-                           <td><strong>Bet</strong>. For each question a team has a choice between regular and jeopardy mode.
-                           </td>
-                          </tr>
-                        </table>
+                    <table>
+                        <tr>
+                            <td>Points
+                            </td>
+                            <td>Jeopardy Points
+                            </td>
+                            <td>With Choice
+                            </td>
+                            <td>Play Mode
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>N
+                            </td>
+                            <td>empty
+                            </td>
+                            <td>any
+                            </td>
+                            <td><strong>Regular</strong>. A team gets N points in case of the correct answer.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>any
+                            </td>
+                            <td>M
+                            </td>
+                            <td>no
+                            </td>
+                            <td><strong>Jeopardy</strong>. A team <span style="text-decoration:underline;">gets</span> M
+                                points in case of correct answer and <span
+                                    style="text-decoration:underline;">loses</span> M points in case of wrong answer.
+                                Team’s points are <span style="text-decoration:underline;">not changed</span> if the
+                                answer is not provided.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>N
+                            </td>
+                            <td>M
+                            </td>
+                            <td>yes
+                            </td>
+                            <td><strong>Bet</strong>. For each question a team has a choice between regular and jeopardy
+                                mode.
+                            </td>
+                        </tr>
+                    </table>
 
 
-                        <p>
+                    <p>
                         Please note, that the points may be fractional as well.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Rules of automatic answers checking algorithm:
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
                         <li>If a question has several correct answers. Each of those should be placed in a separate row.
 
-                        <li>If an answer has a non necessary part it could be placed within square brackets. Example: <em>‘Red [Sea]’.</em>
+                        <li>If an answer has a non necessary part it could be placed within square brackets. Example:
+                            <em>‘Red [Sea]’.</em>
 
-                        <li>If an answer has a choice part it could be placed in square brackets and separated with slash. Example <em>‘[mr/mrs] Smith’.</em>
+                        <li>If an answer has a choice part it could be placed in square brackets and separated with
+                            slash. Example <em>‘[mr/mrs] Smith’.</em>
 
                         <li>Al is case insensitive.
 
-                        <li>Allowed characters - letters, numbers, dot ‘.’, plus ‘+’, minus ‘-’. All other characters are considered as separators of words.
+                        <li>Allowed characters - letters, numbers, dot ‘.’, plus ‘+’, minus ‘-’. All other characters
+                            are considered as separators of words.
 
-                        <li>The algorithm is insensitive to order of words. (“Pushkin,Lermontov” and “Lermontov,Pushkin” are the same answers)
+                        <li>The algorithm is insensitive to order of words. (“Pushkin,Lermontov” and “Lermontov,Pushkin”
+                            are the same answers)
 
                         <li>The algorithm is tolerated to one typo in a word if the word’s size is more than 4 symbols.
                         </li>
-                        </ul>
-                        <p>
-                        Be aware that dot ‘.’ is treated as part of the answer. Trim unnecessary dots from the end of the answer’s text. (eg “Pushkin.” - wrong, “Pushkin” - correct)
-                        </p>
-                        <h3>3.2 Sharing Packages</h3>
+                    </ul>
+                    <p>
+                        Be aware that dot ‘.’ is treated as part of the answer. Trim unnecessary dots from the end of
+                        the answer’s text. (eg “Pushkin.” - wrong, “Pushkin” - correct)
+                    </p>
+                    <h3>3.2 Sharing Packages</h3>
 
 
-                        <p>
-                        From Package Edit From you may share the package with other open-quiz users (Fig 3.2 <strong>(mark 5)</strong>)
-                        </p>
-                        <p>
+                    <p>
+                        From Package Edit From you may share the package with other open-quiz users (Fig 3.2
+                        <strong>(mark 5)</strong>)
+                    </p>
+                    <p>
 
                         <img src="images/Quiz-User4.png" width="" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 3.3 Shared With information
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Press the “Share” button to share a package with a user.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
 
                         <img src="images/Quiz-User5.png" width="" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 3.4 Sharing form
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         You need to enter the user’s id (A user may find the id on the settings page).
-                        </p>
-                        <p>
-                        Users with whom you share a package, can see the package in their package’s lists but can’t edit it.
-                        </p>
-                        <h3>3.3 Acquiring Packages</h3>
+                    </p>
+                    <p>
+                        Users with whom you share a package, can see the package in their package’s lists but can’t edit
+                        it.
+                    </p>
+                    <h3>3.3 Acquiring Packages</h3>
 
 
-                        <p>
+                    <p>
 
                         <img src="images/Quiz-User6.png" width="640px" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 3.5 Acquiring Form
-                        </p>
-                        <p>
-                        To acquire a package from another user you should get the package's Id and Transfer Token from its owner. After transfering, you will be able to see the package in your package’s list. Transfer token is changed.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
+                        To acquire a package from another user you should get the package's Id and Transfer Token from
+                        its owner. After transfering, you will be able to see the package in your package’s list.
+                        Transfer token is changed.
+                    </p>
+                    <p>
                         <a name="p4"></a>
-                        </p>
-                        <h2>4 Settings</h2>
+                    </p>
+                    <h2>4 Settings</h2>
 
 
-                        <p>
-                        On the Settings Form you may save your mixlr’s id and quiz picture. The attributes will be assigned for new quizzes you create.
-                        </p>
-                        <p>
+                    <p>
+                        On the Settings Form you may save your mixlr’s id and quiz picture. The attributes will be
+                        assigned for new quizzes you create.
+                    </p>
+                    <p>
 
                         <img src="images/Quiz-User7.png" width="" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 4.1 Settings Form
-                        </p>
-                        <p>
-                        Also you may find your User Id. It is necessary information in the scenario of sharing a question package.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
+                        Also you may find your User Id. It is necessary information in the scenario of sharing a
+                        question package.
+                    </p>
+                    <p>
                         <a name="p5"></a>
-                        </p>
-                        <h2>5 Administration App</h2>
+                    </p>
+                    <h2>5 Administration App</h2>
 
 
-                        <p>
+                    <p>
                         You may open the quiz administration application by “admin link” in your quizzes page.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Using “admin link” several persons may operate with the same quiz simultaneously.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
 
 
                         <img src="images/Quiz-User8.png" width="640px" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 5.1 Admin Menu
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Administration application consist of
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
                         <li><strong>Teams Page</strong> - list of registered teams
 
@@ -389,82 +2279,86 @@
 
                         <li><strong>Results</strong> - results table
                         </li>
-                        </ul>
-                        <p>
+                    </ul>
+                    <p>
                         <a name="p5.1"></a>
-                        </p>
-                        <h3>5.1 Managing Teams</h3>
+                    </p>
+                    <h3>5.1 Managing Teams</h3>
 
 
-                        <p>
+                    <p>
                         There are two way how a team could be registered on a quiz
-                        </p>
-                        <ol>
+                    </p>
+                    <ol>
 
-                        <li>Registration by “registration link” - you publish “registration link” from Quiz Edit Form. Captains of the teams perform registration.
+                        <li>Registration by “registration link” - you publish “registration link” from Quiz Edit Form.
+                            Captains of the teams perform registration.
 
-                        <li>Manual registration - you “Create New Team” <strong>(1)</strong> on Teams Page of administration application.
+                        <li>Manual registration - you “Create New Team” <strong>(1)</strong> on Teams Page of
+                            administration application.
                         </li>
-                        </ol>
-                        <p>
+                    </ol>
+                    <p>
 
 
 
 
                         <img src="images/Quiz-User9.png" width="640px" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 5.2 Teams Page
-                        </p>
-                        <p>
-                        In case of moderate registration. You should Admit or Reject <strong>(2)</strong> the registration manually.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
+                        In case of moderate registration. You should Admit or Reject <strong>(2)</strong> the
+                        registration manually.
+                    </p>
+                    <p>
                         In any time you could change the name of a team and its status using Tram Edit Form.
-                        </p>
-                        <p>
-                        Entry token is used for creation of Entry URL - unique link where team’s captain may enter answers. An entry url can be used only from one device at the same time.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
+                        Entry token is used for creation of Entry URL - unique link where team’s captain may enter
+                        answers. An entry url can be used only from one device at the same time.
+                    </p>
+                    <p>
                         <a name="p5.2"></a>
-                        </p>
-                        <h3>5.2 Control Panel</h3>
+                    </p>
+                    <h3>5.2 Control Panel</h3>
 
 
-                        <p>
+                    <p>
                         From the Control Panel you manage live quiz flow.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
 
 
 
                         <img src="images/Quiz-User10.png" width="640px" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 5.3. Control Panel before live
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Two steps you should perform to go live:
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
                         <li>Select Questions Package
 
                         <li>Change Status to Live
                         </li>
-                        </ul>
-                        <p>
+                    </ul>
+                    <p>
                         After that you will see a Control Panel with information on the Current Question.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Also you may not select a package and enter text of the questions manually.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         General Control Flow:
-                        </p>
-                        <ol>
+                    </p>
+                    <ol>
 
                         <li>Select a <strong>Questions Package</strong>
 
@@ -484,22 +2378,23 @@
 
                         <li><strong>Finish Quiz</strong>
                         </li>
-                        </ol>
-                        <p>
+                    </ol>
+                    <p>
 
 
                         <img src="images/Quiz-User11.png" width="320px" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 5.4 Quiz Control Panel Live
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         You may perform “last minute” change in the question:
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
-                        <li>Set question number <strong>(1) </strong>- you<strong> </strong>may change numeration or add a prefix (e.g “play-off 1”)
+                        <li>Set question number <strong>(1) </strong>- you<strong> </strong>may change numeration or add
+                            a prefix (e.g “play-off 1”)
 
                         <li>Seconds of countdown
 
@@ -513,134 +2408,140 @@
 
                         <li>Commment’s text and picture
                         </li>
-                        </ul>
-                        <p>
+                    </ul>
+                    <p>
                         You control quiz flow by sending such commands:
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
                         <li><strong>Start Countdown</strong> - after announcing a question
 
                         <li><strong>Reset Countdown</strong> - if you start countdown mistakenly
 
-                        <li><strong>Show Answer</strong> - to show answer on team’s devices and check correct answer automatically
+                        <li><strong>Show Answer</strong> - to show answer on team’s devices and check correct answer
+                            automatically
 
                         <li><strong>Next Slip</strong> - go to the next quesion’s slip
                         </li>
-                        </ul>
-                        <p>
+                    </ul>
+                    <p>
                         In case of doublets or blitzes your have extra commands before starting countdown
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
                         <li><strong>Show Question Part 1</strong>
 
                         <li><strong>Show Question Part 2</strong> - for blitzes only
                         </li>
-                        </ul>
-                        <p>
+                    </ul>
+                    <p>
 
 
                         <img src="images/Quiz-User12.png" width="320px" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 5.5 Control Panel during a blitz
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         In case of a multi answers slip you command to show each question successively.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
 
 
                         <img src="images/Quiz-User13.png" width="320px" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 5.6 Control panel with muli question slip
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         After last slip in the package, you may choose to
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
                         <li><strong>Finish</strong> the quiz
 
                         <li><strong>Select another package</strong> (e.g.play-off) and continue
                         </li>
-                        </ul>
-                        <p>
+                    </ul>
+                    <p>
                         You can change the package or selected question from the package anytime when the quiz is live.
-                        </p>
-                        <h3>5.3 Answers</h3>
+                    </p>
+                    <h3>5.3 Answers</h3>
 
 
-                        <p>
+                    <p>
                         Answers page allows to set teams results for each question.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
 
 
                         <img src="images/Quiz-User14.png" width="" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 5.7 Answers Page
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         You navigate between questions with the help of the left menu.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         You may
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
                         <li>Give a team default number of points by clicking <strong>“plus” button</strong>
 
                         <li>Clear point by clicking<strong> “zero” button</strong>
 
-                        <li>Take points from a team by clicking <strong>“minus” button</strong> (only for jeopardy questions)
+                        <li>Take points from a team by clicking <strong>“minus” button</strong> (only for jeopardy
+                            questions)
 
                         <li>You may Give any value of point by entering it manually
                         </li>
-                        </ul>
-                        <p>
+                    </ul>
+                    <p>
                         If you change points for a team, it set the points for rest teams with the same answer.
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Time column displays seconds from the start of the countdown when the answer was received.
-                        </p>
-                        <p>
-                        Usually you wait until autochecking of the answers is completed (button <strong>Show Answer</strong> is clicked on the <strong>Control Panel</strong>) and then process the rest of the answers.
-                        </p>
-                        <h3>5.4 Results</h3>
+                    </p>
+                    <p>
+                        Usually you wait until autochecking of the answers is completed (button <strong>Show
+                            Answer</strong> is clicked on the <strong>Control Panel</strong>) and then process the rest
+                        of the answers.
+                    </p>
+                    <h3>5.4 Results</h3>
 
 
-                        <p>
+                    <p>
                         Here you can see current results
-                        </p>
-                        <p>
+                    </p>
+                    <p>
 
 
                         <img src="images/Quiz-User15.png" width="" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
-                        Fig  5.8 Results Page
-                        </p>
-                        <h2>6 Team App</h2>
+                    </p>
+                    <p>
+                        Fig 5.8 Results Page
+                    </p>
+                    <h2>6 Team App</h2>
 
 
-                        <p>
-                        Each team has a unique link to a quiz. The link can be found on the registration page or directly obtained from the quiz’ administration.
-                        </p>
-                        <p>
-                        Only one device can open the link at the same time. So this is a good idea to give the link to the team’s captain.
-                        </p>
-                        <p>
+                    <p>
+                        Each team has a unique link to a quiz. The link can be found on the registration page or
+                        directly obtained from the quiz’ administration.
+                    </p>
+                    <p>
+                        Only one device can open the link at the same time. So this is a good idea to give the link to
+                        the team’s captain.
+                    </p>
+                    <p>
 
 
                         <img src="images/Quiz-User16.png" width="320px" alt="alt_text" title="image_tooltip">
@@ -648,76 +2549,85 @@
 
                         <img src="images/Quiz-User17.png" width="320px" alt="alt_text" title="image_tooltip">
 
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         Fig 6.1 Team’s application (without choice and with choice)
-                        </p>
-                        <p>
+                    </p>
+                    <p>
                         The application consists of
-                        </p>
-                        <ul>
+                    </p>
+                    <ul>
 
-                        <li>Question Page - where questions are displayed and answers are entered. (There is no “Send” button in the app) An answer is sent automatically after the countdown.
+                        <li>Question Page - where questions are displayed and answers are entered. (There is no “Send”
+                            button in the app) An answer is sent automatically after the countdown.
 
                         <li>History Page - history of the team’s answers and correct answers
 
                         <li>Results Page - current results
                         </li>
-                        </ul>
-                        <p>
-                        On the top of the application Mixlr player is embedded in case appropriate id is provided in the Quiz Edit Form.
-                        </p>
-                        <h2>7 Audience App</h2>
+                    </ul>
+                    <p>
+                        On the top of the application Mixlr player is embedded in case appropriate id is provided in the
+                        Quiz Edit Form.
+                    </p>
+                    <h2>7 Audience App</h2>
 
 
-                        <p>
-                        Audience application provides read-only access to the quiz’ content. It is a good idea to share the link with non-captains competitors. The link could be found in the Quiz Edit Form.
-                        </p>
-                        <h2>
+                    <p>
+                        Audience application provides read-only access to the quiz’ content. It is a good idea to share
+                        the link with non-captains competitors. The link could be found in the Quiz Edit Form.
+                    </p>
+                    <h2>
 
                         <img src="images/Quiz-User18.png" width="320px" alt="alt_text" title="image_tooltip">
-                        </h2>
+                    </h2>
 
 
-                        <p>
+                    <p>
                         Fig 7.1 Application for the audience
-                        </p>
-                        <h2>8 Recent releases information</h2>
-                        Due to the non-commercial basis of the project, I have no time to update the entire documentation, so the new functionality will be described in this section.
-                        <h3>8.1 Choice Answers</h3>
-                        Along with open answers, you can now set a fixed list of answers from which you want a quiz' participant to choose the right one.
-                        <h3>8.2 Mediapack</h3>
-                        Added embedded media player. You may add link to a stream from Quizzes' Control Panel.
-                        <br/>
-                        Added support of audio and video content in the questions. Just upload corresponding file. Size of the media content is limited with 2 MB.
-                        <h3>8.3 Languages pack</h3>
-                        Localized UI for participants (captains, audience, registration) (English, Russian, Ukrainian)
-                        <br/>
-                        UI's Language is determined from client's browser's settings
-                        <h3>8.4 Results pack</h3>
-                        Extended appearance of the results<br/>
-                        Static results page (link could be found in the Quiz Editor)<br/>
-                        Introduced question's rating (it is used as secondary parameter when place of the team is calculated)<br/>
-                        Added ability to mark end of tour (for displaying results by tours)<br/>
-                        Added ability to set number of a question in the Package Editor (useful for 'zero' and 'warm-up' questions)<br/>
-                        <h3>8.5 Questions rating pack</h3>
-                        Questions karma and rating are calculated according to teams likes and dislikes
-                        <br>
-                        <img src="images/QuestionRating.png" width="320px" alt="formula" title="image_tooltip">
-                        <br/>
-                    </div>
+                    </p>
+                    <h2>8 Recent releases information</h2>
+                    Due to the non-commercial basis of the project, I have no time to update the entire documentation,
+                    so the new functionality will be described in this section.
+                    <h3>8.1 Choice Answers</h3>
+                    Along with open answers, you can now set a fixed list of answers from which you want a quiz'
+                    participant to choose the right one.
+                    <h3>8.2 Mediapack</h3>
+                    Added embedded media player. You may add link to a stream from Quizzes' Control Panel.
+                    <br />
+                    Added support of audio and video content in the questions. Just upload corresponding file. Size of
+                    the media content is limited with 2 MB.
+                    <h3>8.3 Languages pack</h3>
+                    Localized UI for participants (captains, audience, registration) (English, Russian, Ukrainian)
+                    <br />
+                    UI's Language is determined from client's browser's settings
+                    <h3>8.4 Results pack</h3>
+                    Extended appearance of the results<br />
+                    Static results page (link could be found in the Quiz Editor)<br />
+                    Introduced question's rating (it is used as secondary parameter when place of the team is
+                    calculated)<br />
+                    Added ability to mark end of tour (for displaying results by tours)<br />
+                    Added ability to set number of a question in the Package Editor (useful for 'zero' and 'warm-up'
+                    questions)<br />
+                    <h3>8.5 Questions rating pack</h3>
+                    Questions karma and rating are calculated according to teams likes and dislikes
+                    <br>
+                    <img src="images/QuestionRating.png" width="320px" alt="formula" title="image_tooltip">
+                    <br />
                 </div>
             </div>
-    </div>
+        </div>
+        </div>
         </div>
         <div class="hero-foot has-background-dark has-text-grey-light">
             <div class="container" style="text-align: center">&#169;<span class="is-hidden-touch"> Serhii Sabirov</span>
-                2020/21 - <a href="/terms.html" class="has-text-grey-light">Terms</a> - <a href="/disclaimer.html"
+                2020/23 - <a href="/terms.html" class="has-text-grey-light">Terms</a> - <a href="/disclaimer.html"
                     class="has-text-grey-light">Disclaimer</a> - <a href="/privacy-policy-en.html"
                     class="has-text-grey-light">Privacy</a> - <a href="https://t.me/open_quiz"
                     class="has-text-grey-light">Contact</a></div>
         </div>
-        </section>
+    </section>
 
-    </body>
+</body>
+
 </html>

@@ -10,4 +10,6 @@ $fa_font_path: "~@fortawesome/fontawesome-free/webfonts";
 // Bulma
 @import "~bulma/bulma";
 
-.light-item:hover { background-color: #ffffff !important; }
+.light-item:hover {
+    background-color: #ffffff !important;
+}

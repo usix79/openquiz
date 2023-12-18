@@ -1,4 +1,4 @@
-module Common
+module OpenQuiz.Common
 
 open System
 open System.Security.Cryptography
@@ -6,7 +6,7 @@ open System.Security.Cryptography
 open Fable.Remoting.Server
 open Fable.Remoting.Json
 
-open Shared
+open OpenQuiz.Shared
 
 let NYI = Error "Not Yet Implemented"
 

@@ -1,7 +1,7 @@
-module rec Presenter
+module rec OpenQuiz.Presenter
 
-open Shared
-open Domain
+open OpenQuiz
+open OpenQuiz.Domain
 
 let quizStatus (status : QuizStatus) : Shared.QuizStatus=
     match status with
@@ -17,9 +17,9 @@ let quizStatusToDomain (status : Shared.QuizStatus) =
 
 let tourStatus (status : QuizTourStatus) : Shared.TourStatus=
     match status with
-    | Announcing -> TourStatus.Announcing
-    | Countdown -> TourStatus.Countdown
-    | Settled -> TourStatus.Settled
+    | Announcing -> Shared.TourStatus.Announcing
+    | Countdown -> Shared.TourStatus.Countdown
+    | Settled -> Shared.TourStatus.Settled
 
 let teamStatus (status : TeamStatus) : Shared.TeamStatus=
     match status with
@@ -45,14 +45,14 @@ let qwKeyToDomain (qwKey : Shared.QwKey) : QwKey =
         QwIdx = qwKey.QwIdx
     }
 
-let packageRecord (package:PackageDescriptor) : PackageRecord =
+let packageRecord (package:PackageDescriptor) : Shared.PackageRecord =
     {
         PackageId = package.PackageId
         Producer = package.Producer
         Name = package.Name
     }
 
-let packageCard (package: Package) : PackageCard =
+let packageCard (package: Package) : Shared.PackageCard =
     {
         PackageId = package.Dsc.PackageId
         Name = package.Dsc.Name
@@ -140,7 +140,7 @@ let slipToDomain (slip : Shared.Slip) : Slip =
     | Shared.Single slip -> singleSlipToDomain slip |> Single
     | Shared.Multiple (name, slips) -> (name, slips |> List.map singleSlipToDomain) |> Multiple
 
-let quizChangeEvent (quiz:Quiz) =
+let quizChangeEvent (quiz:Quiz) : Shared.QuizChangedEvent =
     {
         Id = quiz.Dsc.QuizId
         QS = quizStatus quiz.Dsc.Status
@@ -150,7 +150,7 @@ let quizChangeEvent (quiz:Quiz) =
              | None -> None
     }
 
-let tourCard idx (tour:QuizTour) : TourCard =
+let tourCard idx (tour:QuizTour) : Shared.TourCard =
     {
         Idx = idx
         Name = tour.Name
@@ -168,46 +168,50 @@ let extractChoices = function
     | OpenAnswer _ -> None
     | ChoiceAnswer list -> list |> List.map (fun ach -> ach.Text) |> Some
 
-let slipSingleCard status qwPartIdx showMedia showQuestion (slip:SingleSlip) : SingleSlipCard =
+let slipSingleCard status qwPartIdx showMedia showQuestion (slip:SingleSlip) : Shared.SingleSlipCard =
     match status with
-    | Announcing when qwPartIdx = 0 && not (showQuestion || showMedia) -> X3
+    | Announcing when qwPartIdx = 0 && not (showQuestion || showMedia) -> Shared.SingleSlipCard.X3
     | Announcing when qwPartIdx = 0 && showQuestion ->
-        {   Txt=slip.Question |> qwText qwPartIdx
-            Choices = None
-            Media = slip.QuestionMedia |> Option.map mediaDsc
-            Ch = slip.WithChoice
-            Points = slip.Points} |> QW
+        {   Shared.SlipQwCard.Txt = slip.Question |> qwText qwPartIdx
+            Shared.SlipQwCard.Choices = None
+            Shared.SlipQwCard.Media = slip.QuestionMedia |> Option.map mediaDsc
+            Shared.SlipQwCard.Ch = slip.WithChoice
+            Shared.SlipQwCard.Points = slip.Points} |> Shared.SingleSlipCard.QW
     | Announcing when qwPartIdx = 0 && showMedia ->
-        {   Txt = ""
-            Choices = None
-            Media = slip.QuestionMedia |> Option.map mediaDsc
-            Ch = slip.WithChoice
-            Points = slip.Points} |> QW
+        {   Shared.SlipQwCard.Txt = ""
+            Shared.SlipQwCard.Choices = None
+            Shared.SlipQwCard.Media = slip.QuestionMedia |> Option.map mediaDsc
+            Shared.SlipQwCard.Ch = slip.WithChoice
+            Shared.SlipQwCard.Points = slip.Points} |> Shared.SingleSlipCard.QW
     | Announcing ->
-        {   Txt=slip.Question |> qwText qwPartIdx
-            Choices = None
-            Media = slip.QuestionMedia |> Option.map mediaDsc
-            Ch = slip.WithChoice
-            Points = slip.Points} |> QW
+        {   Shared.SlipQwCard.Txt=slip.Question |> qwText qwPartIdx
+            Shared.SlipQwCard.Choices = None
+            Shared.SlipQwCard.Media = slip.QuestionMedia |> Option.map mediaDsc
+            Shared.SlipQwCard.Ch = slip.WithChoice
+            Shared.SlipQwCard.Points = slip.Points} |> Shared.SingleSlipCard.QW
     | Countdown ->
-        {   Txt=slip.Question |> qwText slip.QuestionsCount
-            Choices = extractChoices slip.Answer
-            Media = slip.QuestionMedia |> Option.map mediaDsc
-            Ch = slip.WithChoice
-            Points = slip.Points} |> QW
-    | Settled -> {Aw= slipAnswer slip.Answer; Com = slip.Comment;  Media = slip.AnswerMedia |> Option.map mediaDsc; Ch = slip.WithChoice} |> AW
+        {   Shared.SlipQwCard.Txt=slip.Question |> qwText slip.QuestionsCount
+            Shared.SlipQwCard.Choices = extractChoices slip.Answer
+            Shared.SlipQwCard.Media = slip.QuestionMedia |> Option.map mediaDsc
+            Shared.SlipQwCard.Ch = slip.WithChoice
+            Shared.SlipQwCard.Points = slip.Points} |> Shared.SingleSlipCard.QW
+    | Settled ->
+        {   Shared.SlipAwCard.Aw = slipAnswer slip.Answer
+            Shared.SlipAwCard.Com = slip.Comment
+            Shared.SlipAwCard.Media = slip.AnswerMedia |> Option.map mediaDsc
+            Shared.SlipAwCard.Ch = slip.WithChoice} |> Shared.SingleSlipCard.AW
 
-let slipCard status qwIdx qwPartIdx showMedia showQuestion (slip:Slip) : SlipCard =
+let slipCard status qwIdx qwPartIdx showMedia showQuestion (slip:Slip) : Shared.SlipCard =
     match slip with
     | Single slip ->
         let qwPartIdx = if status = Announcing then qwPartIdx else slip.QuestionsCount - 1
-        slipSingleCard status qwPartIdx showMedia showQuestion slip |> SS
+        slipSingleCard status qwPartIdx showMedia showQuestion slip |> Shared.SlipCard.SS
     | Multiple (name,slips) ->
         let cards =
             if status = Announcing then slips |> List.take qwIdx else slips
             |> List.map (fun s -> s |> slipSingleCard status s.QuestionsCount false false)
         // TODO: add next slip if qwPartIdx > 0
-        (name,cards) |> MS
+        (name,cards) |> Shared.SlipCard.MS
 
 let history (team : Team) =
     team.Answers
@@ -217,7 +221,7 @@ let history (team : Team) =
 
 module Main =
 
-    let quizRegRecord (quiz:QuizDescriptor) (team: TeamDescriptor option) : MainModels.QuizRegRecord =
+    let quizRegRecord (quiz:QuizDescriptor) (team: TeamDescriptor option) : Shared.MainModels.QuizRegRecord =
         {
             QuizId = quiz.QuizId
             StartTime = quiz.StartTime
@@ -234,7 +238,7 @@ module Main =
             Comp = team |> Option.map expertCompetition
         }
 
-    let quizProdRecord (quiz:QuizDescriptor) : MainModels.QuizProdRecord =
+    let quizProdRecord (quiz:QuizDescriptor) : Shared.MainModels.QuizProdRecord =
         {
             QuizId = quiz.QuizId
             StartTime = quiz.StartTime
@@ -243,7 +247,7 @@ module Main =
             AdminToken = quiz.AdminToken
         }
 
-    let quizProdCard (quiz:Quiz) : MainModels.QuizProdCard =
+    let quizProdCard (quiz:Quiz) : Shared.MainModels.QuizProdCard =
         {
             QuizId = quiz.Dsc.QuizId
             StartTime = quiz.Dsc.StartTime
@@ -262,13 +266,13 @@ module Main =
             MixlrCode = quiz.Dsc.MixlrCode
         }
 
-    let expertCompetition (team:TeamDescriptor) : MainModels.ExpertCompetition=
+    let expertCompetition (team:TeamDescriptor) : Shared.MainModels.ExpertCompetition=
         {QuizId = team.QuizId; TeamId = team.TeamId; TeamName = team.Name; TeamStatus = teamStatus team.Status; EntryToken = team.EntryToken}
 
-    let settingsCard (exp:Expert) : MainModels.SettingsCard =
+    let settingsCard (exp:Expert) : Shared.MainModels.SettingsCard =
         {UserId = exp.Id; DefaultImg = exp.DefaultImg; DefaultMixlr = exp.DefaultMixlr}
 
-    let packageCard expertId (expertsProvider:Provider<string,Expert>) (package: Package)  : MainModels.PackageCard =
+    let packageCard expertId (expertsProvider:Provider<string,Expert>) (package: Package)  : Shared.MainModels.PackageCard =
         {
             PackageId = package.Dsc.PackageId
             Producer = package.Dsc.Producer
@@ -278,12 +282,12 @@ module Main =
             Slips = package.Slips |> List.map slip
         }
 
-    let expertRecord (exp:Expert) : MainModels.ExpertRecord =
+    let expertRecord (exp:Expert) : Shared.MainModels.ExpertRecord =
         {Id = exp.Id; Name = exp.Name}
 
 module Admin =
 
-    let teamRecord (team:TeamDescriptor) : AdminModels.TeamRecord =
+    let teamRecord (team:TeamDescriptor) : Shared.AdminModels.TeamRecord =
         {
             TeamId = team.TeamId
             TeamName = team.Name
@@ -291,7 +295,7 @@ module Admin =
             EntryToken = team.EntryToken
         }
 
-    let teamCard (team:TeamDescriptor) : AdminModels.TeamCard =
+    let teamCard (team:TeamDescriptor) : Shared.AdminModels.TeamCard =
         {
             TeamId = team.TeamId
             TeamName = team.Name
@@ -300,7 +304,7 @@ module Admin =
             RegistrationDate = team.RegistrationDate
         }
 
-    let quizCard (quiz: Quiz) : AdminModels.QuizControlCard =
+    let quizCard (quiz: Quiz) : Shared.AdminModels.QuizControlCard =
         {
             QuizStatus = quizStatus quiz.Dsc.Status
             PackageId = quiz.Dsc.PkgId
@@ -312,7 +316,7 @@ module Admin =
                 | _ -> None
         }
 
-    let quizTour (tour : QuizTour) : AdminModels.TourControlCard =
+    let quizTour (tour : QuizTour) : Shared.AdminModels.TourControlCard =
         {
             Name = tour.Name
             Seconds = tour.Seconds
@@ -325,7 +329,7 @@ module Admin =
             IsQuestionDisplayed = tour.IsQuestionDisplayed
         }
 
-    let teamAnswersRecord (team:Team) : AdminModels.TeamAnswersRecord =
+    let teamAnswersRecord (team:Team) : Shared.AdminModels.TeamAnswersRecord =
         {
             Id = team.Dsc.TeamId
             Nm = team.Dsc.Name
@@ -335,17 +339,17 @@ module Admin =
                 |> List.map (fun (key,aw) ->
                     let key = qwKey key
                     let v =
-                        {RT = aw.RecieveTime
-                         Txt = aw.Text
-                         Jpd = aw.Jeopardy
-                         Res = aw.Result
-                         IsA = aw.IsAutoResult
-                         UT = aw.UpdateTime} : AdminModels.Answer
+                        {Shared.AdminModels.Answer.RT = aw.RecieveTime
+                         Shared.AdminModels.Answer.Txt = aw.Text
+                         Shared.AdminModels.Answer.Jpd = aw.Jeopardy
+                         Shared.AdminModels.Answer.Res = aw.Result
+                         Shared.AdminModels.Answer.IsA = aw.IsAutoResult
+                         Shared.AdminModels.Answer.UT = aw.UpdateTime}
                     (key,v)
                 )|> Map.ofList
         }
 
-    let qwRecord tourIdx tour qwIdx (slip:SingleSlip) : AdminModels.QuestionRecord =
+    let qwRecord tourIdx tour qwIdx (slip:SingleSlip) : Shared.AdminModels.QuestionRecord =
         {
             Key = {TourIdx = tourIdx; QwIdx = qwIdx}
             Nm = qwName tour qwIdx
@@ -359,7 +363,7 @@ module Admin =
             Awr = slip.Answer.ToRawString()
         }
 
-    let questionRecords  (quiz:Quiz) : AdminModels.QuestionRecord list =
+    let questionRecords  (quiz:Quiz) : Shared.AdminModels.QuestionRecord list =
         quiz.Tours
         |> List.rev
         |> List.mapi (fun tourIdx tour ->
@@ -369,7 +373,7 @@ module Admin =
                 slips |> List.mapi (fun idx slip -> qwRecord tourIdx tour idx slip)
         )|> List.concat
 
-    let AnswersBundle (quiz:Quiz) (teams:Team list): AdminModels.AnswersBundle =
+    let AnswersBundle (quiz:Quiz) (teams:Team list): Shared.AdminModels.AnswersBundle =
         {
             Questions = questionRecords quiz
             Teams  = teams |> List.map teamAnswersRecord
@@ -377,7 +381,7 @@ module Admin =
 
 module Teams =
 
-    let quizCard (quiz:Quiz) (team:Team): TeamModels.QuizCard =
+    let quizCard (quiz:Quiz) (team:Team): Shared.TeamModels.QuizCard =
         {
             QS = quizStatus quiz.Dsc.Status
             TS = teamStatus team.Dsc.Status
@@ -400,7 +404,7 @@ module Teams =
             V = quiz.Version
         }
 
-    let quizHistory (quiz:Quiz) (team:Team): TeamModels.TeamHistoryRecord list =
+    let quizHistory (quiz:Quiz) (team:Team): Shared.TeamModels.TeamHistoryRecord list =
         quiz.Tours
         |> List.rev
         |> List.mapi (fun idx tour ->
@@ -422,7 +426,7 @@ module Teams =
                         AwJpd = false
                         Result = None
                         Vote = None
-                    } :  TeamModels.TeamHistoryRecord
+                    } : Shared.TeamModels.TeamHistoryRecord
 
                 match team.GetAnswer key with
                 | Some aw -> {r with AwTxt = Some aw.Text; AwJpd = aw.Jeopardy; Result = aw.Result; Vote = aw.Vote}
@@ -431,7 +435,7 @@ module Teams =
         ) |> List.concat
 
 module Reg =
-    let quizRecord (quiz:QuizDescriptor) : RegModels.QuizRecord =
+    let quizRecord (quiz:QuizDescriptor) : Shared.RegModels.QuizRecord =
         {
             QuizId = quiz.QuizId
             StartTime = quiz.StartTime
@@ -445,7 +449,7 @@ module Reg =
 
 module Audience =
 
-    let quizCard (quiz:Quiz) : AudModels.QuizCard =
+    let quizCard (quiz:Quiz) : Shared.AudModels.QuizCard =
         {
             QS = quizStatus quiz.Dsc.Status
             QN = quiz.Dsc.Name
@@ -463,7 +467,7 @@ module Audience =
             V = quiz.Version
         }
 
-    let quizHistory (quiz:Quiz) : AudModels.HistoryRecord list =
+    let quizHistory (quiz:Quiz) : Shared.AudModels.HistoryRecord list =
         quiz.Tours
         |> List.rev
         |> List.mapi (fun idx tour ->
@@ -479,6 +483,6 @@ module Audience =
                             | Settled -> aw.ToRawString()
                         else
                             aw.ToRawString()
-                } : AudModels.HistoryRecord
+                } : Shared.AudModels.HistoryRecord
             ) |> List.rev
         ) |> List.concat

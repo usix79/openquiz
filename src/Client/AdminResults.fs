@@ -3,7 +3,7 @@ module AdminResults
 open Elmish
 open Elmish.React
 
-open Shared
+open OpenQuiz.Shared
 open Common
 
 type Msg =

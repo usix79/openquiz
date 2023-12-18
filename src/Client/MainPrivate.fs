@@ -7,7 +7,7 @@ open Fable.React.Props
 open Elmish.React
 open Fable.FontAwesome
 
-open Shared
+open OpenQuiz.Shared
 open Common
 open MainModels
 

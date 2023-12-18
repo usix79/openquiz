@@ -15,11 +15,11 @@ var MiniCssExtractPlugin = require('mini-css-extract-plugin');
 var CONFIG = {
     // The tags to include the generated JS and CSS will be automatically injected in the HTML template
     // See https://github.com/jantimon/html-webpack-plugin
-    indexHtmlTemplate: './src/Client/index.html',
-    fsharpEntry: './src/Client/App.fs.js',
-    cssEntry: './src/Client/style.scss',
-    outputDir: './src/Client/deploy/app',
-    assetsDir: './src/Client/public',
+    indexHtmlTemplate: './src/client/index.html',
+    fsharpEntry: './src/client/App.fs.js',
+    cssEntry: './src/client/style.scss',
+    outputDir: './src/client/deploy/app',
+    assetsDir: './src/client/public',
     devServerPort: 8080,
     // When using webpack-dev-server, you may need to redirect some calls
     // to a external API server. See https://webpack.js.org/configuration/dev-server/#devserver-proxy
@@ -32,14 +32,14 @@ var CONFIG = {
         // redirect requests that start with /api/* to the server on port 8085
         '/api/*': {
             target: 'http://localhost:' + (process.env.SERVER_PROXY_PORT || "8085"),
-               changeOrigin: true
-           },
+            changeOrigin: true
+        },
         // redirect websocket requests that start with /socket/* to the server on the port 8085
         '/socket/*': {
             target: 'http://localhost:' + (process.env.SERVER_PROXY_PORT || "8085"),
             ws: true
-           }
-       },
+        }
+    },
     // Use babel-preset-env to generate JS compatible with most-used browsers.
     // More info at https://babeljs.io/docs/en/next/babel-preset-env.html
     babel: {
@@ -77,14 +77,14 @@ module.exports = {
     entry: isProduction ? {
         app: [resolve(CONFIG.fsharpEntry), resolve(CONFIG.cssEntry)]
     } : {
-            app: [resolve(CONFIG.fsharpEntry)],
-            style: [resolve(CONFIG.cssEntry)]
-        },
+        app: [resolve(CONFIG.fsharpEntry)],
+        style: [resolve(CONFIG.cssEntry)]
+    },
     // Add a hash to the output file name in production
     // to prevent browser caching if code changes
     output: {
         path: resolve(CONFIG.outputDir),
-        filename: isProduction ? '[name].[hash].js' : '[name].js'
+        filename: isProduction ? '[name].[fullhash].js' : '[name].js'
     },
     mode: isProduction ? 'production' : 'development',
     devtool: isProduction ? 'source-map' : 'eval-source-map',
@@ -102,7 +102,7 @@ module.exports = {
     //      - HotModuleReplacementPlugin: Enables hot reloading when code changes without refreshing
     plugins: isProduction ?
         commonPlugins.concat([
-            new MiniCssExtractPlugin({ filename: 'style.[hash].css' })
+            new MiniCssExtractPlugin({ filename: 'style.[fullhash].css' })
         ])
         : commonPlugins.concat([
             new webpack.HotModuleReplacementPlugin(),
@@ -113,39 +113,39 @@ module.exports = {
     },
     // Configuration for webpack-dev-server
     devServer: {
-        publicPath: '/app',
-        contentBase: resolve(CONFIG.assetsDir),
+        static: {
+            directory: resolve(CONFIG.assetsDir),
+            publicPath: '/'
+        },
+        devMiddleware: {
+            publicPath: '/app',
+        },
         host: '0.0.0.0',
         port: CONFIG.devServerPort,
         proxy: CONFIG.devServerProxy,
         hot: true,
-        inline: true
     },
-    // - fable-loader: transforms F# into JS
     // - babel-loader: transforms JS to old syntax (compatible with old browsers)
     // - sass-loaders: transforms SASS/SCSS into JS
-    // - file-loader: Moves files referenced in the code (fonts, images) into output folder
     module: {
         rules: [
             {
                 test: /\.(sass|scss|css)$/,
                 use: [
-                    isProduction
-                        ? MiniCssExtractPlugin.loader
-                        : 'style-loader',
+                    isProduction ? MiniCssExtractPlugin.loader : 'style-loader',
                     'css-loader',
                     {
                         loader: 'resolve-url-loader',
                     },
                     {
-                      loader: 'sass-loader',
-                      options: { implementation: require('sass') }
+                        loader: 'sass-loader',
+                        options: { implementation: require('sass') }
                     }
                 ],
             },
             {
                 test: /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)(\?.*)?$/,
-                use: ['file-loader']
+                type: 'asset/resource'
             }
         ]
     }

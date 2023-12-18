@@ -1,4 +1,4 @@
-module rec Domain
+module rec OpenQuiz.Domain
 
 open System
 open System.Text.RegularExpressions

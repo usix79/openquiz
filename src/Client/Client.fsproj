@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <None Include="index.html" />
-    <None Include="paket.references" />
     <None Include="style.scss" />
-    <Compile Include="../Shared/Shared.fs" />
+    <Compile Include="Flatpickr.fs" />
+    <Compile Include="../shared/Shared.fs" />
     <Compile Include="L10n.fs" />
     <Compile Include="AppSync.fs" />
     <Compile Include="Common.fs" />
@@ -29,5 +29,20 @@
     <Compile Include="Root.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
-  <Import Project="..\..\.paket\Paket.Restore.targets" />
+  <ItemGroup>
+    <PackageReference Include="Fable.Core" Version="4.2.0" />
+    <PackageReference Include="Fable.Elmish" Version="4.1.0" />
+    <PackageReference Include="Fable.Elmish.Browser" Version="4.0.3" />
+    <PackageReference Include="Fable.Elmish.Debugger" Version="4.0.0" />
+    <PackageReference Include="Fable.Elmish.HMR" Version="7.0.0" />
+    <PackageReference Include="Fable.Elmish.React" Version="4.0.0" />
+    <PackageReference Include="Fable.FontAwesome" Version="3.0.0" />
+    <PackageReference Include="Fable.FontAwesome.Free" Version="3.0.0" />
+    <PackageReference Include="Fable.React" Version="9.3.0" />
+    <PackageReference Include="Fable.Remoting.Client" Version="7.29.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="6.0.7" />
+  </ItemGroup>
+
 </Project>

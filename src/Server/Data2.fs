@@ -1,4 +1,4 @@
-module Data2
+module OpenQuiz.Data2
 
 open System
 open System.Threading
@@ -7,8 +7,8 @@ open DynamoDb.Ok
 open DynamoDb.Ok.Read
 open DynamoDb.Ok.Write
 
-open Common
-open Env
+open OpenQuiz.Common
+open OpenQuiz.Env
 
 module A = Attribute
 module P = Parse

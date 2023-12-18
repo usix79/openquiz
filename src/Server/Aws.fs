@@ -1,4 +1,4 @@
-module Aws
+module OpenQuiz.Aws
 
 open System
 open System.Collections.Generic
@@ -9,9 +9,9 @@ open System.IO
 open Amazon.S3;
 open Amazon.S3.Model;
 
-open Shared
-open Common
-open Env
+open OpenQuiz.Shared
+open OpenQuiz.Common
+open OpenQuiz.Env
 
 let private httpClient = new HttpClient()
 

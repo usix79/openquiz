@@ -1,22 +1,14 @@
-.fable/
-.fake/
-.vs/
 obj/
 bin/
 packages/
-paket-files/
 node_modules/
-src/Client/public/js/
-release.cmd
-release.sh
-.idea/
-*.orig
+*.fs.js
+src/client/fable_modules/
+src/server/aws-logger-errors.txt
+
 *.DotSettings.user
 deploy
 bundle
-.ionide/
-src/Server/aws-logger-errors.txt
-*.fs.js
 .DS_Store
 
 # CDK asset staging directory

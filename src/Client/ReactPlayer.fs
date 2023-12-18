@@ -10,9 +10,9 @@ open Fable.Core
 [<Emit("$2[$0] = $1")>]
 let private setProp (propName: string) (propValue: obj) (any: obj) : unit = jsNative
 
-let playerEx isVideo (isPlaying:bool) (url:string) =
-    let props = obj()
-    let propOptions = obj()
+let playerEx isVideo (isPlaying: bool) (url: string) =
+    let props = obj ()
+    let propOptions = obj ()
 
     setProp "url" url props
     setProp "controls" true props

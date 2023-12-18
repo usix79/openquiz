@@ -4,6 +4,7 @@ open Common
 open Setup
 open Teams
 open Audience
+open OpenQuiz
 
 let parseArgs argv =
     let defaultOptions = {Server = ""; Token = ""; QuizId = -1; Mode = None}

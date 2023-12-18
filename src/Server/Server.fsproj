@@ -1,11 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="paket.references" />
-    <Compile Include="../Shared/Shared.fs" />
+    <Compile Include="../shared/Shared.fs" />
     <Compile Include="Common.fs" />
     <Compile Include="DataLibrary.fs" />
     <Compile Include="Env.fs" />
@@ -28,5 +27,18 @@
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     </ItemGroup>
-<Import Project="..\..\.paket\Paket.Restore.targets" />
+    <ItemGroup>
+      <PackageReference Include="Amazon.Extensions.Configuration.SystemsManager" Version="6.0.0" />
+      <PackageReference Include="AWS.Logger.SeriLog" Version="3.3.0" />
+      <PackageReference Include="Aws4RequestSigner" Version="1.0.3" />
+      <PackageReference Include="AWSSDK.DynamoDBv2" Version="3.7.300.19" />
+      <PackageReference Include="AWSSDK.S3" Version="3.7.304.8" />
+      <PackageReference Include="Fable.Remoting.Giraffe" Version="5.17.0" />
+      <PackageReference Include="Giraffe" Version="6.2.0" />
+      <PackageReference Include="Giraffe.SerilogExtensions" Version="2.2.0" />
+      <PackageReference Include="Serilog.Formatting.Compact" Version="2.0.0" />
+      <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+      <PackageReference Include="String.Similarity" Version="3.0.0" />
+      <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.0.3" />
+    </ItemGroup>
 </Project>

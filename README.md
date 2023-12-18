@@ -16,27 +16,23 @@ Five steps to produce your quiz:
 
 See [Release Notes](https://github.com/usix79/openquiz/blob/master/RELEASE_NOTES.md) for information of latest updates.
 
-# Development Prerequisites
+## Development Prerequisites
 
- * [.NET SDK 5.0](https://dotnet.microsoft.com/download/dotnet-core/)
- * [node.js](https://nodejs.org/)
- * [npm](https://www.npmjs.com/)
- * [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
+* [.NET SDK 6.0](https://dotnet.microsoft.com/en-us/download/dotnet/6.0)
+* [node.js and npm](https://nodejs.org/)
+* [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 
 Configure aws defaults:
-```
+
+``` bash
 aws configure
 ```
 
-Install dotnet tools:
-```
-dotnet tool restore
-```
-
-# Development Targets
+## Development Targets
 
 | Target | Command |
 | ------ | ------- |
-| Prepare development infrastructure | `dotnet fake build -t devenv` |
-| Run locally | `dotnet fake build -t run` |
-| Deploy | `dotnet fake build -t deploy` |
+| Restore environment | `dotnet fsi make.fsx restore` |
+| Prepare development infrastructure | `dotnet fsi make.fsx devenv` |
+| Run locally | `dotnet fsi make.fsx run` |
+| Deploy | `dotnet fsi make.fsx deploy` |

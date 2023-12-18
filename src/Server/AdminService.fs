@@ -1,4 +1,4 @@
-module rec AdminService
+module rec OpenQuiz.AdminService
 
 open System
 open Giraffe.SerilogExtensions
@@ -7,7 +7,7 @@ open Microsoft.Extensions.Configuration
 open Serilog
 
 
-open Shared
+open OpenQuiz.Shared
 open Common
 open Env
 open Presenter

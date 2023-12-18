@@ -1,4 +1,4 @@
-module Agents
+module OpenQuiz.Agents
 
 open System
 open Newtonsoft.Json

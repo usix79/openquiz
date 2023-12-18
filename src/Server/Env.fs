@@ -1,7 +1,7 @@
-module Env
+module OpenQuiz.Env
 
-open Common
-open Shared
+open OpenQuiz.Common
+open OpenQuiz.Shared
 
 [<Interface>] type ILog = abstract Logger: Serilog.ILogger
 

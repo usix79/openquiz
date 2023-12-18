@@ -1,4 +1,4 @@
-module App
+module OpenQuiz.App
 
 open Elmish
 open Elmish.React

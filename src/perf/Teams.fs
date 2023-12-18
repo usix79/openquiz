@@ -3,7 +3,8 @@ module Teams
 open System
 open System.Threading.Tasks
 
-open Shared
+open OpenQuiz
+open OpenQuiz.Shared
 open Common
 
 type Model = {

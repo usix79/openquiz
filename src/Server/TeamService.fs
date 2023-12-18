@@ -1,4 +1,4 @@
-module rec TeamService
+module rec OpenQuiz.TeamService
 
 open System
 open Giraffe.SerilogExtensions
@@ -6,7 +6,7 @@ open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Configuration
 open Serilog
 
-open Shared
+open OpenQuiz.Shared
 open Common
 open Env
 open Presenter

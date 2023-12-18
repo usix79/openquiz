@@ -2,7 +2,8 @@ module rec Audience
 
 open System
 
-open Shared
+open OpenQuiz
+open OpenQuiz.Shared
 open Common
 
 let audience server quizId opts (securytyFacade:SecurityFacade)  (adminFacade: AdminFacade) =

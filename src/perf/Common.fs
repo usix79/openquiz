@@ -6,7 +6,7 @@ open Fable.Remoting.DotnetClient
 open Fable.Remoting.Json
 open Newtonsoft.Json
 
-open Shared
+open OpenQuiz.Shared
 
 type SetupOptions = {
     TeamsCount : int

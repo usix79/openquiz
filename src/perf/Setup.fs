@@ -1,6 +1,6 @@
 module Setup
 
-open Shared
+open OpenQuiz.Shared
 open Common
 
 let setup opts (adminFacade:AdminFacade)  =

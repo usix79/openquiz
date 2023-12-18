@@ -1,8 +1,8 @@
-module rec MainService
+module rec OpenQuiz.MainService
 
 open Microsoft.AspNetCore.Http
 
-open Shared
+open OpenQuiz.Shared
 open Common
 open Env
 open Presenter

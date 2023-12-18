@@ -9,7 +9,7 @@ open Amazon.CDK.AWS.ElasticBeanstalk
 open Amazon.CDK.AWS.CloudFront
 open Amazon.CDK.AWS.IAM
 
-type ProductionStack(scope:Construct, id, props, globalId) as this =
+type ProductionStack(scope: Construct, id, props, globalId) as this =
     inherit Stack(scope, id, props)
     let env = "Production"
 
@@ -17,48 +17,51 @@ type ProductionStack(scope:Construct, id, props, globalId) as this =
 
     let bucket = Assets.createBucket this env
 
-    do BucketDeployment(this, "DeploymentOfHtml",
+    do
+        BucketDeployment(
+            this,
+            "DeploymentOfHtml",
             BucketDeploymentProps(
                 DestinationBucket = bucket,
-                Sources = [| Source.Asset("./bundle/client/", AssetOptions(Exclude = [|"*.*"; "!*.html";|])) |],
-                CacheControl = [|CacheControl.FromString("max-age=0,no-cache,no-store,must-revalidate")|],
+                Sources = [| Source.Asset("./bundle/client/", AssetOptions(Exclude = [| "*.*"; "!*.html" |])) |],
+                CacheControl = [| CacheControl.FromString("max-age=0,no-cache,no-store,must-revalidate") |],
                 Prune = false
-            )) |> ignore
-    do BucketDeployment(this, "DeploymentOfRest",
+            )
+        )
+        |> ignore
+
+    do
+        BucketDeployment(
+            this,
+            "DeploymentOfRest",
             BucketDeploymentProps(
                 DestinationBucket = bucket,
-                Sources = [| Source.Asset("./bundle/client/", AssetOptions(Exclude = [|"*.html"|])) |],
-                CacheControl = [|CacheControl.FromString("max-age=31536000,public,immutable")|],
+                Sources = [| Source.Asset("./bundle/client/", AssetOptions(Exclude = [| "*.html" |])) |],
+                CacheControl = [| CacheControl.FromString("max-age=31536000,public,immutable") |],
                 Prune = false
-            )) |> ignore
+            )
+        )
+        |> ignore
 
-    let vpc =
-        Vpc(this, "OpenQuizVpc",
-            VpcProps(
-                NatGateways = 0.
-            ))
+    let vpc = Vpc(this, "OpenQuizVpc", VpcProps(NatGateways = 0.))
 
-    let apiBundle = Asset(this, "ApiBundle", AssetProps(Path = "./bundle/openquiz-api.zip"))
+    let apiBundle =
+        Asset(this, "ApiBundle", AssetProps(Path = "./bundle/openquiz-api.zip"))
 
     let apiApp =
-        CfnApplication(this, "ApiApp",
-            CfnApplicationProps(
-                ApplicationName = sprintf "OpenQuiz-%s" env ))
-
+        CfnApplication(this, "ApiApp", CfnApplicationProps(ApplicationName = sprintf "OpenQuiz-%s" env))
 
     let apiAppRoleName = "open-quiz-api-handler"
+
     let apiAppRole =
-        Role(this, "ApiAppRole",
-            RoleProps(
-                RoleName = apiAppRoleName,
-                AssumedBy = ServicePrincipal("ec2")))
+        Role(this, "ApiAppRole", RoleProps(RoleName = apiAppRoleName, AssumedBy = ServicePrincipal("ec2")))
 
     let instanceProfile =
-        CfnInstanceProfile(this, "ApiInstanceProfile",
-            CfnInstanceProfileProps(
-                InstanceProfileName = apiAppRoleName,
-                Roles = [|apiAppRole.RoleName|]
-            ))
+        CfnInstanceProfile(
+            this,
+            "ApiInstanceProfile",
+            CfnInstanceProfileProps(InstanceProfileName = apiAppRoleName, Roles = [| apiAppRole.RoleName |])
+        )
 
     do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AmazonS3FullAccess"))
     do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("CloudWatchAgentServerPolicy"))
@@ -71,65 +74,119 @@ type ProductionStack(scope:Construct, id, props, globalId) as this =
     do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AWSElasticBeanstalkMulticontainerDocker"))
     do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AWSElasticBeanstalkWorkerTier"))
 
-    let subnets = vpc.SelectSubnets(SubnetSelection(SubnetType = SubnetType.PUBLIC)).SubnetIds |> String.concat ","
+    let subnets =
+        vpc.SelectSubnets(SubnetSelection(SubnetType = SubnetType.PUBLIC)).SubnetIds
+        |> String.concat ","
 
-    let optionSettingProperties = [|
-        CfnEnvironment.OptionSettingProperty(Namespace = "aws:elasticbeanstalk:environment", OptionName = "EnvironmentType", Value = "SingleInstance")
-        CfnEnvironment.OptionSettingProperty(Namespace = "aws:autoscaling:launchconfiguration", OptionName = "InstanceType", Value = "t2.micro")
-        CfnEnvironment.OptionSettingProperty(Namespace = "aws:autoscaling:launchconfiguration", OptionName = "IamInstanceProfile", Value = instanceProfile.InstanceProfileName)
-        CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "VPCId", Value = vpc.VpcId)
-        CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "AssociatePublicIpAddress", Value = "true")
-        CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "Subnets", Value = subnets)
-        CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "ELBScheme", Value = "public")
-        CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "ELBSubnets", Value = subnets)
-        |]
+    let optionSettingProperties =
+        [| CfnEnvironment.OptionSettingProperty(
+               Namespace = "aws:elasticbeanstalk:environment",
+               OptionName = "EnvironmentType",
+               Value = "SingleInstance"
+           )
+           CfnEnvironment.OptionSettingProperty(
+               Namespace = "aws:autoscaling:launchconfiguration",
+               OptionName = "InstanceType",
+               Value = "t2.micro"
+           )
+           CfnEnvironment.OptionSettingProperty(
+               Namespace = "aws:autoscaling:launchconfiguration",
+               OptionName = "IamInstanceProfile",
+               Value = instanceProfile.InstanceProfileName
+           )
+           CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "VPCId", Value = vpc.VpcId)
+           CfnEnvironment.OptionSettingProperty(
+               Namespace = "aws:ec2:vpc",
+               OptionName = "AssociatePublicIpAddress",
+               Value = "true"
+           )
+           CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "Subnets", Value = subnets)
+           CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "ELBScheme", Value = "public")
+           CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "ELBSubnets", Value = subnets) |]
 
     let appVersion =
-        CfnApplicationVersion(this, "ApiAppVersion",
+        CfnApplicationVersion(
+            this,
+            "ApiAppVersion",
             CfnApplicationVersionProps(
                 ApplicationName = apiApp.ApplicationName,
-                SourceBundle = CfnApplicationVersion.SourceBundleProperty(S3Bucket = apiBundle.S3BucketName, S3Key = apiBundle.S3ObjectKey)
-            ))
+                SourceBundle =
+                    CfnApplicationVersion.SourceBundleProperty(
+                        S3Bucket = apiBundle.S3BucketName,
+                        S3Key = apiBundle.S3ObjectKey
+                    )
+            )
+        )
 
-    let version = 3
-    let cnamePrefix = sprintf "openquiz-%s-%s-v%d" (env.ToLower()) globalId version
+    let version = "2023"
+    let cnamePrefix = sprintf "openquiz-%s-%s-v%s" (env.ToLower()) globalId version
+
     let appEnv =
-        CfnEnvironment(this, "ApiAppEnv",
+        CfnEnvironment(
+            this,
+            "ApiAppEnv",
             CfnEnvironmentProps(
-                EnvironmentName = apiApp.ApplicationName + "-SingleV" + (version.ToString()),
+                EnvironmentName = apiApp.ApplicationName + "-SingleV" + version,
                 ApplicationName = apiApp.ApplicationName,
-                SolutionStackName = "64bit Amazon Linux 2 v2.2.3 running .NET Core",
-                OptionSettings =  optionSettingProperties,
+                SolutionStackName = "64bit Amazon Linux 2 v2.6.3 running .NET Core",
+                OptionSettings = optionSettingProperties,
                 CnamePrefix = cnamePrefix,
                 VersionLabel = appVersion.Ref
-            ))
+            )
+        )
 
     do appVersion.AddDependsOn(apiApp)
 
     let apiEnvCname = sprintf "%s.%s.elasticbeanstalk.com" cnamePrefix this.Region
 
     let distribution =
-        CloudFrontWebDistribution(this, "OpenQuizWebDistribution",
+        CloudFrontWebDistribution(
+            this,
+            "OpenQuizWebDistribution",
             CloudFrontWebDistributionProps(
-                OriginConfigs = [|
-                    SourceConfiguration(
-                        S3OriginSource = S3OriginConfig(S3BucketSource = bucket),
-                        Behaviors = [|
-                            Behavior(PathPattern = "/static/*", AllowedMethods = CloudFrontAllowedMethods.GET_HEAD_OPTIONS, DefaultTtl = Duration.Seconds(0.) )
-                            Behavior(PathPattern = "/media/*", AllowedMethods = CloudFrontAllowedMethods.GET_HEAD_OPTIONS)
-                            Behavior(IsDefaultBehavior = true )
-                            |])
-                    SourceConfiguration(
-                        CustomOriginSource = CustomOriginConfig(DomainName = apiEnvCname, OriginProtocolPolicy = OriginProtocolPolicy.HTTP_ONLY),
-                        Behaviors = [|Behavior(PathPattern = "/api/*", AllowedMethods = CloudFrontAllowedMethods.ALL, DefaultTtl = Duration.Seconds(0.) )|])
-                |]
+                OriginConfigs =
+                    [| SourceConfiguration(
+                           S3OriginSource = S3OriginConfig(S3BucketSource = bucket),
+                           Behaviors =
+                               [| Behavior(
+                                      PathPattern = "/static/*",
+                                      AllowedMethods = CloudFrontAllowedMethods.GET_HEAD_OPTIONS,
+                                      DefaultTtl = Duration.Seconds(0.)
+                                  )
+                                  Behavior(
+                                      PathPattern = "/media/*",
+                                      AllowedMethods = CloudFrontAllowedMethods.GET_HEAD_OPTIONS
+                                  )
+                                  Behavior(IsDefaultBehavior = true) |]
+                       )
+                       SourceConfiguration(
+                           CustomOriginSource =
+                               CustomOriginConfig(
+                                   DomainName = apiEnvCname,
+                                   OriginProtocolPolicy = OriginProtocolPolicy.HTTP_ONLY
+                               ),
+                           Behaviors =
+                               [| Behavior(
+                                      PathPattern = "/api/*",
+                                      AllowedMethods = CloudFrontAllowedMethods.ALL,
+                                      DefaultTtl = Duration.Seconds(0.)
+                                  ) |]
+                       ) |]
             )
         )
 
     let cloudFrontUrl = "https://" + distribution.DistributionDomainName
     do Helpers.createParameter this env "BucketUrl" cloudFrontUrl
 
-    do CfnOutput(this, "OpenQuizUrl", CfnOutputProps (Value = cloudFrontUrl, Description = "Alias your domain name with the Url")) |> ignore
+    do
+        CfnOutput(
+            this,
+            "OpenQuizUrl",
+            CfnOutputProps(Value = cloudFrontUrl, Description = "Alias your domain name with the Url")
+        )
+        |> ignore
 
-    let userPool = Assets.createUserPool this env globalId (cloudFrontUrl + "/app/index.html")
+    let userPool =
+        Assets.createUserPool this env globalId (cloudFrontUrl + "/app/index.html")
+
     do Assets.createAppsyncApi this env

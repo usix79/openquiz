@@ -1,5 +1,5 @@
-import Amplify, {API, graphqlOperation } from 'aws-amplify';
-
+import { Amplify } from 'aws-amplify';
+import { generateClient } from "aws-amplify/api"
 
 const onQuizMessage = `
   subscription OnQuizMessage($quizId: Int!, $token: String!) {
@@ -12,30 +12,39 @@ const onQuizMessage = `
   }
 `;
 
-function configure (endpoint, region, apikey){
-    var awsmobile = {
-        "aws_appsync_graphqlEndpoint": endpoint,
-        "aws_appsync_region": region,
-        "aws_appsync_authenticationType": "API_KEY",
-        "aws_appsync_apiKey": apikey
+function configure(endpoint, region, apikey) {
+    var cfg = {
+        API: {
+            GraphQL: {
+                endpoint: endpoint,
+                region: region,
+                defaultAuthMode: 'apiKey',
+                apiKey: apikey
+            }
+        }
     };
 
-    Amplify.configure(awsmobile);
+    Amplify.configure(cfg);
 }
+
+var client = generateClient()
 
 var nextSubscriptionId = 1
 var subsciptions = {}
 
-function subscribe (quizId, token, onSuccess, onError){
-    var subscription = API.graphql(
-        graphqlOperation(onQuizMessage, {quizId: quizId, token: token})
+function subscribe(quizId, token, onSuccess, onError) {
+    var subscription = client.graphql(
+        {
+            query: onQuizMessage,
+            variables: { quizId: quizId, token: token }
+        }
     ).subscribe({
         next: (todoData) => {
-          onSuccess(todoData.value.data.onQuizMessage)
+            onSuccess(todoData.data.onQuizMessage)
         },
         error: error => {
             console.warn(error);
-            onError (error.error.errors)
+            onError(error.errors)
         },
     });
 
@@ -43,7 +52,7 @@ function subscribe (quizId, token, onSuccess, onError){
     return nextSubscriptionId++
 }
 
-function unsubscribe (subscriptionId){
+function unsubscribe(subscriptionId) {
     subsciptions[subscriptionId].unsubscribe();
     delete subsciptions[subscriptionId]
 }
