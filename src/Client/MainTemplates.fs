@@ -185,7 +185,7 @@ let footer =
         [ Class "container"; Style [ TextAlign TextAlignOptions.Center ] ]
         [ str "\u00a9"
           span [ Class "is-hidden-touch" ] [ str " Serhii Sabirov" ]
-          str " 2020/21"
+          str " 2020/23"
           str " - "
           a [ Href "/terms.html"; Class "has-text-grey-light" ] [ str "Terms" ]
           str " - "

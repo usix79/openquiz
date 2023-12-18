@@ -185,8 +185,8 @@ let getOrCreateRandomParam type' count paramName =
 
 let devEnv _ =
     result {
-        let secret =
-            getOrCreateRandomParam ParameterType.SecureString 36 "/OpenQuiz/Development/GwtSecret"
+        getOrCreateRandomParam ParameterType.SecureString 36 "/OpenQuiz/Development/GwtSecret"
+        |> ignore
 
         let globalId = getOrCreateRandomParam ParameterType.String 16 "/OpenQuiz/GlobalId"
         printfn $"OpenQuiz GlobalId: {globalId}"
@@ -196,10 +196,13 @@ let devEnv _ =
         do! npx $"cdk deploy {args}" __SOURCE_DIRECTORY__
     }
 
-let deploy _ =
+let deploy args =
     result {
-        let secret =
-            getOrCreateRandomParam ParameterType.SecureString 36 "/OpenQuiz/Production/GwtSecret"
+        do! rebuild args
+        do! bundle args
+
+        getOrCreateRandomParam ParameterType.SecureString 36 "/OpenQuiz/Production/GwtSecret"
+        |> ignore
 
         let globalId = getOrCreateRandomParam ParameterType.String 16 "/OpenQuiz/GlobalId"
         printfn $"OpenQuiz GlobalId: {globalId}"

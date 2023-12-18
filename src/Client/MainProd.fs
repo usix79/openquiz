@@ -236,7 +236,7 @@ let view (dispatch: Msg -> unit) (user: MainUser) (settings: Settings) (model: M
                                           [ div
                                                 [ Class "subtitle" ]
                                                 [ str
-                                                      "If you want to appreciate work open-quiz author did, you may send him "
+                                                      "If you want to appreciate work open-quiz author did, you may send him an "
                                                   a
                                                       [ Style [ TextDecoration "underline" ]
                                                         Href
