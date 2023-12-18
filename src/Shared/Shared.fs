@@ -294,6 +294,7 @@ type SingleSlip =
       Points: decimal
       JeopardyPoints: decimal option
       WithChoice: bool
+      Seconds: int option
       EndOfTour: bool }
 
     member x.SetQwText idx txt =
@@ -326,6 +327,7 @@ type SingleSlip =
           Points = 1m
           JeopardyPoints = None
           WithChoice = false
+          Seconds = None
           EndOfTour = false }
 
 

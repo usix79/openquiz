@@ -46,6 +46,7 @@ type Msg =
     | QwPointsChanged of key: QwKey * txt: string
     | QwJpdPointsChanged of key: QwKey * txt: string
     | QwWithChoiceChanged of key: QwKey * bool
+    | QwSecondsChanged of key: QwKey * txt: string
     | QwEOTChanged of key: QwKey * bool
     | QwCaptionChanged of key: QwKey * txt: string
     | QwMediaChanged of
@@ -374,6 +375,10 @@ let update (api: IMainApi) user (msg: Msg) (cm: Model) : Model * Cmd<Msg> =
         |> updateSlip key (fun slip ->
             { slip with
                 JeopardyPoints = ofDecimal (Some txt) })
+        |> noCmd
+    | QwSecondsChanged(key, txt) ->
+        cm
+        |> updateSlip key (fun slip -> { slip with Seconds = ofInt (Some txt) })
         |> noCmd
     | QwWithChoiceChanged(key, v) -> cm |> updateSlip key (fun slip -> { slip with WithChoice = v }) |> noCmd
     | QwEOTChanged(key, v) -> cm |> updateSlip key (fun slip -> { slip with EndOfTour = v }) |> noCmd
@@ -969,9 +974,7 @@ let awCell dispatch (key: PkgQwKey) (answer: SlipAnswer) isLoading =
                                         [ a
                                               [ Class "button is-small"
                                                 OnClick(fun _ -> DeleteChoice(key.Key, idx) |> dispatch) ]
-                                              [ Fa.i [ Fa.Solid.Trash ] [] ] ] ] ]
-
-                    ]
+                                              [ Fa.i [ Fa.Solid.Trash ] [] ] ] ] ] ]
 
               button
                   [ Class "button is-small"; OnClick(fun _ -> dispatch (AppendChoice key.Key)) ]
@@ -997,9 +1000,7 @@ let cmntCell dispatch settings (key: PkgQwKey) txt (media: Shared.MediaDsc optio
                   (fun _ -> AnswerMediaClear key.Key |> dispatch)
                   settings.MediaHost
                   media
-                  "Clear"
-
-          ]
+                  "Clear" ]
 
 let singleSlipRow dispatch settings isOwned isLoading pkgId tourIdx qwIdx (slip: SingleSlip) =
 
@@ -1062,7 +1063,17 @@ let singleSlipRow dispatch settings isOwned isLoading pkgId tourIdx qwIdx (slip:
                             Checked slip.WithChoice
                             ReadOnly isLoading
                             OnChange(fun ev -> QwWithChoiceChanged(packageKey.Key, (ev.Checked)) |> dispatch) ]
-                      str " with choice" ] ]
+                      str " with choice" ]
+                str "Seconds"
+                div
+                    [ Class "control" ]
+                    [ input
+                          [ Class "input"
+                            Type "number"
+                            valueOrDefault (slip.Seconds.ToString())
+                            MaxLength 3.
+                            ReadOnly isLoading
+                            OnChange(fun ev -> QwSecondsChanged(packageKey.Key, ev.Value) |> dispatch) ] ] ]
           if isOwned then
               match qwIdx with
               | Some idx -> delQwCell dispatch { TourIdx = tourIdx; QwIdx = idx }
