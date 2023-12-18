@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.19.0 - 2023-12-18
+
+* Max size of a question is increased to 1024 characters
+
 ## 1.18.0 - 2021-12-14
 
 * Max size of a mediafile is 8Mb

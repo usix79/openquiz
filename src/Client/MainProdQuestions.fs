@@ -882,7 +882,7 @@ let qwCell dispatch settings (key: PkgQwKey) txt (media: Shared.MediaDsc option)
         [ textarea
               [ Class "textarea"
                 valueOrDefault txt
-                MaxLength 512.0
+                MaxLength 1024.0
                 OnChange(fun ev -> QwTextChanged(key.Key, ev.Value) |> dispatch) ]
               []
           br []
@@ -906,7 +906,7 @@ let qwInput dispatch placeholder txt key partIdx =
                 Type "text"
                 Placeholder placeholder
                 valueOrDefault txt
-                MaxLength 512.0
+                MaxLength 1024.0
                 OnChange(fun ev -> QwTextSplitChanged(key, partIdx, ev.Value) |> dispatch) ] ]
 
 let awCell dispatch (key: PkgQwKey) (answer: SlipAnswer) isLoading =
@@ -932,7 +932,7 @@ let awCell dispatch (key: PkgQwKey) (answer: SlipAnswer) isLoading =
                   [ Class "textarea"
                     Rows 2
                     valueOrDefault txt
-                    MaxLength 512.0
+                    MaxLength 1024.0
                     OnChange(fun ev -> QwAnswerChanged(key.Key, ev.Value) |> dispatch) ]
                   []
           | ChoiceAnswer list ->
