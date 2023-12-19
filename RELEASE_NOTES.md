@@ -4,6 +4,7 @@
 
 * Max size of a question is increased to 1024 characters
 * Added possibility to specify the duration of a questions in a package
+* Added import/export of the questions in a package
 
 ## 1.18.0 - 2021-12-14
 

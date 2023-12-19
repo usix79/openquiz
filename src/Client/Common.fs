@@ -1,13 +1,13 @@
 module rec Common
 
 open Elmish
+open Browser
+open Fable.Core
+open Fable.Core.DynamicExtensions
+open Fable.Core.JsInterop
+open Fable.Import
 open Fable.React
 open Fable.Remoting.Client
-open Browser
-open Fable.Core.DynamicExtensions
-open Fable.Import
-open Fable.Core
-open JsInterop
 open Fable.SimpleJson
 open Microsoft.FSharp.Reflection
 
@@ -111,27 +111,24 @@ let splitByLines (txt: string) =
           str l
           br [] ]
 
-let fileOnChange tag callback (ev: Types.Event) =
-    let files: Types.FileList = !!ev.target.["files"]
-    let file = files.[0]
+let fileOnChangeAsText tag callback (ev: Types.Event) =
+    let files: Types.FileList = !!ev.target["files"]
+    let file = files[0]
 
     let reader = Browser.Dom.FileReader.Create()
 
     reader.onload <-
         fun _ ->
-            let b: JS.ArrayBuffer = !!reader.result
-            let a = JS.Constructors.Uint8Array.Create(buffer = b)
-            let ba: byte[] = unbox a
-            let t: string = !!file.["type"]
-            callback {| Type = t; Body = ba; Tag = tag |}
+            callback
+                {| Name = unbox<string> file.name
+                   Body = unbox<string> reader.result
+                   Tag = tag |}
 
-    reader.readAsArrayBuffer file
+    reader.readAsText file
 
-let fileOnChangeS3 tag callback (ev: Types.Event) =
-    let files: Types.FileList = !!ev.target.["files"]
-    let file = files.[0]
-
-    callback {| File = file; Tag = tag |}
+let fileOnChangeForS3 tag callback (ev: Types.Event) =
+    let files: Types.FileList = !!ev.target["files"]
+    callback {| File = files[0]; Tag = tag |}
 
 let uploadFileToS3 (file: Types.File) presignedUrl =
     Async.FromContinuations
@@ -150,6 +147,12 @@ let uploadFileToS3 (file: Types.File) presignedUrl =
 
         xhr.send (file)
 
+let download (fileName: string) (contentType: string) (content: string) =
+    let anchor = document.createElement "a"
+    let encodedContent = $"data:{contentType};charset=utf-8,{content}" |> JS.encodeURI
+    anchor.setAttribute ("href", encodedContent)
+    anchor.setAttribute ("download", fileName)
+    anchor.click ()
 
 type TRESP<'T, 'P> = { Tag: 'T; Rsp: RESP<'P> }
 
@@ -343,14 +346,13 @@ module Infra =
 
     let saveUser (user: User) = saveToSessionStorage "USER" user
 
-    let loadUser () =
-        Infra.loadFromSessionStorage<User> "USER"
+    let loadUser () = loadFromSessionStorage<User> "USER"
 
     let saveSettings (settings: Settings) =
         saveToSessionStorage "SETTINGS" settings
 
     let loadSettings () =
-        Infra.loadFromSessionStorage<Settings> "SETTINGS"
+        loadFromSessionStorage<Settings> "SETTINGS"
 
     let clearUserAndSettingsAndRedirect url =
         sessionStorage.removeItem "USER"

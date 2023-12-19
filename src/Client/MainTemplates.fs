@@ -68,7 +68,7 @@ let imgArea' style tag disabled changeMsg clearMsg mediaHost imgKey defaultImg c
                         Type "file"
                         Name "picture"
                         Disabled disabled
-                        OnChange(fileOnChangeS3 tag changeMsg) ]
+                        OnChange(fileOnChangeForS3 tag changeMsg) ]
                   span
                       [ Class "file-cta" ]
                       [ span [ Class "file-icon" ] [ Fa.i [ Fa.Solid.Upload ] [] ]
@@ -150,7 +150,7 @@ let mediaArea tag disabled urlMsg mediaMsg changeMsg clearMsg mediaHost (media: 
                         Type "file"
                         Name "picture"
                         Disabled disabled
-                        OnChange(fileOnChangeS3 tag changeMsg) ]
+                        OnChange(fileOnChangeForS3 tag changeMsg) ]
                   span
                       [ Class "file-cta" ]
                       [ span [ Class "file-icon" ] [ Fa.i [ Fa.Solid.Upload ] [] ]

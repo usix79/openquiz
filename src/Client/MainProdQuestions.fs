@@ -5,6 +5,7 @@ open Elmish.React
 open Fable.React
 open Fable.React.Props
 open Fable.FontAwesome
+open Fable.SimpleJson
 
 open OpenQuiz
 open OpenQuiz.Shared
@@ -30,6 +31,11 @@ type Msg =
                 Card: MainModels.PackageCard |}>
     | UpdateName of string
     | UpdateTransferToken of string
+    | ImportCard of
+        {| Name: string
+           Body: string
+           Tag: unit |}
+    | ExportCard
     | CancelCard
     | SubmitCard
     | SubmitCardResp of RESP<PackageRecord>
@@ -177,7 +183,6 @@ let updateAnswerMedia (qwKey: QwKey) (f: MediaDsc -> MediaDsc) (model: Model) =
                 Some
                 <| f (slip.AnswerMedia |> Option.defaultWith (fun _ -> { Key = ""; Type = Picture })) })
 
-
 let submitCard api model =
     match model.Card with
     | Some card ->
@@ -253,6 +258,17 @@ let updateShareForm (f: ShareForm -> ShareForm) model =
     | Some form -> { model with ShareForm = Some(f form) }
     | None -> model
 
+let importFromJson (name: string) (json: string) model =
+    let dotIdx = name.LastIndexOf('.')
+    let name = if dotIdx > 0 then name.Substring(0, dotIdx) else name
+
+    match Json.tryParseAs<Slip list> json with
+    | Ok slips ->
+        updateCard (fun c -> { c with Name = name; Slips = slips }) model
+        |> editing
+        |> noCmd
+    | Error txt -> model |> addError txt |> editing |> noCmd
+
 let init api user : Model * Cmd<Msg> =
     { Errors = Map.empty
       Packages = []
@@ -277,6 +293,14 @@ let update (api: IMainApi) user (msg: Msg) (cm: Model) : Model * Cmd<Msg> =
         |> noCmd
     | UpdateName txt -> cm |> updateCard (fun c -> { c with Name = txt }) |> noCmd
     | UpdateTransferToken txt -> cm |> updateCard (fun c -> { c with TransferToken = txt }) |> noCmd
+    | ExportCard ->
+        match cm.Card with
+        | Some card ->
+            let jsonString = Json.serialize card.Slips
+            download card.Name "application/json" jsonString
+            cm |> noCmd
+        | None -> cm |> noCmd
+    | ImportCard res -> importFromJson res.Name res.Body cm
     | CancelCard ->
         { cm with
             Card = None
@@ -755,6 +779,26 @@ let card
                               div
                                   [ Class "field is-grouped" ]
                                   [ div
+                                        [ Class "file"; Style [ MarginLeft "5px" ] ]
+                                        [ label
+                                              [ Class "file-label" ]
+                                              [ input
+                                                    [ Class "file-input"
+                                                      Type "file"
+                                                      Name "picture"
+                                                      OnChange(fileOnChangeAsText () (ImportCard >> dispatch)) ]
+                                                span
+                                                    [ Class "file-cta" ]
+                                                    [ span [ Class "file-icon" ] [ Fa.i [ Fa.Solid.Upload ] [] ]
+                                                      span [ Class "file-label" ] [ str "Import" ] ] ] ]
+                                    div
+                                        [ Class "control"; Style [ MarginLeft "5px" ] ]
+                                        [ button
+                                              [ Class "button"; OnClick(fun _ -> dispatch ExportCard) ]
+                                              [ span [ Class "icon" ] [ Fa.i [ Fa.Solid.Download ] [] ]
+                                                span [] [ str "Export" ] ] ]
+
+                                    div
                                         [ Class "control" ]
                                         [ let hasErrors = not (validate card |> List.isEmpty)
 
@@ -1052,7 +1096,11 @@ let singleSlipRow dispatch settings isOwned isLoading pkgId tourIdx qwIdx (slip:
                     [ input
                           [ Class "input"
                             Type "number"
-                            valueOrDefault (slip.JeopardyPoints.ToString())
+                            valueOrDefault (
+                                match slip.JeopardyPoints with
+                                | Some points -> points.ToString()
+                                | None -> ""
+                            )
                             MaxLength 4.
                             ReadOnly isLoading
                             OnChange(fun ev -> QwJpdPointsChanged(packageKey.Key, ev.Value) |> dispatch) ] ]
@@ -1070,7 +1118,11 @@ let singleSlipRow dispatch settings isOwned isLoading pkgId tourIdx qwIdx (slip:
                     [ input
                           [ Class "input"
                             Type "number"
-                            valueOrDefault (slip.Seconds.ToString())
+                            valueOrDefault (
+                                match slip.Seconds with
+                                | Some seconds -> seconds.ToString()
+                                | None -> ""
+                            )
                             MaxLength 3.
                             ReadOnly isLoading
                             OnChange(fun ev -> QwSecondsChanged(packageKey.Key, ev.Value) |> dispatch) ] ] ]
