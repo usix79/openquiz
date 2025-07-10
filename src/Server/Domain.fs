@@ -21,7 +21,7 @@ type Expert =
       Packages: int list // packageId
       PackagesSharedWithMe: int list
       DefaultImg: string
-      DefaultMixlr: int option
+      DefaultMixlr: string
       Version: int }
 
     member x.AllPackages = x.Packages @ x.PackagesSharedWithMe
@@ -37,7 +37,7 @@ module Experts =
           Packages = []
           PackagesSharedWithMe = []
           DefaultImg = ""
-          DefaultMixlr = None
+          DefaultMixlr = ""
           Version = 0 }
 
     let becomeProducer (expert: Expert) = { expert with IsProducer = true }
@@ -309,7 +309,7 @@ type QuizDescriptor =
       PkgId: int option
       PkgSlipIdx: int option
       EventPage: string
-      MixlrCode: int option
+      MixlrCode: string option
       StreamUrl: string option }
 
 type Quiz =
@@ -342,7 +342,7 @@ module Quizzes =
               PkgId = None
               PkgSlipIdx = None
               EventPage = ""
-              MixlrCode = defMixlr
+              MixlrCode = if defMixlr = "" then None else Some defMixlr
               StreamUrl = None }
           Tours = []
           Version = 0 }

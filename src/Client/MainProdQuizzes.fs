@@ -127,9 +127,9 @@ let updateMixlrCode (txt: string) model =
     |> updateCard (fun c ->
         { c with
             MixlrCode =
-                match System.Int32.TryParse txt with
-                | true, id when id > 0 -> Some id
-                | _ -> None })
+                match txt.Trim() with
+                | "" -> None
+                | v -> Some v })
 
 let toggleDeleteForm model =
     { model with
@@ -402,12 +402,12 @@ let card
 
                       div
                           [ Class "field" ]
-                          [ label [ Class "label" ] [ str "Mixlr User Id" ]
+                          [ label [ Class "label" ] [ str "Mixlr Login" ]
                             div
                                 [ Class "control" ]
                                 [ input
                                       [ Class "input"
-                                        Type "number"
+                                        Type "text"
                                         Placeholder ""
                                         MaxLength 128.0
                                         valueOrDefault (card.MixlrCode.ToString())
@@ -416,12 +416,12 @@ let card
                                   ]
                             small
                                 []
-                                [ str "https://mixlr.com/users/"
-                                  span [ Class "has-text-danger" ] [ str "THISID" ]
-                                  str "/embed from "
+                                [ str "https://"
+                                  span [ Class "has-text-danger" ] [ str "LOGIN" ]
+                                  str ".mixlr.com/embed from "
                                   a
-                                      [ Href "https://mixlr.com/settings/embed/" ]
-                                      [ str "https://mixlr.com/settings/embed/" ] ] ]
+                                      [ Href "https://creators.mixlr.com/settings/embed-player/edit" ]
+                                      [ str "Widget code" ] ] ]
 
                       div
                           [ Class "field" ]

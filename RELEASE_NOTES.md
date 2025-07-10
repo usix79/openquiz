@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.20.0 - 2025-07-10
+
+* Updated mixlr embedding
+
 ## 1.19.0 - 2023-12-18
 
 * Max size of a question is increased to 1024 characters

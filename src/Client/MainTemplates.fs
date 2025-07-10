@@ -185,7 +185,7 @@ let footer =
         [ Class "container"; Style [ TextAlign TextAlignOptions.Center ] ]
         [ str "\u00a9"
           span [ Class "is-hidden-touch" ] [ str " Serhii Sabirov" ]
-          str " 2020/23"
+          str " 2020/25"
           str " - "
           a [ Href "/terms.html"; Class "has-text-grey-light" ] [ str "Terms" ]
           str " - "
@@ -269,17 +269,21 @@ let playTitle mediaHost quizImg mixlr url =
           | Some url -> figure [ Class "image is-16by9" ] [ div [ Class "has-ratio" ] [ ReactPlayer.player url ] ]
           | None ->
               match mixlr with
-              | Some mixlrUserId ->
-                  let src = sprintf "https://mixlr.com/users/%i/embed" mixlrUserId
-
-                  iframe
-                      [ Src src
-                        Style [ Width "100%"; Height "180px" ]
-                        Scrolling "no"
-                        FrameBorder "no"
-                        MarginHeight 0.0
-                        MarginWidth 0.0 ]
-                      []
+              | Some mixlrCode ->
+                  div
+                      [ Style
+                            [ Width "100%"
+                              Height "100px"
+                              OverflowStyle OverflowOptions.Hidden
+                              Position PositionOptions.Relative ] ]
+                      [ iframe
+                            [ Src $"https://{mixlrCode}.mixlr.com/embed"
+                              Style [ Width "100%"; Height "200px"; Transform "scale(0.5)"; TransformOrigin "top" ]
+                              FrameBorder "0"
+                              Scrolling "no"
+                              MarginHeight 0.0
+                              MarginWidth 0.0 ]
+                            [] ]
               | None ->
                   br []
 

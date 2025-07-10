@@ -60,12 +60,7 @@ let init (api: IMainApi) user : Model * Cmd<Msg> =
 let update (api: IMainApi) user (msg: Msg) (cm: Model) : Model * Cmd<Msg> =
     match msg with
     | SettingsResp { Value = Ok card } -> { cm with Settings = Some card } |> editing |> noCmd
-    | UpdateMixlrCode txt ->
-        cm
-        |> settings (fun s ->
-            { s with
-                DefaultMixlr = ofInt <| Some txt })
-        |> noCmd
+    | UpdateMixlrCode txt -> cm |> settings (fun s -> { s with DefaultMixlr = txt.Trim() }) |> noCmd
     | QuizImgClear _ -> cm |> settings (fun s -> { s with DefaultImg = "" }) |> noCmd
     | QuizImgChanged res -> cm |> uploadFileS3 api res.File
     | QuizImgUploaded bucketKey -> cm |> editing |> settings (fun s -> { s with DefaultImg = bucketKey }) |> noCmd
@@ -99,25 +94,25 @@ let view (dispatch: Msg -> unit) (user: MainUser) (appSettings: Settings) (model
                               [ Class "column" ]
                               [ div
                                     [ Class "field" ]
-                                    [ label [ Class "label" ] [ str "Default Mixlr User Id" ]
+                                    [ label [ Class "label" ] [ str "Default Mixlr Login" ]
                                       div
                                           [ Class "control" ]
                                           [ input
                                                 [ Class "input"
-                                                  Type "number"
+                                                  Type "text"
                                                   Placeholder ""
                                                   MaxLength 128.0
-                                                  valueOrDefault (settings.DefaultMixlr.ToString())
+                                                  valueOrDefault settings.DefaultMixlr
                                                   ReadOnly model.IsLoading
                                                   OnChange(fun ev -> dispatch <| UpdateMixlrCode ev.Value) ] ]
                                       small
                                           []
-                                          [ str "https://mixlr.com/users/"
-                                            span [ Class "has-text-danger" ] [ str "THISID" ]
-                                            str "/embed from "
+                                          [ str "https://"
+                                            span [ Class "has-text-danger" ] [ str "LOGIN" ]
+                                            str ".mixlr.com/embed from "
                                             a
-                                                [ Href "https://mixlr.com/settings/embed/" ]
-                                                [ str "https://mixlr.com/settings/embed/" ] ] ] ]
+                                                [ Href "https://creators.mixlr.com/settings/embed-player/edit" ]
+                                                [ str "Widget code" ] ] ] ]
                           div
                               [ Class "column" ]
                               [ div

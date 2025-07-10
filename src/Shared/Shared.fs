@@ -403,12 +403,12 @@ module MainModels =
           InfoText: string
           WithPremoderation: bool
           EventPage: string
-          MixlrCode: int option }
+          MixlrCode: string option }
 
     type SettingsCard =
         { UserId: string
           DefaultImg: string
-          DefaultMixlr: int option }
+          DefaultMixlr: string }
 
     type ExpertRecord = { Id: string; Name: string }
 
@@ -590,7 +590,7 @@ module TeamModels =
           Aw: Map<int, (string * bool)>
           LT: string
           RT: string
-          Mxlr: int option
+          Mxlr: string option
           Url: string option
           V: int }
 
@@ -621,7 +621,7 @@ module AudModels =
           TC: TourCard option
           LT: string
           RT: string
-          Mxlr: int option
+          Mxlr: string option
           Url: string option
           V: int }
 

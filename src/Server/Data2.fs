@@ -335,7 +335,7 @@ module Experts =
           Packages = packages |> Option.defaultValue []
           PackagesSharedWithMe = packagesSharedWithMe |> Option.defaultValue []
           DefaultImg = defaultImg |> Option.defaultValue ""
-          DefaultMixlr = defaultMixlr |> Option.defaultValue None
+          DefaultMixlr = defaultMixlr |> Option.defaultValue ""
           Version = version }
 
     let private reader =
@@ -348,8 +348,7 @@ module Experts =
         <*> (opt Fields.Packages A.setString ?>-> toInt32List)
         <*> (opt Fields.PackagesSharedWithMe A.setString ?>-> toInt32List)
         <*> (opt Fields.DefaultImg A.string)
-        <*> (opt Fields.DefaultMixlr (A.nullOr A.number)
-             ?>-> (fun id -> id |> Option.map Int32.Parse |> Ok))
+        <*> (opt Fields.DefaultMixlr A.string)
         <*> (req Fields.Version A.number >-> P.int)
 
     let get env = key >> getItem' env tableName reader
@@ -367,7 +366,7 @@ module Experts =
           yield! BuildAttr.setString Fields.Packages (exp.Packages |> List.map string)
           yield! BuildAttr.setString Fields.PackagesSharedWithMe (exp.PackagesSharedWithMe |> List.map string)
           Attr(Fields.DefaultImg, ScalarString exp.DefaultImg)
-          yield! optInt32 Fields.DefaultMixlr exp.DefaultMixlr
+          Attr(Fields.DefaultMixlr, ScalarString exp.DefaultMixlr)
           Attr(Fields.Version, ScalarInt32(exp.Version + 1)) ]
         |> putItem' env (Some exp.Version) tableName
 
@@ -755,7 +754,7 @@ module Quizzes =
         <*> (opt Fields.PkgId (A.nullOr A.number) ??>-> P.int)
         <*> (opt Fields.PkgQwIdx (A.nullOr A.number) ??>-> P.int)
         <*> (optDef Fields.EventPage "" A.string)
-        <*> (opt Fields.MixlrCode (A.nullOr A.number) ??>-> P.int)
+        <*> (opt Fields.MixlrCode (A.nullOr A.string) ??>-> Ok)
         <*> (opt Fields.StreamUrl (A.nullOr A.string) ??>-> Ok)
 
     let getDescriptor env =
@@ -831,7 +830,7 @@ module Quizzes =
           yield! BuildAttr.optional Fields.PkgId ScalarInt32 item.Dsc.PkgId
           yield! BuildAttr.optional Fields.PkgQwIdx ScalarInt32 item.Dsc.PkgSlipIdx
           yield! BuildAttr.string Fields.EventPage item.Dsc.EventPage
-          yield! BuildAttr.optional Fields.MixlrCode ScalarInt32 item.Dsc.MixlrCode
+          yield! BuildAttr.optional Fields.MixlrCode ScalarString item.Dsc.MixlrCode
           yield! BuildAttr.optional Fields.StreamUrl ScalarString item.Dsc.StreamUrl
 
           Attr(
