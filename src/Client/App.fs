@@ -14,7 +14,6 @@ Program.mkProgram Root.init Root.update Root.view
 |> Program.withConsoleTrace
 #endif
 |> Program.withReactBatched "elmish-app"
-// Temporarily disable debugger to fix socket connection error
 // #if DEBUG
 // |> Program.withDebugger
 // #endif

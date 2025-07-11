@@ -123,13 +123,7 @@ let uploadFile quizId (api: IMainApi) (file: Browser.Types.File) model =
         uploadFileToS3Cmd api.getUploadUrl QuizImg file (fun key -> QuizImgUploaded(quizId, key)) Exn
 
 let updateMixlrCode (txt: string) model =
-    model
-    |> updateCard (fun c ->
-        { c with
-            MixlrCode =
-                match txt.Trim() with
-                | "" -> None
-                | v -> Some v })
+    model |> updateCard (fun c -> { c with MixlrCode = txt })
 
 let toggleDeleteForm model =
     { model with
@@ -410,7 +404,7 @@ let card
                                         Type "text"
                                         Placeholder ""
                                         MaxLength 128.0
-                                        valueOrDefault (card.MixlrCode.ToString())
+                                        valueOrDefault card.MixlrCode
                                         OnChange(fun ev -> dispatch <| UpdateMixlrCode ev.Value) ]
 
                                   ]

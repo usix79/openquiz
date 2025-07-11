@@ -403,7 +403,7 @@ module MainModels =
           InfoText: string
           WithPremoderation: bool
           EventPage: string
-          MixlrCode: string option }
+          MixlrCode: string }
 
     type SettingsCard =
         { UserId: string

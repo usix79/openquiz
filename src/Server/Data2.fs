@@ -308,7 +308,7 @@ module Experts =
         let Packages = "Packages"
         let PackagesSharedWithMe = "PackagesSWM"
         let DefaultImg = "DefaultImg"
-        let DefaultMixlr = "DefaultMixlr"
+        let DefaultMixlr = "DefaultMixlr2"
         let Version = "Version"
 
     let private key sub = [ Attr(Fields.Id, ScalarString sub) ]
@@ -326,6 +326,7 @@ module Experts =
         defaultMixlr
         version
         : Domain.Expert =
+
         { Id = id
           Username = username |> Option.defaultValue ""
           Name = name |> Option.defaultValue ""

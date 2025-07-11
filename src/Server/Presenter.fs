@@ -276,7 +276,10 @@ module Main =
           InfoText = quiz.Dsc.InfoText
           WithPremoderation = quiz.Dsc.WithPremoderation
           EventPage = quiz.Dsc.EventPage
-          MixlrCode = quiz.Dsc.MixlrCode }
+          MixlrCode =
+            match quiz.Dsc.MixlrCode with
+            | Some code -> code
+            | None -> "" }
 
     let expertCompetition (team: TeamDescriptor) : Shared.MainModels.ExpertCompetition =
         { QuizId = team.QuizId
