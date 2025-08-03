@@ -7,12 +7,12 @@ open Amazon.CDK.AWS.S3.Assets
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.ElasticBeanstalk
 open Amazon.CDK.AWS.CloudFront
+open Amazon.CDK.AWS.CloudFront.Origins
 open Amazon.CDK.AWS.IAM
+open Constructs
 
-type ProductionStack(scope: Construct, id, props, globalId) as this =
+type ProductionStack(scope: Construct, id, props, env, globalId) as this =
     inherit Stack(scope, id, props)
-    let env = "Production"
-
     do Assets.createDynamoDBTables this env
 
     let bucket = Assets.createBucket this env
@@ -24,7 +24,7 @@ type ProductionStack(scope: Construct, id, props, globalId) as this =
             BucketDeploymentProps(
                 DestinationBucket = bucket,
                 Sources = [| Source.Asset("./bundle/client/", AssetOptions(Exclude = [| "*.*"; "!*.html" |])) |],
-                CacheControl = [| CacheControl.FromString("max-age=0,no-cache,no-store,must-revalidate") |],
+                CacheControl = [| CacheControl.FromString "max-age=0,no-cache,no-store,must-revalidate" |],
                 Prune = false
             )
         )
@@ -37,13 +37,13 @@ type ProductionStack(scope: Construct, id, props, globalId) as this =
             BucketDeploymentProps(
                 DestinationBucket = bucket,
                 Sources = [| Source.Asset("./bundle/client/", AssetOptions(Exclude = [| "*.html" |])) |],
-                CacheControl = [| CacheControl.FromString("max-age=31536000,public,immutable") |],
+                CacheControl = [| CacheControl.FromString "max-age=31536000,public,immutable" |],
                 Prune = false
             )
         )
         |> ignore
 
-    let vpc = Vpc(this, "OpenQuizVpc", VpcProps(NatGateways = 0.))
+    let vpc = Vpc(this, "OpenQuizVpc", VpcProps(NatGateways = 0., MaxAzs = 2.))
 
     let apiBundle =
         Asset(this, "ApiBundle", AssetProps(Path = "./bundle/openquiz-api.zip"))
@@ -51,10 +51,10 @@ type ProductionStack(scope: Construct, id, props, globalId) as this =
     let apiApp =
         CfnApplication(this, "ApiApp", CfnApplicationProps(ApplicationName = sprintf "OpenQuiz-%s" env))
 
-    let apiAppRoleName = "open-quiz-api-handler"
+    let apiAppRoleName = sprintf "open-quiz-api-handler-%s" globalId
 
     let apiAppRole =
-        Role(this, "ApiAppRole", RoleProps(RoleName = apiAppRoleName, AssumedBy = ServicePrincipal("ec2")))
+        Role(this, "ApiAppRole", RoleProps(RoleName = apiAppRoleName, AssumedBy = ServicePrincipal "ec2"))
 
     let instanceProfile =
         CfnInstanceProfile(
@@ -63,16 +63,16 @@ type ProductionStack(scope: Construct, id, props, globalId) as this =
             CfnInstanceProfileProps(InstanceProfileName = apiAppRoleName, Roles = [| apiAppRole.RoleName |])
         )
 
-    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AmazonS3FullAccess"))
-    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("CloudWatchAgentServerPolicy"))
-    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AWSAppSyncInvokeFullAccess"))
-    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AmazonDynamoDBFullAccess"))
-    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("CloudWatchLogsFullAccess"))
-    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AmazonSSMFullAccess"))
-    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AmazonEC2ContainerRegistryReadOnly"))
-    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AWSElasticBeanstalkWebTier"))
-    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AWSElasticBeanstalkMulticontainerDocker"))
-    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AWSElasticBeanstalkWorkerTier"))
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName "AmazonS3FullAccess")
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName "CloudWatchAgentServerPolicy")
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName "AWSAppSyncInvokeFullAccess")
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName "AmazonDynamoDBFullAccess")
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName "CloudWatchLogsFullAccess")
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName "AmazonSSMFullAccess")
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName "AmazonEC2ContainerRegistryReadOnly")
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName "AWSElasticBeanstalkWebTier")
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName "AWSElasticBeanstalkMulticontainerDocker")
+    do apiAppRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName "AWSElasticBeanstalkWorkerTier")
 
     let subnets =
         vpc.SelectSubnets(SubnetSelection(SubnetType = SubnetType.PUBLIC)).SubnetIds
@@ -135,47 +135,62 @@ type ProductionStack(scope: Construct, id, props, globalId) as this =
             )
         )
 
-    do appVersion.AddDependsOn(apiApp)
+    do appVersion.AddDependency(apiApp)
 
     let apiEnvCname = sprintf "%s.%s.elasticbeanstalk.com" cnamePrefix this.Region
 
+    let s3BundleOrigin =
+        S3BucketOrigin.WithBucketDefaults(bucket, OriginProps(OriginId = "s3-bundle"))
+
+    let s3MediaOrigin =
+        S3BucketOrigin.WithBucketDefaults(bucket, OriginProps(OriginId = "s3-media"))
+
+    let apiOrigin =
+        HttpOrigin(
+            apiEnvCname,
+            HttpOriginProps(OriginId = "api-origin", ProtocolPolicy = OriginProtocolPolicy.HTTP_ONLY)
+        )
+
     let distribution =
-        CloudFrontWebDistribution(
+        Distribution(
             this,
             "OpenQuizWebDistribution",
-            CloudFrontWebDistributionProps(
-                OriginConfigs =
-                    [| SourceConfiguration(
-                           S3OriginSource = S3OriginConfig(S3BucketSource = bucket),
-                           Behaviors =
-                               [| Behavior(
-                                      PathPattern = "/static/*",
-                                      AllowedMethods = CloudFrontAllowedMethods.GET_HEAD_OPTIONS,
-                                      DefaultTtl = Duration.Seconds(0.)
-                                  )
-                                  Behavior(
-                                      PathPattern = "/media/*",
-                                      AllowedMethods = CloudFrontAllowedMethods.GET_HEAD_OPTIONS
-                                  )
-                                  Behavior(IsDefaultBehavior = true) |]
-                       )
-                       SourceConfiguration(
-                           CustomOriginSource =
-                               CustomOriginConfig(
-                                   DomainName = apiEnvCname,
-                                   OriginProtocolPolicy = OriginProtocolPolicy.HTTP_ONLY
-                               ),
-                           Behaviors =
-                               [| Behavior(
-                                      PathPattern = "/api/*",
-                                      AllowedMethods = CloudFrontAllowedMethods.ALL,
-                                      DefaultTtl = Duration.Seconds(0.)
-                                  ) |]
-                       ) |]
+            DistributionProps(
+                DefaultBehavior =
+                    BehaviorOptions(
+                        Origin = s3BundleOrigin,
+                        ViewerProtocolPolicy = ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                        AllowedMethods = AllowedMethods.ALLOW_GET_HEAD_OPTIONS
+                    ),
+                AdditionalBehaviors =
+                    dict
+                        [ "/static/*",
+                          BehaviorOptions(
+                              Origin = s3MediaOrigin,
+                              ViewerProtocolPolicy = ViewerProtocolPolicy.ALLOW_ALL,
+                              AllowedMethods = AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+                              CachePolicy = CachePolicy.CACHING_DISABLED
+                          )
+                          "/media/*",
+                          BehaviorOptions(
+                              Origin = s3MediaOrigin,
+                              ViewerProtocolPolicy = ViewerProtocolPolicy.ALLOW_ALL,
+                              AllowedMethods = AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+                              CachePolicy = CachePolicy.ELEMENTAL_MEDIA_PACKAGE
+                          )
+                          "/api/*",
+                          BehaviorOptions(
+                              // BUG: should be apiOrigin but getting error: "Non-allowlisted account trying to use IPAddressType feature"
+                              // Replace manually in the AWS console
+                              Origin = s3MediaOrigin,
+                              ViewerProtocolPolicy = ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                              AllowedMethods = AllowedMethods.ALLOW_ALL,
+                              CachePolicy = CachePolicy.CACHING_DISABLED
+                          ) ]
             )
         )
 
-    let cloudFrontUrl = "https://" + distribution.DistributionDomainName
+    let cloudFrontUrl = "https://" + distribution.DomainName
     do Helpers.createParameter this env "BucketUrl" cloudFrontUrl
 
     do
@@ -183,6 +198,14 @@ type ProductionStack(scope: Construct, id, props, globalId) as this =
             this,
             "OpenQuizUrl",
             CfnOutputProps(Value = cloudFrontUrl, Description = "Alias your domain name with the Url")
+        )
+        |> ignore
+
+    do
+        CfnOutput(
+            this,
+            "ApiUrl",
+            CfnOutputProps(Value = apiEnvCname, Description = "API Environment CNAME for manual replacement")
         )
         |> ignore
 

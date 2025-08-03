@@ -17,8 +17,10 @@ let clientPath = Path.Combine(__SOURCE_DIRECTORY__, "src/client")
 let ptestsPath = Path.Combine(__SOURCE_DIRECTORY__, "src/perf")
 let clientDeployPath = Path.Combine(clientPath, "deploy")
 let clientPublicPath = Path.Combine(clientPath, "public")
+let webpackOutputPath = Path.Combine(clientPath, "deploy")
 let deployDir = Path.Combine(__SOURCE_DIRECTORY__, "deploy")
 let bundleDir = Path.Combine(__SOURCE_DIRECTORY__, "bundle")
+let bundleOutputDir = Path.Combine(bundleDir, "output")
 
 
 let inline (^) f x = f x
@@ -104,6 +106,8 @@ let restore _ =
     }
 
 let clean _ =
+    rmDir webpackOutputPath
+
     result {
         do! dotnet "clean" __SOURCE_DIRECTORY__
         do! dotnet "fable clean --yes" __SOURCE_DIRECTORY__
@@ -196,7 +200,7 @@ let devEnv _ =
         do! npx $"cdk deploy {args}" __SOURCE_DIRECTORY__
     }
 
-let deploy args =
+let deployToEnvironment stackName args =
     result {
         do! rebuild args
         do! bundle args
@@ -207,18 +211,19 @@ let deploy args =
         let globalId = getOrCreateRandomParam ParameterType.String 16 "/OpenQuiz/GlobalId"
         printfn $"OpenQuiz GlobalId: {globalId}"
 
-        let args = $"-c globalId={globalId} OpenQuiz-Production"
+        let args = $"-c globalId={globalId} {stackName}"
         do! npx $"cdk synth {args}" __SOURCE_DIRECTORY__
         do! npx $"cdk deploy {args}" __SOURCE_DIRECTORY__
     }
 
 
-[ ("RESTORE", restore)
-  ("CLEAN", clean)
-  ("BUILD", build)
-  ("REBUILD", rebuild)
-  ("RUN", run)
-  ("BUNDLE", bundle)
-  ("DEVENV", devEnv)
-  ("DEPLOY", deploy) ]
+[ "RESTORE", restore
+  "CLEAN", clean
+  "BUILD", build
+  "REBUILD", rebuild
+  "RUN", run
+  "BUNDLE", bundle
+  "DEVENV", devEnv
+  "STAGE", deployToEnvironment "OpenQuiz-Stage"
+  "DEPLOY", deployToEnvironment "OpenQuiz-Production" ]
 |> make

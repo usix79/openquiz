@@ -1,8 +1,6 @@
 {
-    "app": "dotnet run -p src/cdk/Cdk.fsproj",
+    "app": "dotnet run --project src/cdk/Cdk.fsproj",
     "context": {
-        "@aws-cdk/core:enableStackNameDuplicates": "true",
-        "aws-cdk:enableDiffNoFail": "true",
-        "@aws-cdk/core:stackRelativeExports": "true"
+        "globalId": "default"
     }
 }
