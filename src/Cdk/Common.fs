@@ -6,6 +6,7 @@ open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.SSM
 open Amazon.CDK.AWS.Cognito
 open Amazon.CDK.AWS.AppSync
+open Amazon.CDK.AWS.IAM
 
 module Helpers =
 
@@ -80,6 +81,15 @@ module Assets =
             )
 
         let bucket = Bucket(stack, "Bucket", bucketProps)
+
+        let publicAccessPolicy = PolicyStatement()
+        publicAccessPolicy.Effect <- Effect.ALLOW
+        publicAccessPolicy.AddActions "s3:GetObject"
+        publicAccessPolicy.AddResources(sprintf "arn:aws:s3:::%s/*" bucket.BucketName)
+        publicAccessPolicy.AddPrincipals(AnyPrincipal()) |> ignore
+
+        bucket.AddToResourcePolicy(publicAccessPolicy) |> ignore
+
         createParameter stack env "BucketName" bucket.BucketName
         bucket
 

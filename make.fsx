@@ -200,12 +200,12 @@ let devEnv _ =
         do! npx $"cdk deploy {args}" __SOURCE_DIRECTORY__
     }
 
-let deployToEnvironment stackName args =
+let deployToEnvironment envName stackName args =
     result {
         do! rebuild args
         do! bundle args
 
-        getOrCreateRandomParam ParameterType.SecureString 36 "/OpenQuiz/Production/GwtSecret"
+        getOrCreateRandomParam ParameterType.SecureString 36 $"/OpenQuiz/{envName}/GwtSecret"
         |> ignore
 
         let globalId = getOrCreateRandomParam ParameterType.String 16 "/OpenQuiz/GlobalId"
@@ -224,6 +224,6 @@ let deployToEnvironment stackName args =
   "RUN", run
   "BUNDLE", bundle
   "DEVENV", devEnv
-  "STAGE", deployToEnvironment "OpenQuiz-Stage"
-  "DEPLOY", deployToEnvironment "OpenQuiz-Production" ]
+  "STAGE", deployToEnvironment "Stage" "OpenQuiz-Stage"
+  "DEPLOY", deployToEnvironment "Production" "OpenQuiz-Production" ]
 |> make

@@ -36,3 +36,7 @@ aws configure
 | Prepare development infrastructure | `dotnet fsi make.fsx devenv` |
 | Run locally | `dotnet fsi make.fsx run` |
 | Deploy | `dotnet fsi make.fsx deploy` |
+
+## AWS Setup
+
+You must manually update CloudFront Distribution to add ApiOrigin

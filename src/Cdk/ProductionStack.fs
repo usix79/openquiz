@@ -102,7 +102,19 @@ type ProductionStack(scope: Construct, id, props, env, globalId) as this =
            )
            CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "Subnets", Value = subnets)
            CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "ELBScheme", Value = "public")
-           CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "ELBSubnets", Value = subnets) |]
+           CfnEnvironment.OptionSettingProperty(Namespace = "aws:ec2:vpc", OptionName = "ELBSubnets", Value = subnets)
+           // Application environment variables exposed to the app process
+           CfnEnvironment.OptionSettingProperty(
+               Namespace = "aws:elasticbeanstalk:application:environment",
+               OptionName = "ASPNETCORE_ENVIRONMENT",
+               Value = env
+           )
+           // Optional: also set DOTNET_ENVIRONMENT for Generic Host parity
+           CfnEnvironment.OptionSettingProperty(
+               Namespace = "aws:elasticbeanstalk:application:environment",
+               OptionName = "DOTNET_ENVIRONMENT",
+               Value = env
+           ) |]
 
     let appVersion =
         CfnApplicationVersion(
@@ -118,7 +130,7 @@ type ProductionStack(scope: Construct, id, props, env, globalId) as this =
             )
         )
 
-    let version = "2025v2"
+    let version = "2025v3"
     let cnamePrefix = sprintf "openquiz-%s-%s-v%s" (env.ToLower()) globalId version
 
     let appEnv =
@@ -146,10 +158,11 @@ type ProductionStack(scope: Construct, id, props, env, globalId) as this =
         S3BucketOrigin.WithBucketDefaults(bucket, OriginProps(OriginId = "s3-media"))
 
     let apiOrigin =
-        HttpOrigin(
-            apiEnvCname,
-            HttpOriginProps(OriginId = "api-origin", ProtocolPolicy = OriginProtocolPolicy.HTTP_ONLY)
-        )
+        S3BucketOrigin.WithBucketDefaults(bucket, OriginProps(OriginId = "api-origin"))
+    // HttpOrigin(
+    //     apiEnvCname,
+    //     HttpOriginProps(OriginId = "api-origin", ProtocolPolicy = OriginProtocolPolicy.HTTP_ONLY)
+    // )
 
     let distribution =
         Distribution(
@@ -182,7 +195,7 @@ type ProductionStack(scope: Construct, id, props, env, globalId) as this =
                           BehaviorOptions(
                               // BUG: should be apiOrigin but getting error: "Non-allowlisted account trying to use IPAddressType feature"
                               // Replace manually in the AWS console
-                              Origin = s3MediaOrigin,
+                              Origin = apiOrigin,
                               ViewerProtocolPolicy = ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                               AllowedMethods = AllowedMethods.ALLOW_ALL,
                               CachePolicy = CachePolicy.CACHING_DISABLED
