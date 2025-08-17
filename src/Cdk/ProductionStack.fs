@@ -1,7 +1,6 @@
 namespace OpenQuiz.Cdk
 
 open Amazon.CDK
-open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.S3.Deployment
 open Amazon.CDK.AWS.S3.Assets
 open Amazon.CDK.AWS.EC2
@@ -130,7 +129,7 @@ type ProductionStack(scope: Construct, id, props, env, globalId) as this =
             )
         )
 
-    let version = "2025v3"
+    let version = "2025v4"
     let cnamePrefix = sprintf "openquiz-%s-%s-v%s" (env.ToLower()) globalId version
 
     let appEnv =

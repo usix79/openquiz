@@ -18,7 +18,7 @@ See [Release Notes](https://github.com/usix79/openquiz/blob/master/RELEASE_NOTES
 
 ## Development Prerequisites
 
-* [.NET SDK 6.0](https://dotnet.microsoft.com/en-us/download/dotnet/6.0)
+* [.NET SDK 8.0](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
 * [node.js and npm](https://nodejs.org/)
 * [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 

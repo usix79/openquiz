@@ -593,22 +593,14 @@ module Read =
 
 
     module Attribute =
-
         let string (a: A) = a.S
-
         let bool (a: A) = a.BOOL
-
         let number (a: A) = a.N
-
         let docMap (a: A) = toMap a.M
-
         let docList (a: A) = List.ofSeq a.L
-
         let setString (a: A) = Set.ofSeq a.SS
-
         let isNull (a: A) = a.NULL
-
-        let nullOr f (a: A) = if a.NULL then None else Some(f a)
+        let nullOr f (a: A) = if a.NULL then None else Some (f a)
 
 
     module Parse =

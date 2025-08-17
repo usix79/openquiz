@@ -46,7 +46,8 @@ let switchByHashMsg () =
     | _ -> SwitchToTeams
 
 let init api user : Model * Cmd<Msg> =
-    Empty, Cmd.OfFunc.result <| switchByHashMsg ()
+    // Replaced deprecated Cmd.OfFunc.result with simpler Cmd.ofMsg
+    Empty, Cmd.ofMsg (switchByHashMsg ())
 
 let update (api: IAdminApi) user (msg: Msg) (cm: Model) : Model * Cmd<Msg> =
     match msg, cm with

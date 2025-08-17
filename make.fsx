@@ -25,11 +25,12 @@ let bundleOutputDir = Path.Combine(bundleDir, "output")
 
 let inline (^) f x = f x
 
-let exec cmd args workDir =
+let exec (cmd: string) (args: string) (workDir: string) =
 
     let cmdTxt = $"EXEC {cmd} {args} from {workDir}"
     Console.WriteLine cmdTxt
 
+    // Explicit string args resolve ProcessStartInfo(string,string) overload
     let startInfo = ProcessStartInfo(cmd, args)
     startInfo.WorkingDirectory <- workDir
     startInfo.UseShellExecute <- false

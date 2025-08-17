@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
   </PropertyGroup>
 
@@ -15,12 +15,16 @@
 
   <ItemGroup>
     <!-- AWS CDK v2 Dependencies -->
-    <PackageReference Include="Amazon.CDK.Lib" Version="2.208.0" />
+  <PackageReference Include="Amazon.CDK.Lib" Version="2.208.0" />
     <PackageReference Include="Constructs" Version="10.4.2" />
 
     <!-- jsii Roslyn analyzers (un-comment to obtain compile-time checks for missing required props
     <PackageReference Include="Amazon.Jsii.Analyzers" Version="*" PrivateAssets="all" />
     -->
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Pin FSharp.Core for consistency; not changing AWS libs per instruction -->
+    <PackageReference Update="FSharp.Core" Version="8.0.403" />
   </ItemGroup>
 
 </Project>

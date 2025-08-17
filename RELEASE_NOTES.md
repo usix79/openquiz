@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.21.0 - 2025-08-17
+
+* Migrated to net8
+
 ## 1.20.0 - 2025-07-10
 
 * Updated mixlr embedding

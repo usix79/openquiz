@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../shared/Shared.fs" />
@@ -28,11 +28,11 @@
     </Content>
     </ItemGroup>
     <ItemGroup>
-      <PackageReference Include="Amazon.Extensions.Configuration.SystemsManager" Version="6.0.0" />
-      <PackageReference Include="AWS.Logger.SeriLog" Version="3.3.0" />
-      <PackageReference Include="Aws4RequestSigner" Version="1.0.3" />
-      <PackageReference Include="AWSSDK.DynamoDBv2" Version="3.7.300.19" />
-      <PackageReference Include="AWSSDK.S3" Version="3.7.304.8" />
+  <PackageReference Include="Amazon.Extensions.Configuration.SystemsManager" Version="6.0.0" />
+  <PackageReference Include="AWS.Logger.SeriLog" Version="3.3.0" />
+  <PackageReference Include="Aws4RequestSigner" Version="1.0.3" />
+  <PackageReference Include="AWSSDK.DynamoDBv2" Version="3.7.300.19" />
+  <PackageReference Include="AWSSDK.S3" Version="3.7.304.8" />
       <PackageReference Include="Fable.Remoting.Giraffe" Version="5.17.0" />
       <PackageReference Include="Giraffe" Version="6.2.0" />
       <PackageReference Include="Giraffe.SerilogExtensions" Version="2.2.0" />
@@ -40,5 +40,12 @@
       <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
       <PackageReference Include="String.Similarity" Version="3.0.0" />
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.1.2" />
+    </ItemGroup>
+    <ItemGroup>
+      <!-- Non-AWS infra package updates (keeping AWS packages at current versions as requested) -->
+      <PackageReference Update="Serilog.Formatting.Compact" Version="3.0.0" />
+      <PackageReference Update="Serilog.Sinks.Console" Version="6.0.0" />
+      <PackageReference Update="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
+      <PackageReference Update="FSharp.Core" Version="8.0.403" />
     </ItemGroup>
 </Project>

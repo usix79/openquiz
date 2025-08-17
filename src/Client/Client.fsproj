@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <None Include="index.html" />
@@ -44,7 +44,20 @@
     <PackageReference Include="Fable.SimpleJson" Version="3.24.0" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="FSharp.Core" Version="6.0.7" />
+    <!-- Pin FSharp.Core consistently for .NET 8 upgrade phase -->
+    <PackageReference Update="FSharp.Core" Version="8.0.403" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Increment client library versions (no AWS infra changes) -->
+    <PackageReference Update="Fable.Browser.Url" Version="1.4.0" />
+    <PackageReference Update="Fable.Core" Version="4.5.0" />
+    <PackageReference Update="Fable.Elmish" Version="5.0.2" />
+    <PackageReference Update="Fable.Elmish.Browser" Version="4.1.0" />
+    <PackageReference Update="Fable.Elmish.Debugger" Version="4.2.2" />
+    <PackageReference Update="Fable.Elmish.HMR" Version="8.0.0" />
+    <PackageReference Update="Fable.Elmish.React" Version="5.0.0" />
+    <PackageReference Update="Fable.React" Version="9.4.0" />
+    <PackageReference Update="Fable.Remoting.Client" Version="7.35.0" />
   </ItemGroup>
 
 </Project>
