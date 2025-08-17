@@ -5,6 +5,7 @@ open Elmish
 open Fable.React
 open Fable.React.Props
 open Fable.FontAwesome
+open IconHelpers
 open Fable.SimpleJson
 open Elmish.React
 
@@ -511,7 +512,7 @@ let singleQwView
                                                     if ch.IsCorrect then
                                                         span
                                                             [ Class "icon is-large is-left has-text-black" ]
-                                                            [ Fa.i [ Fa.Regular.Grin ] [] ]
+                                                            [ icon Icons.grin ]
 
                                                     if txt = ch.Text then
                                                         answerStatusIcon answers.Status txt ]

@@ -12,7 +12,9 @@
     ],
     "scripts": {
         "build:client": "webpack --mode production",
-        "dev:client": "dotnet fable watch src/client --run webpack-dev-server"
+        "dev:client": "dotnet fable watch src/client --run webpack-dev-server",
+        "analyze:client": "ANALYZE=true webpack --mode production",
+        "clean:client": "rm -rf src/client/deploy/app"
     },
     "devDependencies": {
         "aws-cdk": "^2.1025.0",
@@ -25,17 +27,18 @@
         "sass": "^1.90.0",
         "sass-loader": "^16.0.5",
         "style-loader": "^4.0.0",
+        "webpack-bundle-analyzer": "^4.10.2",
         "webpack": "^5.101.2",
         "webpack-cli": "^6.0.1",
         "webpack-dev-server": "^5.2.2",
         "whatwg-fetch": "^3.6.20"
     },
     "dependencies": {
-        "@fortawesome/fontawesome-free": "^6.7.2",
+        "@fortawesome/fontawesome-free": "^7.0.0",
         "aws-amplify": "^6.15.5",
         "bulma": "^0.9.4",
-        "react": "^18.3.1",
-        "react-dom": "^18.3.1",
+        "react": "^19.1.1",
+        "react-dom": "^19.1.1",
         "react-flatpickr": "^4.0.11",
         "react-player": "^3.0.0"
     }

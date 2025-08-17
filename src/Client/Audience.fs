@@ -5,6 +5,7 @@ open Elmish
 open Fable.React
 open Fable.React.Props
 open Fable.FontAwesome
+open IconHelpers
 open Fable.SimpleJson
 open Elmish.React
 
@@ -226,7 +227,7 @@ let singleQwView (settings: Settings) tour (slip: Shared.SingleSlipCard) l10n =
                                                     if ch.IsCorrect then
                                                         span
                                                             [ Class "icon is-large is-left has-text-black" ]
-                                                            [ Fa.i [ Fa.Regular.Grin ] [] ] ]
+                                                            [ icon Icons.grin ] ]
                                               br [] ] ] ] ] ]
 
 let multipleQwView (settings: Settings) tour name slips l10n =

@@ -13,7 +13,8 @@ Program.mkProgram Root.init Root.update Root.view
 #if DEBUG
 |> Program.withConsoleTrace
 #endif
-|> Program.withReactBatched "elmish-app"
+// React 18+ already batches state updates by default; using the synchronous variant simplifies integration
+|> Program.withReactSynchronous "elmish-app"
 // #if DEBUG
 // |> Program.withDebugger
 // #endif

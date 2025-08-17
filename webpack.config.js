@@ -11,6 +11,7 @@ var webpack = require('webpack');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var CopyWebpackPlugin = require('copy-webpack-plugin');
 var MiniCssExtractPlugin = require('mini-css-extract-plugin');
+var BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 var CONFIG = {
     // The tags to include the generated JS and CSS will be automatically injected in the HTML template
@@ -87,11 +88,35 @@ module.exports = {
         filename: isProduction ? '[name].[fullhash].js' : '[name].js'
     },
     mode: isProduction ? 'production' : 'development',
-    devtool: isProduction ? 'source-map' : 'eval-source-map',
+    devtool: isProduction ? 'source-map' : 'eval-cheap-module-source-map',
     optimization: {
+        runtimeChunk: 'single',
+        moduleIds: 'deterministic',
         splitChunks: {
-            chunks: 'all'
-        },
+            chunks: 'all',
+            maxInitialRequests: 25,
+            minSize: 20000,
+            cacheGroups: {
+                react: {
+                    test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
+                    name: 'react-vendor',
+                    priority: 30,
+                    enforce: true
+                },
+                fable: {
+                    test: /[\\/]fable_modules[\\/]/,
+                    name: 'fable-lib',
+                    priority: 20,
+                    minChunks: 2
+                },
+                vendors: {
+                    test: /[\\/]node_modules[\\/]/,
+                    name: 'vendors',
+                    priority: 10,
+                    reuseExistingChunk: true
+                }
+            }
+        }
     },
     // Besides the HtmlPlugin, we use the following plugins:
     // PRODUCTION
@@ -100,7 +125,7 @@ module.exports = {
     //      - CopyWebpackPlugin: Copies static assets to output directory
     // DEVELOPMENT
     //      - HotModuleReplacementPlugin: Enables hot reloading when code changes without refreshing
-    plugins: isProduction ?
+    plugins: (isProduction ?
         commonPlugins.concat([
             new MiniCssExtractPlugin({
                 filename: '[name].[contenthash].css',
@@ -115,10 +140,12 @@ module.exports = {
         ])
         : commonPlugins.concat([
             new webpack.HotModuleReplacementPlugin(),
-        ]),
+        ])
+    ).concat(process.env.ANALYZE ? [new BundleAnalyzerPlugin({ analyzerMode: 'static', openAnalyzer: false, reportFilename: 'bundle-report.html' })] : []),
     resolve: {
         // See https://github.com/fable-compiler/Fable/issues/1490
-        symlinks: false
+        symlinks: false,
+        extensionAlias: { '.js': ['.js'] }
     },
     // Configuration for webpack-dev-server
     devServer: {
