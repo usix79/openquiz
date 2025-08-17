@@ -228,7 +228,7 @@ let quizView
           [ img [ Src <| Infra.urlForMediaImgSafe settings.MediaHost quiz.ImgKey ] ]
       br []
       h3 [ Class "title is-3" ] [ str quiz.Name ]
-      h4 [ Class "subtitle is-4" ] [ Fa.i [ Fa.Solid.DoorOpen ] [ str <| " " + l10n.Registration ] ]
+      h4 [ Class "subtitle is-4" ] [ span [] [ Fa.i [ Fa.Solid.DoorOpen ] []; str (" " + l10n.Registration) ] ]
 
       div
           [ Class "notification is-white" ]

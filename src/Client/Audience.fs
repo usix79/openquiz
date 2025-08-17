@@ -148,8 +148,10 @@ let quizView (dispatch: Msg -> unit) settings (model: Model) (quizId: int) (quiz
                     [ yield MainTemplates.playTitle settings.MediaHost quiz.Img quiz.Mxlr quiz.Url
 
                       yield h3 [ Class "title is-3" ] [ str quiz.QN ]
-                      yield h4 [ Class "subtitle is-4" ] [ Fa.i [ Fa.Solid.Users ] [ str <| " " + l10n.Audience ] ]
-
+                      yield
+                          h4
+                              [ Class "subtitle is-4" ]
+                              [ span [] [ Fa.i [ Fa.Solid.Users ] []; str (" " + l10n.Audience) ] ]
                       match model.ActiveTab with
                       | History -> yield historyView dispatch model l10n
                       | Question ->

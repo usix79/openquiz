@@ -804,7 +804,9 @@ module Quizzes =
 
     let private reader =
         builder <!> dscReader
-        <*> (req Fields.Questions A.docList @>-> (A.docMap, AttrReader.run tourReader))
+        // NOTE: Made Questions optional with default empty list because newly created quizzes may have no tours yet
+        // Previously this was `req Fields.Questions ...` causing MissingAttributeError when attribute absent.
+        <*> (optDef Fields.Questions [] A.docList @>-> (A.docMap, AttrReader.run tourReader))
         <*> (req Fields.Version A.number >-> P.int)
 
     let sysKey quizId = (sprintf "quiz-%i" quizId)

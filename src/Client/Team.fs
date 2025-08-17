@@ -408,7 +408,7 @@ let jeopardyControl dispatch jpd readOnly (l10n: L10n.TeamL10n) =
                 Title l10n.Jeopardy
                 ReadOnly readOnly
                 OnClick(fun _ -> dispatch <| ToggleJeopardy 0) ]
-              [ Fa.i [ Fa.Solid.Paw ] [ str <| " " + l10n.Jeopardy ] ] ]
+              [ span [] [ Fa.i [ Fa.Solid.Paw ] []; str (" " + l10n.Jeopardy) ] ] ]
 
 let awArea dispatch aw jpd status withChoice readOnly l10n =
     div
