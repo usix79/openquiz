@@ -10,6 +10,7 @@ open System.IO.Compression
 open System.Threading
 open FsToolkit.ErrorHandling
 open Amazon.SimpleSystemsManagement
+open System.Net
 
 
 let serverPath = Path.Combine(__SOURCE_DIRECTORY__, "src/server")
@@ -205,6 +206,24 @@ let deployToEnvironment envName stackName args =
     result {
         do! rebuild args
         do! bundle args
+
+        // After bundle, drop release notes directly into bundle/client
+        let releaseNotesSrc = Path.Combine(__SOURCE_DIRECTORY__, "RELEASE_NOTES.md")
+        let bundledClientDir = Path.Combine(bundleDir, "client")
+        Directory.CreateDirectory(bundledClientDir) |> ignore
+        let releaseNotesDst = Path.Combine(bundledClientDir, "RELEASE_NOTES.html")
+
+        if File.Exists(releaseNotesSrc) then
+            let md = File.ReadAllText(releaseNotesSrc)
+            let encoded = WebUtility.HtmlEncode(md)
+
+            let html =
+                $"""<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Release Notes</title></head><body><pre style='white-space:pre-wrap;font-family:monospace;'>%s{encoded}</pre></body></html>"""
+
+            File.WriteAllText(releaseNotesDst, html)
+            printfn $"Bundled release notes: {releaseNotesDst}"
+        else
+            printfn "RELEASE_NOTES.md not found; skipping bundled RELEASE_NOTES.html"
 
         getOrCreateRandomParam ParameterType.SecureString 36 $"/OpenQuiz/{envName}/GwtSecret"
         |> ignore
