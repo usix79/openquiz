@@ -1,10 +1,24 @@
 {
     "private": true,
+    "engines": {
+        "node": ">=22.0.0 <23",
+        "npm": ">=10"
+    },
+    "browserslist": [
+        ">0.5%",
+        "last 2 versions",
+        "not dead",
+        "not op_mini all"
+    ],
+    "scripts": {
+        "build:client": "webpack --mode production",
+        "dev:client": "dotnet fable watch src/client --run webpack-dev-server"
+    },
     "devDependencies": {
         "aws-cdk": "^2.1025.0",
-        "copy-webpack-plugin": "^11.0.0",
+        "copy-webpack-plugin": "^13.0.1",
         "core-js": "^3.45.0",
-        "css-loader": "^6.11.0",
+        "css-loader": "^7.1.2",
         "html-webpack-plugin": "^5.6.4",
         "mini-css-extract-plugin": "^2.9.4",
         "resolve-url-loader": "^5.0.0",
@@ -12,7 +26,7 @@
         "sass-loader": "^16.0.5",
         "style-loader": "^4.0.0",
         "webpack": "^5.101.2",
-        "webpack-cli": "^5.1.4",
+        "webpack-cli": "^6.0.1",
         "webpack-dev-server": "^5.2.2",
         "whatwg-fetch": "^3.6.20"
     },
@@ -22,7 +36,7 @@
         "bulma": "^0.9.4",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
-        "react-flatpickr": "^3.10.13",
-        "react-player": "^2.16.1"
+        "react-flatpickr": "^4.0.11",
+        "react-player": "^3.0.0"
     }
 }

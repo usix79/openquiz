@@ -105,6 +105,12 @@ module.exports = {
             new MiniCssExtractPlugin({
                 filename: '[name].[contenthash].css',
                 chunkFilename: '[id].[contenthash].css'
+            }),
+            // Copy static assets (favicon, audio, etc.) into production output
+            new CopyWebpackPlugin({
+                patterns: [
+                    { from: resolve(CONFIG.assetsDir), to: '.', globOptions: { ignore: ['**/index.html'] } }
+                ]
             })
         ])
         : commonPlugins.concat([

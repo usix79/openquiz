@@ -359,16 +359,16 @@ module Experts =
 
     let private put env (exp: Domain.Expert) =
         [ Attr(Fields.Id, ScalarString exp.Id)
-          Attr(Fields.Username, ScalarString exp.Username)
-          Attr(Fields.Name, ScalarString exp.Name)
           Attr(Fields.IsProducer, ScalarBool exp.IsProducer)
           Attr(Fields.Competitions, DocMap(fromInt32Map exp.Competitions))
-          yield! BuildAttr.setString Fields.Quizzes (exp.Quizzes |> List.map string)
-          yield! BuildAttr.setString Fields.Packages (exp.Packages |> List.map string)
-          yield! BuildAttr.setString Fields.PackagesSharedWithMe (exp.PackagesSharedWithMe |> List.map string)
-          Attr(Fields.DefaultImg, ScalarString exp.DefaultImg)
-          Attr(Fields.DefaultMixlr, ScalarString exp.DefaultMixlr)
           Attr(Fields.Version, ScalarInt32(exp.Version + 1)) ]
+        @ (BuildAttr.string Fields.Username exp.Username)
+        @ (BuildAttr.string Fields.Name exp.Name)
+        @ (BuildAttr.setString Fields.Quizzes (exp.Quizzes |> List.map string))
+        @ (BuildAttr.setString Fields.Packages (exp.Packages |> List.map string))
+        @ (BuildAttr.setString Fields.PackagesSharedWithMe (exp.PackagesSharedWithMe |> List.map string))
+        @ (BuildAttr.string Fields.DefaultImg exp.DefaultImg)
+        @ (BuildAttr.string Fields.DefaultMixlr exp.DefaultMixlr)
         |> putItem' env (Some exp.Version) tableName
 
     let update env id logic = putOptimistic' env get put id logic
@@ -579,7 +579,6 @@ module Packages =
         let Version = "Version"
 
     let private key id = [ Attr(Fields.Id, ScalarInt32 id) ]
-
     let private dscFields = [ Fields.Id; Fields.Producer; Fields.Name ]
 
     let private dscBuilder id producer name : Domain.PackageDescriptor =
@@ -620,10 +619,10 @@ module Packages =
         [ Attr(Fields.Id, ScalarInt32 pkg.Dsc.PackageId)
           Attr(Fields.Producer, ScalarString pkg.Dsc.Producer)
           Attr(Fields.Name, ScalarString pkg.Dsc.Name)
-          Attr(Fields.TransferToken, ScalarString pkg.TransferToken)
-          yield! BuildAttr.setString Fields.SharedWith (pkg.SharedWith |> List.map string)
           Attr(Fields.Questions, DocList(pkg.Slips |> List.map (Slips.fields >> DocMap)))
           Attr(Fields.Version, ScalarInt32(pkg.Version + 1)) ]
+        @ (BuildAttr.string Fields.TransferToken pkg.TransferToken)
+        @ (BuildAttr.setString Fields.SharedWith (pkg.SharedWith |> List.map string))
         |> putItem' env (Some pkg.Version) tableName
 
     let create env (creator: int -> Domain.Package) =
@@ -813,6 +812,37 @@ module Quizzes =
     let get env = key >> getItem' env tableName reader
 
     let private put env (item: Domain.Quiz) =
+        let optNonEmpty name opt =
+            match
+                opt
+                |> Option.bind (fun s -> if System.String.IsNullOrWhiteSpace s then None else Some s)
+            with
+            | Some s -> [ Attr(name, ScalarString s) ]
+            | None -> []
+
+        let questionsAttr =
+            if List.isEmpty item.Tours then
+                []
+            else
+                [ Attr(
+                      Fields.Questions,
+                      DocList
+                          [ for tour in item.Tours do
+                                yield
+                                    DocMap
+                                        [ yield! BuildAttr.string Fields.TourName tour.Name
+                                          Attr(Fields.TourSeconds, ScalarInt32 tour.Seconds)
+                                          Attr(Fields.TourStatus, ScalarString(tour.Status.ToString()))
+                                          Attr(Fields.TourSlip, DocMap(Slips.fields tour.Slip))
+                                          yield! BuildAttr.optional Fields.TourStartTime ScalarDate tour.StartTime
+                                          Attr(Fields.TourQwIdx, ScalarInt32 tour.QwIdx)
+                                          Attr(Fields.TourQwPartIdx, ScalarInt32 tour.QwPartIdx)
+                                          if tour.IsQuestionDisplayed then
+                                              Attr(Fields.TourIsQuestionDisplayed, ScalarBool tour.IsQuestionDisplayed)
+                                          if tour.IsMediaDisplayed then
+                                              Attr(Fields.TourIsMediaDisplayed, ScalarBool tour.IsMediaDisplayed) ] ]
+                  ) ]
+
         [ Attr(Fields.Id, ScalarInt32 item.Dsc.QuizId)
           Attr(Fields.Producer, ScalarString item.Dsc.Producer)
           yield! BuildAttr.optional Fields.StartTime ScalarDate item.Dsc.StartTime
@@ -831,28 +861,9 @@ module Quizzes =
           yield! BuildAttr.optional Fields.PkgId ScalarInt32 item.Dsc.PkgId
           yield! BuildAttr.optional Fields.PkgQwIdx ScalarInt32 item.Dsc.PkgSlipIdx
           yield! BuildAttr.string Fields.EventPage item.Dsc.EventPage
-          yield! BuildAttr.optional Fields.MixlrCode ScalarString item.Dsc.MixlrCode
-          yield! BuildAttr.optional Fields.StreamUrl ScalarString item.Dsc.StreamUrl
-
-          Attr(
-              Fields.Questions,
-              DocList
-                  [ for tour in item.Tours do
-                        yield
-                            DocMap
-                                [ yield! BuildAttr.string Fields.TourName tour.Name
-                                  Attr(Fields.TourSeconds, ScalarInt32 tour.Seconds)
-                                  Attr(Fields.TourStatus, ScalarString(tour.Status.ToString()))
-                                  Attr(Fields.TourSlip, DocMap(Slips.fields tour.Slip))
-                                  yield! BuildAttr.optional Fields.TourStartTime ScalarDate tour.StartTime
-                                  Attr(Fields.TourQwIdx, ScalarInt32 tour.QwIdx)
-                                  Attr(Fields.TourQwPartIdx, ScalarInt32 tour.QwPartIdx)
-                                  if tour.IsQuestionDisplayed then
-                                      Attr(Fields.TourIsQuestionDisplayed, ScalarBool tour.IsQuestionDisplayed)
-                                  if tour.IsMediaDisplayed then
-                                      Attr(Fields.TourIsMediaDisplayed, ScalarBool tour.IsMediaDisplayed) ] ]
-          )
-
+          yield! optNonEmpty Fields.MixlrCode item.Dsc.MixlrCode
+          yield! optNonEmpty Fields.StreamUrl item.Dsc.StreamUrl
+          yield! questionsAttr
           Attr(Fields.Version, ScalarInt32(item.Version + 1)) ]
         |> putItem' env (Some item.Version) tableName
 
@@ -1009,10 +1020,8 @@ module Teams =
     let private put env (item: Domain.Team) =
         [ Attr(Fields.QuizId, ScalarInt32 item.Dsc.QuizId)
           Attr(Fields.TeamId, ScalarInt32 item.Dsc.TeamId)
-          Attr(Fields.Name, ScalarString item.Dsc.Name)
           Attr(Fields.Status, ScalarString(item.Dsc.Status.ToString()))
           Attr(Fields.RegistrationDate, ScalarDate item.Dsc.RegistrationDate)
-          Attr(Fields.EntryToken, ScalarString item.Dsc.EntryToken)
           Attr(Fields.ActiveSessionId, ScalarInt32 item.Dsc.ActiveSessionId)
           Attr(
               Fields.Answers,
@@ -1020,7 +1029,7 @@ module Teams =
                   [ for pair in item.Answers do
                         Attr(
                             (stringOfQwKey pair.Key),
-                            DocMap[Attr(Fields.AnswerText, ScalarString pair.Value.Text)
+                            DocMap[yield! BuildAttr.string Fields.AnswerText pair.Value.Text
                                    Attr(Fields.AnswerJeopardy, ScalarBool pair.Value.Jeopardy)
                                    Attr(Fields.AnswerRecieveTime, ScalarDate pair.Value.RecieveTime)
 
@@ -1040,6 +1049,8 @@ module Teams =
                         ) ]
           )
           Attr(Fields.Version, ScalarInt32(item.Version + 1)) ]
+        @ (BuildAttr.string Fields.Name item.Dsc.Name)
+        @ (BuildAttr.string Fields.EntryToken item.Dsc.EntryToken)
         |> putItem' env (Some item.Version) tableName
 
     let create env quizId creator =
