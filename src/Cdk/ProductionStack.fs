@@ -139,7 +139,7 @@ type ProductionStack(scope: Construct, id, props, env, globalId) as this =
             CfnEnvironmentProps(
                 EnvironmentName = apiApp.ApplicationName + "-SingleV" + version,
                 ApplicationName = apiApp.ApplicationName,
-                SolutionStackName = "64bit Amazon Linux 2 v2.6.3 running .NET Core",
+                SolutionStackName = "64bit Amazon Linux 2023 v3.5.3 running .NET 8",
                 OptionSettings = optionSettingProperties,
                 CnamePrefix = cnamePrefix,
                 VersionLabel = appVersion.Ref

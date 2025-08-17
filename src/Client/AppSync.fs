@@ -26,14 +26,11 @@ type IAppSync =
 let private appSync: IAppSync = jsNative
 
 let configure endpoint region apikey =
-    printfn $"Configuring AppSync with endpoint: {endpoint}, region: {region}, apikey: {apikey}"
     appSync.configure (endpoint, region, apikey)
 
 let mutable subscriptionId: int option = None
 
 let subscribe quizId token onSuccess onError =
-    printfn $"Subscribing to quiz {quizId} with token {token}"
-
     let sid =
         appSync.subscribe (
             quizId,
