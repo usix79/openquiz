@@ -23,23 +23,20 @@ var CONFIG = {
     devServerPort: 8080,
     // When using webpack-dev-server, you may need to redirect some calls
     // to a external API server. See https://webpack.js.org/configuration/dev-server/#devserver-proxy
-    devServerProxy: {
-        // root
-        // '/': {
-        //     target: 'http://localhost:' + (process.env.SERVER_PROXY_PORT || "8085"),
-        //        changeOrigin: true
-        //    },
-        // redirect requests that start with /api/* to the server on port 8085
-        '/api/*': {
-            target: 'http://localhost:' + (process.env.SERVER_PROXY_PORT || "8085"),
+    // Dev server proxy (array form required by current schema)
+    devServerProxy: [
+        {
+            context: ['/api'],
+            target: 'http://localhost:' + (process.env.SERVER_PROXY_PORT || '8085'),
             changeOrigin: true
         },
-        // redirect websocket requests that start with /socket/* to the server on the port 8085
-        '/socket/*': {
-            target: 'http://localhost:' + (process.env.SERVER_PROXY_PORT || "8085"),
+        {
+            context: ['/socket'],
+            target: 'http://localhost:' + (process.env.SERVER_PROXY_PORT || '8085'),
+            changeOrigin: true,
             ws: true
         }
-    },
+    ],
     // Use babel-preset-env to generate JS compatible with most-used browsers.
     // More info at https://babeljs.io/docs/en/next/babel-preset-env.html
     babel: {
@@ -56,9 +53,12 @@ var CONFIG = {
     }
 }
 
-// If we're running the webpack-dev-server, assume we're in development mode
-var isProduction = !process.argv.find(v => v.indexOf('webpack-dev-server') !== -1);
-console.log('Bundling for ' + (isProduction ? 'production' : 'development') + '...');
+// Determine production mode: explicit NODE_ENV=production OR --mode production and not running dev server
+var isDevServer = process.argv.some(v => v.includes('webpack-dev-server'));
+var isProduction = !isDevServer && (
+    process.env.NODE_ENV === 'production' || process.argv.includes('production')
+);
+console.log('Bundling for ' + (isProduction ? 'production' : (isDevServer ? 'development (dev-server)' : 'development')) + '...');
 
 // The HtmlWebpackPlugin allows us to use a template for the index.html page
 // and automatically injects <script> or <link> tags for generated bundles.
@@ -102,7 +102,10 @@ module.exports = {
     //      - HotModuleReplacementPlugin: Enables hot reloading when code changes without refreshing
     plugins: isProduction ?
         commonPlugins.concat([
-            new MiniCssExtractPlugin({ filename: 'style.[fullhash].css' })
+            new MiniCssExtractPlugin({
+                filename: '[name].[contenthash].css',
+                chunkFilename: '[id].[contenthash].css'
+            })
         ])
         : commonPlugins.concat([
             new webpack.HotModuleReplacementPlugin(),
@@ -139,7 +142,13 @@ module.exports = {
                     },
                     {
                         loader: 'sass-loader',
-                        options: { implementation: require('sass') }
+                        options: {
+                            implementation: require('sass'),
+                            sassOptions: {
+                                // Mute deprecation warnings from dependencies
+                                quietDeps: true
+                            }
+                        }
                     }
                 ],
             },

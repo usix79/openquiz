@@ -1,14 +1,9 @@
 @charset "utf-8";
 
 
-// FontAwesome
-$fa_font_path: "~@fortawesome/fontawesome-free/webfonts";
-@import '~@fortawesome/fontawesome-free/scss/fontawesome.scss';
-@import '~@fortawesome/fontawesome-free/scss/regular.scss';
-@import '~@fortawesome/fontawesome-free/scss/solid.scss';
-
-// Bulma
-@import "~bulma/bulma";
+// FontAwesome & Bulma (use precompiled CSS to avoid Sass @import deprecation warnings)
+@import "~@fortawesome/fontawesome-free/css/all.min.css";
+@import "~bulma/css/bulma.css";
 
 .light-item:hover {
     background-color: #ffffff !important;
