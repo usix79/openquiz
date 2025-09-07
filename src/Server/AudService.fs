@@ -1,6 +1,5 @@
 module rec OpenQuiz.AudService
 
-open System
 open Giraffe.SerilogExtensions
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Configuration
@@ -19,14 +18,14 @@ let api env (context: HttpContext) : IAudApi =
     let ex proc f =
 
         let ff f =
-            (fun (quizIdStr: string) req ->
+            fun (quizIdStr: string) req ->
                 match tryParseInt32 quizIdStr with
                 | Some quizId ->
                     Data2.Quizzes.getDescriptor env quizId
                     |> AsyncResult.bind (fun quiz -> f quiz req)
                 | None ->
                     env.Logger.Error("{Api} {Error} {Quiz}", "aud", "Wrong quiz Id", quizIdStr)
-                    Error "Wrong Quiz Id" |> AsyncResult.fromResult)
+                    Error "Wrong Quiz Id" |> AsyncResult.fromResult
 
         SecurityService.exec logger proc
         <| SecurityService.authorizeAudience secret (ff f)
