@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.22.0 - 2025-09-07
+
+* Migrated to AWS 4.0
+
 ## 1.21.0 - 2025-08-17
 
 * Migrated to net8

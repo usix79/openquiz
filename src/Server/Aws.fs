@@ -105,12 +105,26 @@ let publishQuizMessage env quizId token version evt =
 
     async {
         try
-            let! creds =
-                Amazon.Runtime.FallbackCredentialsFactory.GetCredentials().GetCredentialsAsync()
-                |> Async.AwaitTask
+            // Resolve credentials: Env Vars -> Shared Credentials (default) -> Instance Profile
+            let creds: Amazon.Runtime.AWSCredentials =
+                let envAk = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID")
+                let envSk = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY")
 
-            let signer =
-                new Aws4RequestSigner.AWS4RequestSigner(creds.AccessKey, creds.SecretKey)
+                if not (String.IsNullOrWhiteSpace envAk) && not (String.IsNullOrWhiteSpace envSk) then
+                    new Amazon.Runtime.EnvironmentVariablesAWSCredentials() :> _
+                else
+                    let shared = Amazon.Runtime.CredentialManagement.SharedCredentialsFile()
+
+                    let mutable prof =
+                        Unchecked.defaultof<Amazon.Runtime.CredentialManagement.CredentialProfile>
+
+                    if shared.TryGetProfile("default", &prof) then
+                        prof.GetAWSCredentials(null)
+                    else
+                        new Amazon.Runtime.InstanceProfileAWSCredentials() :> _
+
+            let imm = creds.GetCredentials()
+            let signer = new Aws4RequestSigner.AWS4RequestSigner(imm.AccessKey, imm.SecretKey)
 
             let body =
                 JsonConvert.SerializeObject(evt, fableConverter)
@@ -118,29 +132,28 @@ let publishQuizMessage env quizId token version evt =
                 |> Convert.ToBase64String
 
             let data = publishQuery quizId token body version
-            printfn "QUERY: %s" data
-
-            let content = new StringContent(data, Text.Encoding.UTF8, "application/graphql")
-
-            let origReq =
-                new HttpRequestMessage(HttpMethod.Post, appSyncCfg.Endpoint, Content = content)
-
+            // AppSync expects JSON when we send {"query": "..."}
+            let content = new StringContent(data, Text.Encoding.UTF8, "application/json")
+            use origReq = new HttpRequestMessage(HttpMethod.Post, appSyncCfg.Endpoint)
+            origReq.Content <- content
             let! signedReq = signer.Sign(origReq, "appsync", appSyncCfg.Region) |> Async.AwaitTask
 
-            if creds.UseToken then
-                signedReq.Headers.Add("X-Amz-Security-Token", creds.Token)
+            if not (String.IsNullOrEmpty imm.Token) then
+                signedReq.Headers.Add("X-Amz-Security-Token", imm.Token)
 
             let! resp = httpClient.SendAsync(signedReq) |> Async.AwaitTask
             let! respStr = resp.Content.ReadAsStringAsync() |> Async.AwaitTask
+            let logger = (env :> ILog).Logger
 
-            match resp.StatusCode with
-            | Net.HttpStatusCode.OK -> return ()
-            | _ ->
-                return
-                    (env :> ILog)
-                        .Logger.Error("{@Op} {@Status} {@Resp}", "Aws.appsync", resp.StatusCode, respStr)
+            if resp.StatusCode = Net.HttpStatusCode.OK then
+                if respStr.Contains("\"errors\"") then
+                    logger.Error("{@Op} {@Status} {@Resp}", "Aws.appsync.graphqlErrors", resp.StatusCode, respStr)
+                else
+                    logger.Information("{@Op} {@Status} len={Len}", "Aws.appsync.sent", resp.StatusCode, respStr.Length)
+            else
+                logger.Error("{@Op} {@Status} {@Resp}", "Aws.appsync", resp.StatusCode, respStr)
         with ex ->
-            return (env :> ILog).Logger.Error("{@Op} {@Exception}", "Aws.appsync", ex)
+            (env :> ILog).Logger.Error("{@Op} {@Exception}", "Aws.appsync", ex)
     }
 
 let getResultsKey quizId token =
