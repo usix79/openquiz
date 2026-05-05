@@ -8,7 +8,7 @@
             "command": "dotnet",
             "args": [ "build" ],
             "type": "shell",
-            "options": { "cwd": "${workspaceFolder}/src/Server" },
+            "options": { "cwd": "${workspaceFolder}/src/server" },
             "group": "build",
             "problemMatcher": [ "$msCompile" ]
         },
