@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.23.0 - 2026-06-29
+
+* Fixed bug with simultaneously playing media
+
 ## 1.22.0 - 2025-09-07
 
 * Migrated to AWS 4.0

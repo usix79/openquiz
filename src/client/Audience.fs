@@ -233,14 +233,18 @@ let singleQwView (settings: Settings) tour (slip: Shared.SingleSlipCard) l10n =
                                               br [] ] ] ] ] ]
 
 let multipleQwView (settings: Settings) tour name slips l10n =
+    let lastIdx = (slips |> List.length) - 1
+
     div
         []
         [ h5 [ Class "subtitle is-5" ] [ str name ]
           for (idx, slip) in slips |> List.indexed do
+              let isPlaying = idx = lastIdx
+
               match slip with
               | QW slip ->
                   p [ Class "has-text-weight-semibold" ] [ str <| sprintf "%s %s.%i" l10n.Question tour.Name (idx + 1) ]
-                  yield! MainTemplates.mediaEl settings.MediaHost slip.Media true
+                  yield! MainTemplates.mediaEl settings.MediaHost slip.Media isPlaying
                   p [] (splitByLines slip.Txt)
                   br []
                   br []
@@ -253,7 +257,7 @@ let multipleQwView (settings: Settings) tour name slips l10n =
                       [ str <| l10n.CorrectAnswer + ": "
                         str (slip.Aw.ToRawString().Split('\n').[0]) ]
 
-                  yield! MainTemplates.mediaEl settings.MediaHost slip.Media true
+                  yield! MainTemplates.mediaEl settings.MediaHost slip.Media isPlaying
                   p [ Class "is-italic has-text-weight-light is-family-secondary is-size-7" ] (splitByLines slip.Com)
                   br []
 
